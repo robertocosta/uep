@@ -1,3 +1,6 @@
+#ifndef RNG_HPP
+#define RNG_HPP
+
 #include <algorithm>
 #include <random>
 #include <vector>
@@ -89,7 +92,8 @@ template<class IntType>
 fountain<IntType>::fountain(IntType input_pkt_count) :
   K_(input_pkt_count),
   degree_distr(K_),
-  packet_distr(1, K_) {
+  packet_distr(1, K_),
+  sel_count(0) {
 }
 
 template<class IntType>
@@ -137,3 +141,5 @@ void fountain<IntType>::reset(generator_type::result_type seed) {
   generator.seed(seed);
   sel_count = 0;
 }
+
+#endif
