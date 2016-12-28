@@ -6,7 +6,7 @@
 template<class IntType = int>
 class soliton_distribution {
 public:
-  soliton_distribution(IntType input_pkt_count);
+  explicit soliton_distribution(IntType input_pkt_count);
   /** Generate a new number using the generator g. */
   template<class Generator> int operator()(Generator &g);
   /** Return the input block size. */
@@ -32,9 +32,9 @@ public:
   typedef std::vector<IntType> selection_type;
 
   /** Build a new fountain using the default seed. */
-  fountain(IntType input_pkt_count);
+  explicit fountain(IntType input_pkt_count);
   /** Build a new fountain using the specified seed. */
-  fountain(IntType input_pkt_count, generator_type::result_type seed);
+  explicit fountain(IntType input_pkt_count, generator_type::result_type seed);
   /** Generate the next packet selection. */
   selection_type next_packet_selection();
   /** Return the number of packet selections already generated. */
