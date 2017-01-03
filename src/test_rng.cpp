@@ -5,9 +5,9 @@
 using namespace std;
 
 int main(int, char**) {
-  fountain<> f(10);
+  fountain f(10);
   for (int i = 0; i < 100; i++) {
-    fountain<>::selection_type ps = f.next_packet_selection();
+    fountain::row_type ps = f.next_row();
     for (auto j = ps.begin(); j != ps.end(); j++) {
       cout << *j << ' ';
     }

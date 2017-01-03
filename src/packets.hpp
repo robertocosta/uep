@@ -1,35 +1,43 @@
 #ifndef PACKETS_HPP
 #define PACKETS_HPP
 
-#include <vector>
+#include <cstdint>
+#include <memory>
 
-typedef std::vector<unsigned char> packet_data;
-
-/** Encoded fountain packet: raw data + block id + order within the block */
 class fountain_packet {
 public:
-  explicit fountain_packet(int l);
-  explicit fountain_packet(const packet_data &data_);
+  fountain_packet();
+  explicit fountain_packet(std::uint_fast32_t length);
+  explicit fountain_packet(const std::shared_ptr<std::uint8_t> &data_ptr,
+			   std::uint_fast32_t length);
 
-  void cumulative_xor(const packet_data &other);
-  void cumulative_xor(const fountain_packet &other);
+  // fountain_packet &operator=(const fountain_packet &other);
 
-  int data_length() const;
-  int block_number() const;
-  int sequence_number() const;
-  packet_data data() const;
+  std::uint_fast32_t length() const;
+  std::uint_fast32_t blockno() const;
+  std::uint_fast32_t seqno() const;
+  bool has_data() const;
+  fountain_packet clone() const;
+  std::shared_ptr<std::uint8_t> data() const;
 
-  void block_number(int blockno_);
-  void sequence_number(int seqno_);
-  void data(const packet_data &data);
+  void blockno(std::uint_fast32_t blockno);
+  void seqno(std::uint_fast32_t seqno);
+
+  void xor_data(const fountain_packet &other);
+  fountain_packet &operator^=(const fountain_packet &other);
 
 private:
-  const int length;
-  packet_data raw_data;
-  int blockno;
-  int seqno;
+  std::uint_fast32_t length_;
+  std::shared_ptr<std::uint8_t> data_;
+
+  std::uint_fast32_t blockno_;
+  std::uint_fast32_t seqno_;
 };
 
 fountain_packet operator^(const fountain_packet &a, const fountain_packet &b);
+
+struct packet_data_equal {
+  bool operator()(const fountain_packet &lhs, const fountain_packet &rhs);
+};
 
 #endif

@@ -4,27 +4,33 @@
 #include "packets.hpp"
 #include "rng.hpp"
 
-typedef std::vector<fountain_packet> coded_block;
-typedef std::vector<packet_data> uncoded_block;
+#include <queue>
+#include <vector>
 
 class fountain_encoder {
 public:
-  explicit fountain_encoder(int K_);
-  explicit fountain_encoder(int K_, int N_);
+  explicit fountain_encoder(std::uint_fast32_t K);
 
-  void input_block(const uncoded_block &ub);
-  fountain_packet next_packet();
+  void push_input(const fountain_packet &p);
+  fountain_packet next_coded();
+  void discard_block();
 
+  bool has_block() const;
+  std::uint_fast32_t K() const;
+  std::uint_fast32_t blockno() const;
+  std::uint_fast32_t seqno() const;
+
+  const fountain &the_fountain() const;
+  const std::vector<fountain_packet> &current_block() const;
 private:
-  const int K;
-  int N;
-  fountain<int> f;
-  int blockno;
-  int seqno;
-  uncoded_block input;
+  const std::uint_fast32_t K_;
+  std::uint_fast32_t blockno_;
+  std::uint_fast32_t seqno_;
+  fountain fount;
+  std::queue<fountain_packet> input_queue;
+  std::vector<fountain_packet> input_block;
 
-  int next_seqno();
-  int next_blockno();
+  void check_has_block();
 };
 
 #endif

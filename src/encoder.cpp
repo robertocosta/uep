@@ -5,51 +5,73 @@
 
 using namespace std;
 
-fountain_encoder::fountain_encoder(int K_) :
-  fountain_encoder(K_, K_) {
+fountain_encoder::fountain_encoder(std::uint_fast32_t K) :
+  K_(K),
+  fount(K),
+  blockno_(0),
+  seqno_(0) {
+  input_block.reserve(K);
 }
 
-fountain_encoder::fountain_encoder(int K_, int N_) :
-  K(K_),
-  N(N_),
-  f(K_),
-  blockno(0),
-  seqno(0) {
+void fountain_encoder::push_input(const fountain_packet &p) {
+  input_queue.push(p);
+  check_has_block();
 }
 
-void fountain_encoder::input_block(const uncoded_block &ub) {
-  if (ub.size() != K)
-    throw runtime_error("Input blocks must be of size K");
-  input = ub;
-  seqno = 0;
-  next_blockno();
-  f.reset(); // TODO: what seed?
-}
-
-fountain_packet fountain_encoder::next_packet() {
-  auto sel = f.next_packet_selection();
+fountain_packet fountain_encoder::next_coded() {
+  if (!has_block())
+    throw runtime_error("Does not have a full block");
+  auto sel = fount.next_row();
   auto i = sel.begin();
-  packet_data first = input[(*i)-1];
+  fountain_packet first = input_block[*i].clone();
   i++;
-  fountain_packet p(first);
   for (; i != sel.end(); i++) {
-    packet_data to_xor = input[(*i)-1];
-    p.cumulative_xor(to_xor);
+    first ^=  input_block[*i];
   }
-  p.block_number(blockno);
-  p.sequence_number(next_seqno());
-  return p;
+  first.blockno(blockno_);
+  first.seqno(seqno_++);
+  return first;
 }
 
-
-int fountain_encoder::next_seqno() {
-  if (seqno == numeric_limits<int>::max())
-    throw runtime_error("Sequence number overflow");
-  return ++seqno;
-}
-
-int fountain_encoder::next_blockno() {
-  if (blockno == numeric_limits<int>::max())
+void fountain_encoder::discard_block() {
+  input_block.clear();
+  fount.reset();
+  if (blockno_ == numeric_limits<uint_fast32_t>::max())
     throw runtime_error("Block number overflow");
-  return ++blockno;
+  blockno_++;
+  seqno_ = 0;
+  check_has_block();
+}
+
+bool fountain_encoder::has_block() const {
+  return input_block.size() == K_;
+}
+
+std::uint_fast32_t fountain_encoder::K() const {
+  return K_;
+}
+
+std::uint_fast32_t fountain_encoder::blockno() const {
+  return blockno_;
+}
+
+std::uint_fast32_t fountain_encoder::seqno() const {
+  return seqno_;
+}
+
+const fountain &fountain_encoder::the_fountain() const {
+  return fount;
+}
+
+const std::vector<fountain_packet> &fountain_encoder::current_block() const {
+  return input_block;
+}
+
+void fountain_encoder::check_has_block() {
+  if (!has_block() && input_queue.size() >= K_) {
+    for (uint_fast32_t i = 0; i < K_; i++) {
+      input_block.push_back(input_queue.front());
+      input_queue.pop();
+    }
+  }
 }
