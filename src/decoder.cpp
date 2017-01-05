@@ -5,26 +5,33 @@
 
 using namespace std;
 
-fountain_decoder::fountain_decoder(uint_fast32_t K) :
+fountain_decoder::fountain_decoder(uint_fast16_t K) :
   K_(K),
   fount(K),
   blockno_(0) {
 }
 
-void fountain_decoder::push_coded(const fountain_packet &p) {
-  if (p.blockno() > blockno_) {
+void fountain_decoder::push_coded(fountain_packet &&p) {
+  
+  if (p.block_number() > blockno_) {
+    blockno_ = p.block_number();
+    block_seed_ = p.block_seed();
+    
     received_pkts.clear();
     original_connections.clear();
-    fount.reset();
+    fount.reset(block_seed_);
     decoded.clear();
     bg.clear();
-        
-    blockno_ = p.blockno();
+  }
+  else if (blockno_ == 0 && received_pkts.empty()) {
+    block_seed_ = p.block_seed();
+    fount.reset(block_seed_);
   }
 
-  auto ins_res = received_pkts.insert(p);
+  auto p_seqno = p.sequence_number();
+  auto ins_res = received_pkts.insert(move(p));
   if (!ins_res.second) throw runtime_error("Duplicate packet");
-  while (p.seqno() >= original_connections.size()) {
+  while (p_seqno >= original_connections.size()) {
     fountain::row_type row = fount.next_row();
     original_connections.push_back(row);
   }
@@ -32,6 +39,11 @@ void fountain_decoder::push_coded(const fountain_packet &p) {
   if (received_pkts.size() >= K_ && !has_decoded()) {
     run_message_passing();
   }
+}
+
+void fountain_decoder::push_coded(const fountain_packet &p) {
+  fountain_packet p_copy(p);
+  push_coded(move(p_copy));
 }
 
 fountain_decoder::const_decoded_iterator fountain_decoder::decoded_begin() const {
@@ -46,12 +58,16 @@ bool fountain_decoder::has_decoded() const {
   return decoded.size() == K_;
 }
 
-std::uint_fast32_t fountain_decoder::K() const {
+std::uint_fast16_t fountain_decoder::K() const {
   return K_;
 }
 
-std::uint_fast32_t fountain_decoder::blockno() const {
+std::uint_fast16_t fountain_decoder::blockno() const {
   return blockno_;
+}
+
+std::uint_fast32_t fountain_decoder::block_seed() const {
+  return block_seed_;
 }
 
 const fountain &fountain_decoder::the_fountain() const {
@@ -70,15 +86,17 @@ fountain_decoder::received_packets_end() const {
 
 void fountain_decoder::init_bg() {
   bg.clear();
+  bg_decoded_count = 0;
   bg.resize_input(K_);
   bg.resize_output(received_pkts.size());
-  for (auto i = received_pkts.begin(); i != received_pkts.end(); ++i) {
-    if (i->seqno() >= bg.output_size()) {
-      bg.resize_output(i->seqno()+1);
+  for (auto i = received_pkts.cbegin(); i != received_pkts.cend(); ++i) {
+    auto i_seqno = i->sequence_number();
+    if (i_seqno >= bg.output_size()) {
+      bg.resize_output(i_seqno + 1);
     }      
-    bg.output_at(i->seqno()) = i->clone();
-    const fountain::row_type &conns = original_connections[i->seqno()];
-    bg.add_links_to_output(i->seqno(), conns.begin(), conns.end());
+    bg.output_at(i_seqno) = *i;
+    const fountain::row_type &conns = original_connections[i_seqno];
+    bg.add_links_to_output(i_seqno, conns.cbegin(), conns.cend());
   }
 }
 
@@ -91,9 +109,12 @@ void fountain_decoder::decode_degree_one(std::set<bg_size_type> &ripple) {
        ++i) {
     bg_size_type out = *i;
     bg_size_type in = bg.find_input(out);
-    auto ins_ret = ripple.insert(in);
-    if (ins_ret.second) {
-      bg.input_at(in) = bg.output_at(out);
+    if (!bg.output_at(out).empty()) {
+      auto ins_ret = ripple.insert(in);
+      if (ins_ret.second) {
+	swap(bg.input_at(in), bg.output_at(out));
+	++bg_decoded_count;
+      }
     }
     delete_conns.push_back(std::pair<bg_size_type, bg_size_type>(in, out));
   }
@@ -109,27 +130,26 @@ void fountain_decoder::run_message_passing() {
   std::set<bg_size_type> ripple;
   for (;;) {
     decode_degree_one(ripple);
-    if (ripple.empty()) break;
+    if (bg_decoded_count == K_ || ripple.empty()) break;
     process_ripple(ripple);
   }
-
-  std::vector<fountain_packet> dec;
-  dec.reserve(K_);
-  for (auto i = bg.input_begin(); i != bg.input_end(); ++i) {
-    if (!i->has_data()) return;
-    dec.push_back(*i);
+  
+  if (bg_decoded_count == K_) {
+    decoded.resize(K_);
+    copy(bg.input_begin(), bg.input_end(), decoded.begin());
   }
-  swap(decoded, dec);
 }
 
 void fountain_decoder::process_ripple(const std::set<bg_size_type> &ripple) {
   for (auto i = ripple.cbegin(); i != ripple.cend(); ++i) {
     bg_size_type in = *i;
+    const fountain_packet &in_p = bg.input_at(in);
     std::set<std::pair<bg_size_type, bg_size_type> > delete_conns;
     auto out_range = bg.find_all_outputs(in);
     for (; out_range.first != out_range.second; ++out_range.first) {
       bg_size_type out = *(out_range.first);
-      bg.output_at(out) ^= bg.input_at(in);
+      fountain_packet &out_p = bg.output_at(out);
+      if (!out_p.empty()) out_p ^= in_p;
       delete_conns.insert(std::pair<bg_size_type, bg_size_type>(in, out));
     }
 

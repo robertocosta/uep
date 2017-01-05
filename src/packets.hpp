@@ -2,42 +2,34 @@
 #define PACKETS_HPP
 
 #include <cstdint>
+#include <vector>
 #include <memory>
 
-class fountain_packet {
+typedef std::vector<std::uint8_t> packet;
+
+packet &operator^=(packet &a, const packet &b);
+packet operator^(const packet &a, const packet &b);
+
+class fountain_packet : public packet {
 public:
   fountain_packet();
-  explicit fountain_packet(std::uint_fast32_t length);
-  explicit fountain_packet(const std::shared_ptr<std::uint8_t> &data_ptr,
-			   std::uint_fast32_t length);
+  explicit fountain_packet(const packet &p);
+  explicit fountain_packet(packet &&p);
 
-  // fountain_packet &operator=(const fountain_packet &other);
+  std::uint_fast16_t block_number() const;
+  std::uint_fast32_t block_seed() const;
+  std::uint_fast16_t sequence_number() const;
 
-  std::uint_fast32_t length() const;
-  std::uint_fast32_t blockno() const;
-  std::uint_fast32_t seqno() const;
-  bool has_data() const;
-  fountain_packet clone() const;
-  std::shared_ptr<std::uint8_t> data() const;
-
-  void blockno(std::uint_fast32_t blockno);
-  void seqno(std::uint_fast32_t seqno);
-
-  void xor_data(const fountain_packet &other);
-  fountain_packet &operator^=(const fountain_packet &other);
+  void block_number(std::uint_fast16_t blockno_);
+  void block_seed(std::uint_fast32_t seed_);
+  void sequence_number(std::uint_fast16_t seqno_);
 
 private:
-  std::uint_fast32_t length_;
-  std::shared_ptr<std::uint8_t> data_;
-
-  std::uint_fast32_t blockno_;
-  std::uint_fast32_t seqno_;
+  std::uint_fast16_t blockno;
+  std::uint_fast16_t seqno;
+  std::uint_fast32_t seed;
 };
 
-fountain_packet operator^(const fountain_packet &a, const fountain_packet &b);
-
-struct packet_data_equal {
-  bool operator()(const fountain_packet &lhs, const fountain_packet &rhs);
-};
+fountain_packet &operator^=(fountain_packet &a, const packet &b);
 
 #endif

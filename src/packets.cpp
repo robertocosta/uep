@@ -6,94 +6,59 @@
 
 using namespace std;
 
-fountain_packet::fountain_packet() :
-  length_(0) {
-}
-
-fountain_packet::fountain_packet(std::uint_fast32_t length) :
-  length_(length) {
-}
-
-fountain_packet::fountain_packet(const std::shared_ptr<std::uint8_t> &data_ptr,
-				 std::uint_fast32_t length) :
-  fountain_packet(length) {
-  data_ = data_ptr;
-}
-
-// fountain_packet &fountain_packet::operator=(const fountain_packet &other) {
-//   if (other.length_ != length_) {
-//     throw runtime_error("The packets have different sizes");
-//   }
-//   data_ = other.data_;
-//   blockno_ = other.blockno_;
-//   seqno_ = other.seqno_;
-//   return *this;
-// }
-
-std::uint_fast32_t fountain_packet::length() const {
-  return length_;
-}
-
-std::uint_fast32_t fountain_packet::blockno() const {
-  return blockno_;
-}
-
-std::uint_fast32_t fountain_packet::seqno() const {
-  return seqno_;
-}
-
-bool fountain_packet::has_data() const {
-  return data_ != nullptr;
-}
-
-fountain_packet fountain_packet::clone() const {
-  uint8_t *cloned_data = new uint8_t[length_];
-  uint8_t *first = data_.get();
-  uint8_t *last = first + length_;
-  copy(first, last, cloned_data);
-  shared_ptr<uint8_t> cloned_ptr(cloned_data, default_delete<uint8_t[]>());
-  fountain_packet p(*this);
-  p.data_ = cloned_ptr;
-  return p;
-}
-
-void fountain_packet::blockno(std::uint_fast32_t blockno) {
-  blockno_ = blockno;
-}
-
-void fountain_packet::seqno(std::uint_fast32_t seqno) {
-  seqno_ = seqno;
-}
-
-std::shared_ptr<std::uint8_t> fountain_packet::data() const {
-  return data_;
-}
-
-void fountain_packet::xor_data(const fountain_packet &other) {
-  if (length_ != other.length_)
-    throw runtime_error("The packets to XOR must have the same size");
-  for (uint_fast32_t i = 0; i < length_; i++) {
-    data_.get()[i] ^= other.data_.get()[i];
+packet &operator^=(packet &a, const packet &b) {
+  if (a.size() != b.size())
+    throw runtime_error("The packets must have equal size");
+  if (a.empty())
+    throw runtime_error("The packets must not be empty");
+  auto i = b.cbegin();
+  auto j = a.begin();
+  while(i != b.cend()) {
+    *j++ ^= *i++;
   }
+  return a;
 }
 
-fountain_packet operator^(const fountain_packet &a, const fountain_packet &b) {
-  if (a.length() != b.length())
-    throw runtime_error("The packets to XOR must have the same size");
-  fountain_packet c = a.clone();
-  c.xor_data(b);
-  return c;
+packet operator^(const packet &a, const packet &b) {
+  packet c(a);
+  return c ^= b;
 }
 
-fountain_packet &fountain_packet::operator^=(const fountain_packet &other) {
-  xor_data(other);
-  return *this;
+fountain_packet::fountain_packet() : blockno(0), seqno(0), seed(0) {
 }
 
-bool packet_data_equal::operator()(const fountain_packet &lhs,
-				   const fountain_packet &rhs) {
-  if (lhs.length() != rhs.length()) return false;
-  const uint8_t *raw_lhs = lhs.data().get();
-  const uint8_t *raw_rhs = rhs.data().get();
-  return std::equal(raw_lhs, raw_lhs + lhs.length(), raw_rhs);
+fountain_packet::fountain_packet(const packet &p) : packet(p) {
+}
+
+fountain_packet::fountain_packet(packet &&p) : packet(move(p)) {
+}
+
+std::uint_fast16_t fountain_packet::block_number() const {
+  return blockno;
+}
+
+std::uint_fast32_t fountain_packet::block_seed() const {
+  return seed;
+}
+
+std::uint_fast16_t fountain_packet::sequence_number() const {
+  return seqno;
+}
+
+void fountain_packet::block_number(std::uint_fast16_t blockno_) {
+  blockno = blockno_;
+}
+
+void fountain_packet::block_seed(std::uint_fast32_t seed_) {
+  seed = seed_;
+}
+
+void fountain_packet::sequence_number(std::uint_fast16_t seqno_) {
+  seqno = seqno_;
+}
+
+fountain_packet &operator^=(fountain_packet &a, const packet &b) {
+  packet &a_p = a;
+  a_p ^= b;
+  return static_cast<fountain_packet&>(a_p);
 }
