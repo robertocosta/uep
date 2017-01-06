@@ -21,7 +21,7 @@ using namespace std;
 
 const int L = 1024;
 const int K = 10;
-const int N = 13;
+const int N = 1e4;
 
 
 int main(int, char**) {
@@ -43,10 +43,12 @@ int main(int, char**) {
     cout << "Coded pkt " << c.block_number() << ":" << c.sequence_number() << endl;
     if (c.sequence_number() == N-1) {
       cout << "Generated N="<<N<<" pkts" << endl;
+      cout << "Block not received" << endl;
       enc.discard_block();
     }
 
-    dec.push_coded(move(c));
+    if (rand() > 0.2) dec.push_coded(move(c));
+    
     if (dec.has_decoded()) {
       cout << "Decoded block "<<dec.blockno()<<endl;
 
