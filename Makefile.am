@@ -1,4 +1,5 @@
-AM_CXXFLAGS = -std=c++11 -ggdb -O0
+ACLOCAL_AMFLAGS = -I m4
+AM_CXXFLAGS = -std=c++11 -ggdb -O0 -pg
 
 bin_PROGRAMS = test_rng test_fountain test_bipartite_graph
 
