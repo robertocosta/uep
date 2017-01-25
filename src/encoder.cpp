@@ -28,16 +28,16 @@ void fountain_encoder::push_input(const fountain_packet &p) {
 fountain_packet fountain_encoder::next_coded() {
   if (!has_block())
     throw runtime_error("Does not have a full block");
-  auto sel = fount.next_row();
-  auto i = sel.begin();
-  fountain_packet first(input_block[*i]);
+  auto sel = fount.next_row(); // genera riga
+  auto i = sel.begin(); // iteratore sulla riga
+  fountain_packet first(input_block[*i]); // mette dentro first una copia dell'input
   i++;
-  for (; i != sel.end(); i++) {
+  for (; i != sel.end(); i++) { // begin == end è la condizione di fine ciclo
     first ^= input_block[*i];
   }
   first.block_number(blockno_);
   first.block_seed(block_seed_);
-  if (seqno_ == numeric_limits<uint_fast16_t>::max())
+  if (seqno_ == numeric_limits<uint_fast16_t>::max()) // seqno: = prossimo seq. number del pacchetto da inviare
     throw new runtime_error("Seqno overflow");
   first.sequence_number(seqno_++);
   return first;

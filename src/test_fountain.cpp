@@ -33,19 +33,17 @@ int main(int, char**) {
     original.push_back(p);
     enc.push_input(fountain_packet(move(p)));
   }
+  // Encoder generato, 1008 pacchetti lunghi L generati a random
 
   for(;;) {
-    if (!enc.has_block()) {
+    if (!enc.has_block()) { // se ha almeno k pacchetti in coda
       cout << "Out of blocks" << endl;
       break;
     }
+	// codifica: prende un pacchetto lungo L, genera la riga della matrice per codificare, fa lo xor e lo mette in c (fountain_packet)
     fountain_packet c = enc.next_coded();
     cout << "Coded pkt " << c.block_number() << ":" << c.sequence_number() << endl;
-    if (c.sequence_number() == N-1) {
-      cout << "Generated N="<<N<<" pkts" << endl;
-      cout << "Block not received" << endl;
-      enc.discard_block();
-    }
+
 
     if (rand() > 0.2) dec.push_coded(move(c));
     
@@ -58,7 +56,11 @@ int main(int, char**) {
       else cout << "Error in reception" << endl;
       enc.discard_block();
     }
+     if (c.sequence_number() == N-1) {
+      cout << "Generated N="<<N<<" pkts" << endl;
+      cout << "Block not received" << endl;
+      enc.discard_block();
+    }
   }
-  
   return 0;
 }
