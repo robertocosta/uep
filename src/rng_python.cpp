@@ -2,16 +2,16 @@
 
 #include <boost/python.hpp>
 
-#include <iostream>
-
 using namespace std;
-
-void hello_python_method() {
-  cout << "Hello" << endl;
-}
 
 BOOST_PYTHON_MODULE(rng_python)
 {
-    using namespace boost::python;
-    def("hello", hello_python_method);
+  typedef fountain_<soliton_distribution>::generator_type soliton_gen_t;
+  using namespace boost::python;
+  class_<soliton_gen_t>("soliton_generator");
+
+  class_<soliton_distribution>("soliton_distribution", init<uint_fast32_t>())
+    .def("K", &soliton_distribution::K)
+    .def("generate", &soliton_distribution::operator()<soliton_gen_t>);
+  
 }
