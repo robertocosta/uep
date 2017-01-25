@@ -37,9 +37,9 @@ def build(ctx):
         ctx(features='py',
             source=ctx.path.ant_glob('src/*.py'))
 
-        # ctx(rule="cp ${SRC} ${TGT}",
-        #     source = ctx.path.ant_glob("src/*.py"),
-        #     target =
+        ctx(rule="cp ${SRC} ${TGT}",
+            source = ctx.path.ant_glob("src/*.py"),
+            target = '.')
         
     # if ctx.options.shared:
     #     ctx.shlib(source="src/Hello.cpp", target="hello", includes=["include"],

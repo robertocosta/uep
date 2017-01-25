@@ -1,15 +1,17 @@
-/aclocal.m4
-/autom4te.cache/
-/build-aux/
+/.waf3-1.9.7-*/
+/.lock-waf_*
+# /aclocal.m4
+# /autom4te.cache/
+# /build-aux/
 /build/
-/config.h
-/config.h.in
-/config.log
-/config.status
-/configure
-/m4/
-/stamp-h1
-Makefile
-Makefile.in
-\.deps/
-\.dirstamp
+# /config.h
+# /config.h.in
+# /config.log
+# /config.status
+# /configure
+# /m4/
+# /stamp-h1
+# Makefile
+# Makefile.in
+# \.deps/
+# \.dirstamp
