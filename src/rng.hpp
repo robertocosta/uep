@@ -99,7 +99,7 @@ private:
 
 typedef fountain_<soliton_distribution> fountain;
 
-// Template defintions
+// Template definitions
 
 template<class Generator>
 std::uint_fast32_t soliton_distribution::operator()(Generator &g) {
@@ -112,7 +112,7 @@ std::uint_fast32_t robust_soliton_distribution::operator()(Generator &g) {
 }
 
 template <class DegT>
-fountain_<DegT>::fountain_(uint_fast32_t input_pkt_count) :
+fountain_<DegT>::fountain_(std::uint_fast32_t input_pkt_count) :
   K_(input_pkt_count),
   degree_distr(K_),
   packet_distr(0, K_-1),
@@ -120,7 +120,7 @@ fountain_<DegT>::fountain_(uint_fast32_t input_pkt_count) :
 }
 
 template <class DegT>
-fountain_<DegT>::fountain_(uint_fast32_t input_pkt_count,
+fountain_<DegT>::fountain_(std::uint_fast32_t input_pkt_count,
 		   generator_type::result_type seed) :
   fountain_(input_pkt_count) {
   generator.seed(seed);
@@ -128,11 +128,11 @@ fountain_<DegT>::fountain_(uint_fast32_t input_pkt_count,
 
 template <class DegT>
 typename fountain_<DegT>::row_type fountain_<DegT>::next_row() {
-  uint_fast32_t degree = degree_distr(generator);
+  std::uint_fast32_t degree = degree_distr(generator);
   row_type s;
   s.reserve(degree);
-  for (uint_fast32_t i = 0; i < degree; i++) {
-    uint_fast32_t si;
+  for (std::uint_fast32_t i = 0; i < degree; i++) {
+    std::uint_fast32_t si;
     do {
       si = packet_distr(generator);
     }	while (find(s.begin(), s.end(), si) != s.end());
@@ -148,7 +148,7 @@ typename fountain_<DegT>::row_type::size_type fountain_<DegT>::generated_rows() 
 }
 
 template <class DegT>
-uint_fast32_t fountain_<DegT>::K() const {
+std::uint_fast32_t fountain_<DegT>::K() const {
   return K_;
 }
 
