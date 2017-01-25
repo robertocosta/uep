@@ -22,13 +22,24 @@ def build(ctx):
                     includes=["src", "/usr/include/python3.4"],
                     lib=["python3.4m", "boost_python-py34"])
 
+        ctx.program(source="src/test_fountain.cpp src/rng.cpp src/encoder.cpp src/decoder.cpp src/packets.cpp",
+                    target="test_fountain",
+                    includes=["src", "/usr/include/python3.4"],
+                    lib=["python3.4m", "boost_python-py34"])
+
+        
         ctx.shlib(features="pyext",
                   source="src/rng_python.cpp src/rng.cpp",
                   target="rng_python",
                   includes=["src", "/usr/include/python3.4"],
                   lib=["python3.4m", "boost_python-py34"])
 
-        ctx(features='py', source=ctx.path.ant_glob('src/*.py'), install_from='src')
+        ctx(features='py',
+            source=ctx.path.ant_glob('src/*.py'))
+
+        # ctx(rule="cp ${SRC} ${TGT}",
+        #     source = ctx.path.ant_glob("src/*.py"),
+        #     target =
         
     # if ctx.options.shared:
     #     ctx.shlib(source="src/Hello.cpp", target="hello", includes=["include"],
