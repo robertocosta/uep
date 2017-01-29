@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e -o pipefail
+
+origdir="$PWD"
+wafdir="$origdir"
+while [ ! -e "$wafdir/waf" ]; do
+    cd ..
+    wafdir="$PWD"
+done
+#cd "$origdir"
+
+"$wafdir"/waf $@ #--top="$wafdir" $@
