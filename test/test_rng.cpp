@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(soliton_histogram) {
   int K = 10000;
   soliton_distribution s(K);
   mt19937 gen;
-  vector<uint_fast32_t> samples;
+  vector<int> samples;
   samples.reserve(num);
   for (int i = 0; i < num; ++i)
     samples.push_back(s(gen));
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(robust_pmd) {
   double c = 0.2;
   double S = robust_soliton_distribution::S(K,c,delta);
   BOOST_CHECK_CLOSE(S, 244, 1);
-  unsigned long K_S = lround(K / S);
+  int K_S = lround(K / S);
   BOOST_CHECK_EQUAL(K_S, 41);
   double beta = robust_soliton_distribution::beta(K, K_S, S/delta);
   BOOST_CHECK_CLOSE(beta, 1.3, 1);
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(robust_histogram) {
   double c = 0.2;
   robust_soliton_distribution s(K,c,delta);
   mt19937 gen;
-  vector<uint_fast32_t> samples;
+  vector<int> samples;
   samples.reserve(num);
   for (int i = 0; i < num; ++i)
     samples.push_back(s(gen));
@@ -94,19 +94,19 @@ BOOST_AUTO_TEST_CASE(robust_histogram) {
 
 BOOST_AUTO_TEST_CASE(row_generation) {
   using namespace std;
-  const unsigned long K = 10000;
+  const int K = 10000;
   double c = 0.2;
   double delta = 0.05;
   robust_soliton_distribution rs(K,c,delta);
   fountain f(rs);
   int nrows = 100000;
-  unsigned long outdeg_one = 0;
+  int outdeg_one = 0;
   for (int i = 0; i < nrows; ++i) {
     fountain::row_type r = f.next_row();
     BOOST_CHECK(r.size() > 0);
     BOOST_CHECK(r.size() <= K);
     BOOST_CHECK(all_of(r.cbegin(), r.cend(),
-		       [K](uint_fast32_t i) -> bool {return i >= 0 && i < K;}));
+		       [K](int i) -> bool {return i >= 0 && i < K;}));
     if (r.size() == 1)
       ++outdeg_one;
   }

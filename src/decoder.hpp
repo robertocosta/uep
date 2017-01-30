@@ -14,7 +14,7 @@ public:
     return less(lhs.sequence_number(), rhs.sequence_number());
   }
 private:
-  std::less<std::uint_fast16_t> less;
+  std::less<int> less;
 };
 
 class fountain_decoder {
@@ -29,9 +29,9 @@ public:
   std::vector<packet>::const_iterator decoded_end() const;
 
   bool has_decoded() const;
-  std::uint_fast16_t K() const;
-  std::uint_fast16_t blockno() const;
-  std::uint_fast32_t block_seed() const;
+  int K() const;
+  int blockno() const;
+  int block_seed() const;
 
   fountain the_fountain() const;
   std::set<fountain_packet>::const_iterator received_packets_begin() const;
@@ -42,14 +42,14 @@ private:
   typedef bipartite_graph<fountain_packet>::size_type bg_size_type;
   
   fountain fount;
-  std::uint_fast16_t blockno_;
-  std::uint_fast32_t block_seed_;
+  int blockno_;
+  int block_seed_;
   std::set<fountain_packet, seqno_less> received_pkts;
   std::vector<fountain::row_type> original_connections;
   std::vector<packet> decoded;
 
   bg_type bg;
-  std::uint_fast16_t bg_decoded_count;
+  int bg_decoded_count;
 
   void run_message_passing();
   void init_bg();

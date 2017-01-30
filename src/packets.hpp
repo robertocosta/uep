@@ -1,11 +1,9 @@
 #ifndef PACKETS_HPP
 #define PACKETS_HPP
 
-#include <cstdint>
 #include <vector>
-#include <memory>
 
-class packet : public std::vector<std::uint8_t> {
+class packet : public std::vector<unsigned char> {
 public:
   virtual ~packet() = default;
 };
@@ -19,18 +17,18 @@ public:
   explicit fountain_packet(const packet &p);
   explicit fountain_packet(packet &&p);
 
-  std::uint_fast16_t block_number() const;
-  std::uint_fast32_t block_seed() const;
-  std::uint_fast16_t sequence_number() const;
+  int block_number() const;
+  int block_seed() const;
+  int sequence_number() const;
 
-  void block_number(std::uint_fast16_t blockno_);
-  void block_seed(std::uint_fast32_t seed_);
-  void sequence_number(std::uint_fast16_t seqno_);
+  void block_number(int blockno_);
+  void block_seed(int seed_);
+  void sequence_number(int seqno_);
 
 private:
-  std::uint_fast16_t blockno;
-  std::uint_fast16_t seqno;
-  std::uint_fast32_t seed;
+  int blockno;
+  int seqno;
+  int seed;
 };
 
 fountain_packet &operator^=(fountain_packet &a, const packet &b);

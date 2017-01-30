@@ -33,27 +33,27 @@ fountain_packet::fountain_packet(const packet &p) : packet(p) {
 fountain_packet::fountain_packet(packet &&p) : packet(move(p)) {
 }
 
-std::uint_fast16_t fountain_packet::block_number() const {
+int fountain_packet::block_number() const {
   return blockno;
 }
 
-std::uint_fast32_t fountain_packet::block_seed() const {
+int fountain_packet::block_seed() const {
   return seed;
 }
 
-std::uint_fast16_t fountain_packet::sequence_number() const {
+int fountain_packet::sequence_number() const {
   return seqno;
 }
 
-void fountain_packet::block_number(std::uint_fast16_t blockno_) {
+void fountain_packet::block_number(int blockno_) {
   blockno = blockno_;
 }
 
-void fountain_packet::block_seed(std::uint_fast32_t seed_) {
+void fountain_packet::block_seed(int seed_) {
   seed = seed_;
 }
 
-void fountain_packet::sequence_number(std::uint_fast16_t seqno_) {
+void fountain_packet::sequence_number(int seqno_) {
   seqno = seqno_;
 }
 

@@ -53,7 +53,6 @@ def build(ctx):
                 source=["test/test_encoder_decoder.cpp",
                         "src/rng.cpp",
                         "src/packets.cpp",
-                        "src/encoder.cpp",
                         "src/decoder.cpp"],
                 use="TESTS")
 

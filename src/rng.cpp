@@ -5,10 +5,10 @@
 using namespace std;
 using namespace std::placeholders;
 
-degree_distribution::degree_distribution(std::uint_fast32_t K, const pmd_t &pmd) :
+degree_distribution::degree_distribution(int K, const pmd_t &pmd) :
   K_(K), pmd_(pmd) {
   vector<double> weights;
-  for (uint_fast32_t d = 1; d <= K; ++d) {
+  for (int d = 1; d <= K; ++d) {
     weights.push_back(pmd_(d));
   }
 
@@ -17,7 +17,7 @@ degree_distribution::degree_distribution(std::uint_fast32_t K, const pmd_t &pmd)
   distrib.param(p);
 }
 
-std::uint_fast32_t degree_distribution::K() const {
+int degree_distribution::K() const {
   return K_;
 }
 
@@ -25,25 +25,21 @@ degree_distribution::pmd_t degree_distribution::pmd() const {
   return pmd_;
 }
 
-soliton_distribution::soliton_distribution(uint_fast32_t input_pkt_count) :
+soliton_distribution::soliton_distribution(int input_pkt_count) :
   degree_distribution(input_pkt_count, bind(soliton_pmd, input_pkt_count, _1)) {
 }
 
-double soliton_distribution::soliton_pmd(uint_fast32_t K, uint_fast32_t d) {
+double soliton_distribution::soliton_pmd(int K, int d) {
   if (d == 1) return 1/(double)K;
   else if (d >= 2 && d <= K) return 1/((double)d*(d-1));
   else return 0;
 }
 
-double robust_soliton_distribution::S(std::uint_fast32_t K,
-				      double c,
-				      double delta) {
+double robust_soliton_distribution::S(int K, double c, double delta) {
   return c * log(K/delta) * sqrt(K);
 }
 
-double robust_soliton_distribution::tau(std::uint_fast32_t K_S,
-					double S_delta,
-					std::uint_fast32_t i) {
+double robust_soliton_distribution::tau(int K_S, double S_delta, int i) {
   if (i >= 1 && i <= K_S - 1)
     return 1/((double)K_S * i);
   else if (i == K_S)
@@ -52,23 +48,19 @@ double robust_soliton_distribution::tau(std::uint_fast32_t K_S,
     return 0;
 }
 
-double robust_soliton_distribution::beta(std::uint_fast32_t K,
-					 std::uint_fast32_t K_S,
-					 double S_delta) {
+double robust_soliton_distribution::beta(int K, int K_S, double S_delta) {
   double sum = 0;
-  for (std::uint_fast32_t i = 1; i <= K; ++i) {
+  for (int i = 1; i <= K; ++i) {
     sum += soliton_distribution::soliton_pmd(K,i) + tau(K_S, S_delta, i);
   }
   return sum;
 }
 
-double robust_soliton_distribution::robust_pmd(std::uint_fast32_t K,
-					       double c,
-					       double delta,
-					       std::uint_fast32_t d) {
+double robust_soliton_distribution::robust_pmd(int K, double c, double delta,
+					       int d) {
   if (d >= 1 && d <= K) {
     double S_ = S(K, c, delta);
-    uint_fast32_t K_S = lround(K/S_);
+    int K_S = lround(K/S_);
     double S_delta = S_/delta;
     double beta_ = beta(K, K_S, S_delta);
     return (soliton_distribution::soliton_pmd(K,d) +
@@ -77,7 +69,7 @@ double robust_soliton_distribution::robust_pmd(std::uint_fast32_t K,
   else return 0;
 }
 
-robust_soliton_distribution::robust_soliton_distribution(uint_fast32_t input_pkt_count,
+robust_soliton_distribution::robust_soliton_distribution(int input_pkt_count,
 							 double c,
 							 double delta) :
   degree_distribution(input_pkt_count,
@@ -99,18 +91,17 @@ fountain::fountain(const degree_distribution &deg) :
   sel_count(0) {
 }
 
-fountain::fountain(const degree_distribution &deg,
-		   generator_type::result_type seed) :
+fountain::fountain(const degree_distribution &deg, int seed) :
   fountain(deg) {
   generator.seed(seed);
 }
 
 fountain::row_type fountain::next_row() {
-  uint_fast32_t degree = degree_distr(generator);
+  int degree = degree_distr(generator);
   row_type s;
   s.reserve(degree);
-  for (uint_fast32_t i = 0; i < degree; ++i) {
-    uint_fast32_t si;
+  for (int i = 0; i < degree; ++i) {
+    int si;
     do {
       si = packet_distr(generator);
     }	while (find(s.begin(), s.end(), si) != s.end());
@@ -120,11 +111,11 @@ fountain::row_type fountain::next_row() {
   return s;
 }
 
-typename fountain::row_type::size_type fountain::generated_rows() const {
+int fountain::generated_rows() const {
   return sel_count;
 }
 
-std::uint_fast32_t fountain::K() const {
+int fountain::K() const {
   return degree_distr.K();
 }
 
@@ -133,7 +124,7 @@ void fountain::reset() {
   sel_count = 0;
 }
 
-void fountain::reset(generator_type::result_type seed) {
+void fountain::reset(int seed) {
   generator.seed(seed);
   sel_count = 0;
 }

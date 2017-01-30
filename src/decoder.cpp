@@ -14,7 +14,6 @@ fountain_decoder::fountain_decoder(const fountain &f) :
 }
 
 void fountain_decoder::push_coded(fountain_packet &&p) {
-  
   if (p.block_number() > blockno_) {
     blockno_ = p.block_number();
     block_seed_ = p.block_seed();
@@ -30,15 +29,15 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
     fount.reset(block_seed_);
   }
 
-  auto p_seqno = p.sequence_number();
+  int p_seqno = p.sequence_number();
   auto ins_res = received_pkts.insert(move(p));
   if (!ins_res.second) throw runtime_error("Duplicate packet");
-  while (p_seqno >= original_connections.size()) {
+  while ((size_t)p_seqno >= original_connections.size()) {
     fountain::row_type row = fount.next_row();
     original_connections.push_back(row);
   }
 
-  if (received_pkts.size() >= K() && !has_decoded()) {
+  if (received_pkts.size() >= (size_t)K() && !has_decoded()) {
     run_message_passing();
   }
 }
@@ -57,18 +56,18 @@ std::vector<packet>::const_iterator fountain_decoder::decoded_end() const {
 }
 
 bool fountain_decoder::has_decoded() const {
-  return decoded.size() == K();
+  return decoded.size() == (size_t)K();
 }
 
-std::uint_fast16_t fountain_decoder::K() const {
+int fountain_decoder::K() const {
   return fount.K();
 }
 
-std::uint_fast16_t fountain_decoder::blockno() const {
+int fountain_decoder::blockno() const {
   return blockno_;
 }
 
-std::uint_fast32_t fountain_decoder::block_seed() const {
+int fountain_decoder::block_seed() const {
   return block_seed_;
 }
 
@@ -92,8 +91,8 @@ void fountain_decoder::init_bg() {
   bg.resize_input(K());
   bg.resize_output(received_pkts.size());
   for (auto i = received_pkts.cbegin(); i != received_pkts.cend(); ++i) {
-    auto i_seqno = i->sequence_number();
-    if (i_seqno >= bg.output_size()) {
+    int i_seqno = i->sequence_number();
+    if ((size_t)i_seqno >= bg.output_size()) {
       bg.resize_output(i_seqno + 1);
     }      
     bg.output_at(i_seqno) = *i;

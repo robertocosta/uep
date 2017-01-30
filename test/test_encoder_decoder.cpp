@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE(fixed_N) {
   const int npkts = 1008;
 
   degree_distribution deg = soliton_distribution(K);
-  fountain_encoder enc(deg);
+  fountain_encoder<> enc(deg);
   fountain_decoder dec(deg);
 
   std::vector<packet> original;
