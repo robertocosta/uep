@@ -5,7 +5,10 @@
 #include <vector>
 #include <memory>
 
-typedef std::vector<std::uint8_t> packet;
+class packet : public std::vector<std::uint8_t> {
+public:
+  virtual ~packet() = default;
+};
 
 packet &operator^=(packet &a, const packet &b);
 packet operator^(const packet &a, const packet &b);
