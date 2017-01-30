@@ -5,23 +5,24 @@
 
 using namespace std;
 
-fountain_encoder::fountain_encoder(std::uint_fast16_t K) :
-  K_(K),
-  fount(K),
-  blockno_(0),
-  seqno_(0) {
-  input_block.reserve(K);
-  block_seed_ = next_seed();
-  fount.reset(block_seed_);
+fountain_encoder::fountain_encoder(const degree_distribution &distr) :
+  fountain_encoder(fountain(distr)) {
 }
 
-void fountain_encoder::push_input(fountain_packet &&p) {
+fountain_encoder::fountain_encoder(const fountain &f) :
+  fount(f), blockno_(0), seqno_(0) {
+  input_block.reserve(f.K());
+  block_seed_ = next_seed();
+  fount.reset(block_seed_); 
+}
+
+void fountain_encoder::push_input(packet &&p) {
   input_queue.push(move(p));
   check_has_block();
 }
 
-void fountain_encoder::push_input(const fountain_packet &p) {
-  fountain_packet p_copy(p);
+void fountain_encoder::push_input(const packet &p) {
+  packet p_copy(p);
   push_input(move(p_copy));
 }
 
@@ -55,11 +56,11 @@ void fountain_encoder::discard_block() {
 }
 
 bool fountain_encoder::has_block() const {
-  return input_block.size() == K_;
+  return input_block.size() == K();
 }
 
 std::uint_fast16_t fountain_encoder::K() const {
-  return K_;
+  return fount.K();
 }
 
 std::uint_fast16_t fountain_encoder::blockno() const {
@@ -74,24 +75,24 @@ std::uint_fast32_t fountain_encoder::block_seed() const {
   return block_seed_;
 }
 
-const fountain &fountain_encoder::the_fountain() const {
+fountain fountain_encoder::the_fountain() const {
   return fount;
 }
 
-std::vector<fountain_packet>::const_iterator
+std::vector<packet>::const_iterator
 fountain_encoder::current_block_begin() const {
   return input_block.cbegin();
 }
 
-std::vector<fountain_packet>::const_iterator
+std::vector<packet>::const_iterator
 fountain_encoder::current_block_end() const {
   return input_block.cend();
 }
 
 void fountain_encoder::check_has_block() {
-  if (!has_block() && input_queue.size() >= K_) {
-    for (uint_fast16_t i = 0; i < K_; i++) {
-      fountain_packet p;
+  if (!has_block() && input_queue.size() >= K()) {
+    for (uint_fast16_t i = 0; i < K(); i++) {
+      packet p;
       swap(p, input_queue.front());
       input_queue.pop();
       input_block.push_back(move(p));

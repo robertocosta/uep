@@ -19,31 +19,28 @@ private:
 
 class fountain_decoder {
 public:
-  typedef typename std::vector<packet>::const_iterator const_decoded_iterator;
-  typedef typename std::set<fountain_packet>::const_iterator const_received_iterator;
-  
-  fountain_decoder(std::uint_fast16_t K);
+  explicit fountain_decoder(const degree_distribution &distr);
+  explicit fountain_decoder(const fountain &f);
 
   void push_coded(const fountain_packet &p);
   void push_coded(fountain_packet &&p);
   
-  const_decoded_iterator decoded_begin() const;
-  const_decoded_iterator decoded_end() const;
+  std::vector<packet>::const_iterator decoded_begin() const;
+  std::vector<packet>::const_iterator decoded_end() const;
 
   bool has_decoded() const;
   std::uint_fast16_t K() const;
   std::uint_fast16_t blockno() const;
   std::uint_fast32_t block_seed() const;
 
-  const fountain &the_fountain() const;
-  const_received_iterator received_packets_begin() const;
-  const_received_iterator received_packets_end() const;
+  fountain the_fountain() const;
+  std::set<fountain_packet>::const_iterator received_packets_begin() const;
+  std::set<fountain_packet>::const_iterator received_packets_end() const;
 
 private:
   typedef bipartite_graph<fountain_packet> bg_type;
   typedef bipartite_graph<fountain_packet>::size_type bg_size_type;
   
-  const std::uint_fast16_t K_;
   fountain fount;
   std::uint_fast16_t blockno_;
   std::uint_fast32_t block_seed_;

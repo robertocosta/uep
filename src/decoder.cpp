@@ -5,10 +5,12 @@
 
 using namespace std;
 
-fountain_decoder::fountain_decoder(uint_fast16_t K) :
-  K_(K),
-  fount(K),
-  blockno_(0) {
+fountain_decoder::fountain_decoder(const degree_distribution &distr) :
+  fountain_decoder(fountain(distr)) {
+}
+
+fountain_decoder::fountain_decoder(const fountain &f) :
+  fount(f), blockno_(0) {
 }
 
 void fountain_decoder::push_coded(fountain_packet &&p) {
@@ -36,7 +38,7 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
     original_connections.push_back(row);
   }
 
-  if (received_pkts.size() >= K_ && !has_decoded()) {
+  if (received_pkts.size() >= K() && !has_decoded()) {
     run_message_passing();
   }
 }
@@ -46,20 +48,20 @@ void fountain_decoder::push_coded(const fountain_packet &p) {
   push_coded(move(p_copy));
 }
 
-fountain_decoder::const_decoded_iterator fountain_decoder::decoded_begin() const {
+std::vector<packet>::const_iterator fountain_decoder::decoded_begin() const {
   return decoded.cbegin();
 }
 
-fountain_decoder::const_decoded_iterator fountain_decoder::decoded_end() const {
+std::vector<packet>::const_iterator fountain_decoder::decoded_end() const {
   return decoded.cend();
 }
 
 bool fountain_decoder::has_decoded() const {
-  return decoded.size() == K_;
+  return decoded.size() == K();
 }
 
 std::uint_fast16_t fountain_decoder::K() const {
-  return K_;
+  return fount.K();
 }
 
 std::uint_fast16_t fountain_decoder::blockno() const {
@@ -70,16 +72,16 @@ std::uint_fast32_t fountain_decoder::block_seed() const {
   return block_seed_;
 }
 
-const fountain &fountain_decoder::the_fountain() const {
+fountain fountain_decoder::the_fountain() const {
   return fount;
 }
 
-fountain_decoder::const_received_iterator
+std::set<fountain_packet>::const_iterator
 fountain_decoder::received_packets_begin() const {
   return received_pkts.cbegin();
 }
 
-fountain_decoder::const_received_iterator
+std::set<fountain_packet>::const_iterator
 fountain_decoder::received_packets_end() const {
     return received_pkts.cend();
 }
@@ -87,7 +89,7 @@ fountain_decoder::received_packets_end() const {
 void fountain_decoder::init_bg() {
   bg.clear();
   bg_decoded_count = 0;
-  bg.resize_input(K_);
+  bg.resize_input(K());
   bg.resize_output(received_pkts.size());
   for (auto i = received_pkts.cbegin(); i != received_pkts.cend(); ++i) {
     auto i_seqno = i->sequence_number();
@@ -130,12 +132,12 @@ void fountain_decoder::run_message_passing() {
   std::set<bg_size_type> ripple;
   for (;;) {
     decode_degree_one(ripple);
-    if (bg_decoded_count == K_ || ripple.empty()) break;
+    if (bg_decoded_count == K() || ripple.empty()) break;
     process_ripple(ripple);
   }
   
-  if (bg_decoded_count == K_) {
-    decoded.resize(K_);
+  if (bg_decoded_count == K()) {
+    decoded.resize(K());
     copy(bg.input_begin(), bg.input_end(), decoded.begin());
   }
 }

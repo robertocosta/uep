@@ -49,6 +49,13 @@ def build(ctx):
                 source=["test/test_rng.cpp",
                         "src/rng.cpp"],
                 use="TESTS")
+    ctx.program(target="test_encoder_decoder",
+                source=["test/test_encoder_decoder.cpp",
+                        "src/rng.cpp",
+                        "src/packets.cpp",
+                        "src/encoder.cpp",
+                        "src/decoder.cpp"],
+                use="TESTS")
 
         # ctx.program(source="src/rng.cpp src/test_rng.cpp",
         #             target="test_rng",
