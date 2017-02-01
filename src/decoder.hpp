@@ -2,6 +2,7 @@
 #define DECODER_HPP
 
 #include "bipartite_graph.hpp"
+#include "log.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
 
@@ -40,6 +41,8 @@ public:
 private:
   typedef bipartite_graph<fountain_packet> bg_type;
   typedef bipartite_graph<fountain_packet>::size_type bg_size_type;
+
+  default_logger logger;
   
   fountain fount;
   int blockno_;

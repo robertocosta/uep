@@ -23,18 +23,33 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
     fount.reset(block_seed_);
     decoded.clear();
     bg.clear();
+
+    BOOST_LOG_SEV(logger, debug) << "Start to receive the next block: " <<
+      "blockno=" << blockno_ << ", seed=" << block_seed_;
   }
   else if (blockno_ == 0 && received_pkts.empty()) {
     block_seed_ = p.block_seed();
     fount.reset(block_seed_);
+    BOOST_LOG_SEV(logger, debug) << "Start to receive the first block: " <<
+      "blockno=" << blockno_ << ", seed=" << block_seed_;
+  }
+  else if (p.block_number() < blockno_) {
+    BOOST_LOG_SEV(logger, info) << "Drop packet for an old block: " << p;
+    return;
   }
 
   int p_seqno = p.sequence_number();
+  BOOST_LOG_SEV(logger, debug) << "Received an encoded packet: " << p;
   auto ins_res = received_pkts.insert(move(p));
-  if (!ins_res.second) throw runtime_error("Duplicate packet");
+  if (!ins_res.second) {
+    BOOST_LOG_SEV(logger, info) << "Drop a duplicate packet: " << p;
+    return;
+  }
   while ((size_t)p_seqno >= original_connections.size()) {
     fountain::row_type row = fount.next_row();
     original_connections.push_back(row);
+    BOOST_LOG_SEV(logger,debug) << "Generated next row at the decoder: " <<
+      "degree=" << row.size(); //<< ", row=" << row;
   }
 
   if (received_pkts.size() >= (size_t)K() && !has_decoded()) {
@@ -126,11 +141,14 @@ void fountain_decoder::decode_degree_one(std::set<bg_size_type> &ripple) {
 }
 
 void fountain_decoder::run_message_passing() {
+  BOOST_LOG_SEV(logger, debug) << "Run message passing with " <<
+    received_pkts.size() << "received pkts";
   init_bg();
 
   std::set<bg_size_type> ripple;
   for (;;) {
     decode_degree_one(ripple);
+    BOOST_LOG_SEV(logger, debug) << "The ripple has size " << ripple.size();
     if (bg_decoded_count == K() || ripple.empty()) break;
     process_ripple(ripple);
   }
@@ -138,6 +156,7 @@ void fountain_decoder::run_message_passing() {
   if (bg_decoded_count == K()) {
     decoded.resize(K());
     copy(bg.input_begin(), bg.input_end(), decoded.begin());
+    BOOST_LOG_SEV(logger, debug) << "Decoding complete";
   }
 }
 

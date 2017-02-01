@@ -30,9 +30,21 @@ def configure(ctx):
     ctx.load('compiler_cxx python')
     ctx.check_python_version((3,4))
     ctx.check_python_headers()
+    ctx.check_cxx(lib=['boost_log',
+                       'boost_log_setup',
+                       'boost_system',
+                       'pthread',
+                       'boost_thread',
+                       'boost_date_time',
+                       'boost_filesystem'],
+                  cxxflags=['-Wall', '-std=c++11', '-ggdb', '-O0'],
+                  includes=["src"],
+                  defines=['BOOST_ALL_DYN_LINK'],
+                  uselib_store='LIBS')
     ctx.check_cxx(lib=['boost_unit_test_framework'],
                   cxxflags=['-Wall', '-std=c++11', '-ggdb', '-O0'],
                   includes=["src"],
+                  defines=['BOOST_ALL_DYN_LINK'],
                   uselib_store='TESTS')
     ctx.write_config_header('config.h')
 
@@ -48,13 +60,13 @@ def build(ctx):
     ctx.program(target="test_rng",
                 source=["test/test_rng.cpp",
                         "src/rng.cpp"],
-                use="TESTS")
+                use=["TESTS",'LIBS'])
     ctx.program(target="test_encoder_decoder",
                 source=["test/test_encoder_decoder.cpp",
                         "src/rng.cpp",
                         "src/packets.cpp",
                         "src/decoder.cpp"],
-                use="TESTS")
+                use=["TESTS", 'LIBS'])
 
         # ctx.program(source="src/rng.cpp src/test_rng.cpp",
         #             target="test_rng",
