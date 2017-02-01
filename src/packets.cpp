@@ -62,3 +62,13 @@ fountain_packet &operator^=(fountain_packet &a, const packet &b) {
   a_p ^= b;
   return static_cast<fountain_packet&>(a_p);
 }
+
+std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
+  out << "fountain_packet(" <<
+    "blockno=" << p.block_number() <<
+    ", seqno=" << p.sequence_number() <<
+    ", seed=" << p.block_seed() <<
+    ", size=" << p.size() <<
+    ")";
+  return out;
+}

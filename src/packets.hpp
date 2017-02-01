@@ -1,6 +1,7 @@
 #ifndef PACKETS_HPP
 #define PACKETS_HPP
 
+#include <iostream>
 #include <vector>
 
 class packet : public std::vector<unsigned char> {
@@ -32,5 +33,6 @@ private:
 };
 
 fountain_packet &operator^=(fountain_packet &a, const packet &b);
+std::ostream &operator<<(std::ostream &out, const fountain_packet &p);
 
 #endif
