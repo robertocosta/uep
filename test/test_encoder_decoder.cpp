@@ -24,18 +24,27 @@ struct test_ctx {
 
 };
 
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level);
+
 BOOST_FIXTURE_TEST_SUITE(encdec, test_ctx)
 
 BOOST_AUTO_TEST_CASE(N_histo) {
+  namespace expr = boost::log::expressions;
+  namespace keywords = boost::log::keywords;
   //  init_sink();
+  default_logger logger;
 
-  int L = 1024;
-  int K = 10;
+
+  //boost::log::core::get()->set_filter(expr::attr<severity_level>("Severity") >= info);
+  boost::log::core::get()->set_logging_enabled(false);
+
+  int L = 100;
+  int K = 10000;
   double c = 0.1;
   double delta = 0.5;
-  int N = 100;
-  int npkts = 12000;
-  double p = 0.2;
+  int N = 12000;
+  int npkts = 10000;
+  double p = 0;
 
   degree_distribution deg = robust_soliton_distribution(K,c,delta);
   fountain_encoder<> enc(deg);
@@ -56,26 +65,28 @@ BOOST_AUTO_TEST_CASE(N_histo) {
     required_N_histogram.insert(make_pair(i, 0));
   }
 
+  int i = 0;
   for(;;) {
     if (!enc.has_block()) { // se ha almeno k pacchetti in coda
-      cout << "Out of blocks" << endl;
+      BOOST_LOG_SEV(logger,info) << "Out of blocks";
       break;
     }
     // codifica: prende un pacchetto lungo L, genera la riga della matrice per codificare, fa lo xor e lo mette in c (fountain_packet)
-    fountain_packet c = enc.next_coded();
 
+    
+    fountain_packet c = enc.next_coded();
     if (rand() > p) dec.push_coded(move(c));
 
-    if (dec.has_decoded()) {
-      cout << "Decoded block "<<dec.blockno()<<endl;
+    ++i;
+    if (i % 100 == 0) cout << "Packet num. " << i << endl;
 
+    
+    if (dec.has_decoded()) {
       bool equal = std::equal(dec.decoded_begin(), dec.decoded_end(),
-				original.begin() + dec.blockno() * K);
-      if (equal) {
-	cout << "Successful reception" << endl;
-	required_N_histogram[enc.seqno()]++;
-      }
-      else cout << "Error in reception" << endl;
+			      original.begin() + dec.blockno() * K);
+      BOOST_CHECK(equal);
+      
+      required_N_histogram[enc.seqno()]++;
       enc.discard_block();
     }
     if (c.sequence_number() == N-1) {
