@@ -52,16 +52,16 @@ def configure(ctx):
                   uselib_store='SYSTEM_LIBS')
     if ctx.options.static:
         ctx.check_cxx(stlib=boost_libs,
-                  cxxflags=common_cxxflags,
-                  includes=["src"],
-                  defines=boost_defines,
-                  uselib_store='BOOST_LIBS')
+                      cxxflags=common_cxxflags,
+                      includes=["src"],
+                      defines=boost_defines,
+                      uselib_store='BOOST_LIBS')
     else:
         ctx.check_cxx(lib=boost_libs,
-                  cxxflags=common_cxxflags,
-                  includes=["src"],
-                  defines=boost_defines,
-                  uselib_store='BOOST_LIBS')
+                      cxxflags=common_cxxflags,
+                      includes=["src"],
+                      defines=boost_defines,
+                      uselib_store='BOOST_LIBS')
 
     ctx.write_config_header('config.h')
 
