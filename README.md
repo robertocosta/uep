@@ -6,7 +6,7 @@
 * Boost test library >= 1.55
 
 On Debian Jessie the required packages can be installed by running
-`sudo apt-get install build-essential python3-dev libboost-test-dev`
+`sudo apt-get install build-essential python3-dev libboost-all-dev`
 
 ## Build
 This project uses the [waf](https://waf.io/) build system.
