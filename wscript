@@ -67,6 +67,9 @@ def build(ctx):
                         "src/packets.cpp",
                         "src/decoder.cpp"],
                 use=["TESTS", 'LIBS'])
+    ctx.program(target="test_udp",
+                source=["src/udp_client_server.cpp"],
+                use=["TESTS",'LIBS'])
 
         # ctx.program(source="src/rng.cpp src/test_rng.cpp",
         #             target="test_rng",
