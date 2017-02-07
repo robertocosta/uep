@@ -92,7 +92,7 @@ def build(ctx):
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_udp",
                 source=["src/udp_client_server.cpp"],
-                use=["TESTS",'LIBS'])
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
 
         # ctx.program(source="src/rng.cpp src/test_rng.cpp",
         #             target="test_rng",

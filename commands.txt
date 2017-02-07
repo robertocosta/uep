@@ -1,0 +1,54 @@
+*** COMANDI UTILI ***
+modify the channel:
+
+tc qdisc del dev eth0 root
+tc qdisc add dev eth0 root tbf rate 8.0mbit latency 25ms burst 50kb
+tc qdisc change dev eth0 root tbf rate 0.5mbit latency 25ms burst 50kb
+
+tc qdisc del dev eth0 root
+tc qdisc add dev eth0 root netem delay 25ms 10ms 10%
+
+tc qdisc del dev eth0 root
+tc qdisc add dev eth0 root netem delay 100ms 10ms 10%
+
+tc qdisc del dev eth0 root
+tc qdisc add dev eth0 root netem loss 10% 50% corrupt 20% 20%
+
+
+
+tc qdisc add dev enp0s3 root netem delay 50ms 20ms distribution normal
+tc qdisc add dev enp0s3 root netem delay 200ms 40ms 25% loss 15.3% 25% duplicate 1% corrupt 0.1% reorder 5% 50%
+tc qdisc add dev enp0s3 root netem delay 100ms 40ms 25% distribution paretonormal loss 4.3% 25% duplicate 1% corrupt 0.1% reorder 5% 50%
+tc qdisc change dev enp0s3 root netem delay 10ms 2ms 25% distribution paretonormal loss 10% 5% duplicate 1% corrupt 0.1% reorder 5% 50%
+
+tc qdisc change dev enp0s3 root netem delay 3000ms 2ms 25% distribution paretonormal loss 0% 0% duplicate 0% corrupt 0.1% reorder 0% 0%
+
+root@ubuntuServerVB:/var/www/html# ip link show enp0s3
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc netem state UP mode DEFAULT group default qlen 1000 link/ether 08:00:27:50:00:db brd ff:ff:ff:ff:ff:ff
+
+restore default config:
+tc qdisc del dev eth0 root
+tc qdisc add dev eth0 root tbf rate 8.0mbit latency 25ms burst 50kb
+
+
+
+### USELESS ###
+tc qdisc change dev enp0s3 root netem reorder 0.02 duplicate 0.05 corrupt 0.01
+tc qdisc add dev eth0 root netem delay 50ms 20ms distribution normal
+tc qdisc change dev eth0 root netem reorder 0.02 duplicate 0.05 corrupt 0.01
+
+tc qdisc add dev enp0s3 root netem delay 200ms 40ms 25% loss 15.3% 25% duplicate 1% corrupt 0.1% reorder 5% 50%
+
+tc qdisc add dev <device> root netem delay <value1>ms <value2>ms <value3>% loss <value4>% <value5>% duplicate <value6>% corrupt <value7>% reorder <value8>% <value9>%
+
+value1:	average of added delay
+value2:	standard deviation of the added delay (jitter)
+value3:	parameter related to the second order statistic of the stochastic proccess (correlation), which describe how much the next random element depends on the previous one.
+Prob(n) = .25 * Prob(n­1) + .75 * Random
+value4:	percentage of lost packets
+value5:	correlation related parameter (like value3) but for packet loss
+value6:	percentage of duplicated packets
+value7:	percentage of corrupted packets
+value8:	percentage of packets sent immediately; 100 - value8: percenage of packets sent with delay
+value9:	correlation of packets reordering.
+
