@@ -25,27 +25,44 @@ class run_tests(Task):
 
 def options(ctx):
     ctx.load('compiler_cxx python')
+    ctx.add_option("--static", dest="static",
+                   help="Statically link the libraries",
+                   action="store_true", default=False)
 
 def configure(ctx):
+    common_cxxflags = ['-Wall', '-std=c++11', '-ggdb', '-O0']
+    boost_defines = []
+    if not ctx.options.static:
+        boost_defines.append('BOOST_ALL_DYN_LINK')
+
+    system_libs = ['pthread']
+    boost_libs = ['boost_unit_test_framework',
+                  'boost_log',
+                  'boost_log_setup',
+                  'boost_system',
+                  'boost_thread',
+                  'boost_date_time',
+                  'boost_filesystem']
+
     ctx.load('compiler_cxx python')
-    ctx.check_python_version((3,4))
-    ctx.check_python_headers()
-    ctx.check_cxx(lib=['boost_log',
-                       'boost_log_setup',
-                       'boost_system',
-                       'pthread',
-                       'boost_thread',
-                       'boost_date_time',
-                       'boost_filesystem'],
-                  cxxflags=['-Wall', '-std=c++11', '-ggdb', '-O0'],
-                  includes=["src"],
-                  defines=['BOOST_ALL_DYN_LINK'],
-                  uselib_store='LIBS')
-    ctx.check_cxx(lib=['boost_unit_test_framework'],
-                  cxxflags=['-Wall', '-std=c++11', '-ggdb', '-O0'],
-                  includes=["src"],
-                  defines=['BOOST_ALL_DYN_LINK'],
-                  uselib_store='TESTS')
+    ctx.check_python_version()
+    ctx.check_cxx(lib=system_libs,
+                  cxxflags=common_cxxflags,
+                  includes="src",
+                  uselib_store='SYSTEM_LIBS')
+    if ctx.options.static:
+        ctx.check_cxx(stlib=boost_libs,
+                      cxxflags=common_cxxflags,
+                      includes=["src"],
+                      defines=boost_defines,
+                      uselib_store='BOOST_LIBS')
+    else:
+        ctx.check_cxx(lib=boost_libs,
+                      cxxflags=common_cxxflags,
+                      includes=["src"],
+                      defines=boost_defines,
+                      uselib_store='BOOST_LIBS')
+
     ctx.write_config_header('config.h')
 
 def test(ctx):
@@ -57,16 +74,22 @@ def do_test(ctx):
     ctx.add_to_group(rt)
 
 def build(ctx):
+    ctx(features='py',
+        source=ctx.path.ant_glob('src/*.py'))
+    ctx(rule="cp ${SRC} ${TGT}",
+        source = ctx.path.ant_glob("src/*.py"),
+        target = '.')
+
     ctx.program(target="test_rng",
                 source=["test/test_rng.cpp",
                         "src/rng.cpp"],
-                use=["TESTS",'LIBS'])
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_encoder_decoder",
                 source=["test/test_encoder_decoder.cpp",
                         "src/rng.cpp",
                         "src/packets.cpp",
                         "src/decoder.cpp"],
-                use=["TESTS", 'LIBS'])
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_udp",
                 source=["src/udp_client_server.cpp"],
                 use=["TESTS",'LIBS'])
@@ -88,12 +111,6 @@ def build(ctx):
         #           includes=["src", "/usr/include/python3.4"],
         #           lib=["python3.4m", "boost_python-py34"])
 
-        # ctx(features='py',
-        #     source=ctx.path.ant_glob('src/*.py'))
-
-        # ctx(rule="cp ${SRC} ${TGT}",
-        #     source = ctx.path.ant_glob("src/*.py"),
-        #     target = '.')
 
     # if ctx.options.shared:
     #     ctx.shlib(source="src/Hello.cpp", target="hello", includes=["include"],
@@ -107,3 +124,7 @@ def build(ctx):
 
     # ctx.program(source="src/Main.cpp", target="main", includes=["include"],
     #             use="hello")
+
+# Local Variables:
+# mode: python
+# End:

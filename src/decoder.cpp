@@ -52,7 +52,7 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
       "degree=" << row.size(); //<< ", row=" << row;
   }
 
-  if (received_pkts.size() >= (size_t)K() && !has_decoded()) {
+  if (/*received_pkts.size() >= (size_t)K() &&*/ !has_decoded()) {
     run_message_passing();
   }
 }
@@ -142,7 +142,7 @@ void fountain_decoder::decode_degree_one(std::set<bg_size_type> &ripple) {
 
 void fountain_decoder::run_message_passing() {
   BOOST_LOG_SEV(logger, debug) << "Run message passing with " <<
-    received_pkts.size() << "received pkts";
+    received_pkts.size() << " received pkts";
   init_bg();
 
   std::set<bg_size_type> ripple;
@@ -152,6 +152,9 @@ void fountain_decoder::run_message_passing() {
     if (bg_decoded_count == K() || ripple.empty()) break;
     process_ripple(ripple);
   }
+
+  PUT_STAT(logger, "DecodeablePackets", bg_decoded_count);
+  PUT_STAT(logger, "ReceivedPackets", received_pkts.size());
   
   if (bg_decoded_count == K()) {
     decoded.resize(K());

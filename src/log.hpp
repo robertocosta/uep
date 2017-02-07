@@ -1,19 +1,21 @@
 #ifndef LOG_HPP
 #define LOG_HPP
 
-#include "packets.hpp"
-#include "rng.hpp"
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 #include <boost/log/common.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/sinks.hpp>
+#include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/utility/manipulators.hpp>
 #include <boost/utility/empty_deleter.hpp>
-
-#include <iostream>
-//#include <memory>
-#include <string>
 
 enum severity_level
 {
@@ -25,84 +27,69 @@ enum severity_level
 
 typedef boost::log::sources::severity_logger<severity_level> default_logger;
 
-// template <class LoggerT>
-// void log_fountain_packet(LoggerT &logger, severity_level sev,
-// 			 const fountain_packet &p,
-// 			 const std::string &tag,
-// 			 const std::string &msg) {
-//   boost::log::record rec = logger.open_record(boost::log::keywords::severity = sev);
-//   if (rec)
-//     {
-//       rec.attribute_values().insert("tag", boost::log::attributes::make_attribute_value(tag));
-//       rec.attribute_values().insert("packet_block", boost::log::attributes::make_attribute_value(p.block_number()));
-//       rec.attribute_values().insert("packet_seqno", boost::log::attributes::make_attribute_value(p.sequence_number()));
-//       rec.attribute_values().insert("packet_seed", boost::log::attributes::make_attribute_value(p.block_seed()));
-//       rec.attribute_values().insert("packet_size", boost::log::attributes::make_attribute_value(p.size()));
+BOOST_LOG_ATTRIBUTE_KEYWORD(stat_stream, "StatisticStream", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(stat_value, "StatisticValue", double)
 
-//       boost::log::record_ostream strm(rec);      
-//       strm << msg;
-//       strm.flush();
-//       logger.push_record(boost::move(rec));
-//     }
-// }
+class stat_backend :
+  public boost::log::sinks::basic_sink_backend<boost::log::sinks::synchronized_feeding> {
+private:
+  typedef std::map<std::string, std::vector<double> > stat_map_t;
+public:
+  explicit stat_backend(boost::shared_ptr<std::ostream> &output_stream) :
+    os(output_stream) {}
 
-// template <class LoggerT>
-// void log_packet(LoggerT &logger, severity_level sev,
-// 		const packet &p,
-// 		const std::string &tag,
-// 		const std::string &msg) {
-//   boost::log::record rec = logger.open_record(boost::log::keywords::severity = sev);
-//   if (rec)
-//     {
-//       rec.attribute_values().insert("tag", boost::log::attributes::make_attribute_value(tag));
-//       rec.attribute_values().insert("packet_size", boost::log::attributes::make_attribute_value(p.size()));
+  ~stat_backend() {
+    *os << "{";
+    for (auto i = stat_map.cbegin(); i != stat_map.cend(); ++i) {
+      *os << '"' << i->first << '"';
+      *os << ":[";
+      const std::vector<double> &vec = i->second;
+      for (auto j = vec.cbegin(); j != vec.cend(); ++j) {
+	*os << *j;
+	if (++(std::vector<double>::const_iterator(j)) != vec.cend()) *os << ',';
+      }
+      *os << "]";
+      if (++(stat_map_t::const_iterator(i)) != stat_map.cend()) *os << ',';
+    }
+    *os << "}";
+    //*os.flush();
+  }
 
-//       boost::log::record_ostream strm(rec);      
-//       strm << msg;
-//       strm.flush();
-//       logger.push_record(boost::move(rec));
-//     }
-// }
+  // The method is called for every log record being put into the sink backend
+  void consume(const boost::log::record_view &rec) {
+    // First, acquire statistic information stream name
+    boost::log::value_ref<std::string, tag::stat_stream > name = rec[stat_stream];
+    if (name) {
+      // Next, get the statistic value change
+      boost::log::value_ref< double, tag::stat_value > value = rec[stat_value];
+      if (value)
+	stat_map[name.get()].push_back(value.get());
+    }
+  }
 
-// template <class LoggerT, class DegDist>
-// void log_fountain_row(LoggerT &logger, severity_level sev,
-// 		      const fountain<DegDist>::row_type &row,
-// 		      const std::string &tag,
-// 		      const std::string &msg) {
-//   boost::log::record rec = logger.open_record(boost::log::keywords::severity = sev);
-//   if (rec)
-//     {
-//       rec.attribute_values().insert("tag", boost::log::attributes::make_attribute_value(tag));
-//       rec.attribute_values().insert("fountain_row", boost::log::attributes::make_attribute_value(row));
+private:
+  stat_map_t stat_map;
+  boost::shared_ptr<std::ostream> os;
+};
 
-//       boost::log::record_ostream strm(rec);      
-//       strm << msg;
-//       strm.flush();
-//       logger.push_record(boost::move(rec));
-//     }
-// }
+inline void setup_stat_sink(const std::string &fname) {
+  using namespace std;
+  using boost::shared_ptr;
 
+  shared_ptr<ostream> ofs(new ofstream(fname, ios_base::trunc));
+  shared_ptr<stat_backend> backend(new stat_backend(ofs));
 
-// void init_sink() {
-//   using boost::empty_deleter;
-//   using boost::make_shared;
-//   using boost::shared_ptr;
-//   using namespace std;
-//   namespace logging = boost::log;
-//   namespace sinks = boost::log::sinks;
-//   namespace expr = boost::log::expressions;
+  typedef boost::log::sinks::synchronous_sink<stat_backend> log_sink_type;
+  boost::shared_ptr<log_sink_type> log_sink(new log_sink_type(backend));
+  log_sink->set_filter(boost::log::expressions::has_attr(stat_stream));
+  boost::log::core::get()->add_sink(log_sink);
+}
 
-//   auto backend = make_shared<sinks::text_ostream_backend>();
-//   backend->add_stream(shared_ptr<ostream>(&cerr, empty_deleter()));
-//   backend->auto_flush(true);
-
-//   shared_ptr<sinks::synchronous_sink<sinks::text_ostream_backend> >
-//     sink(new sinks::synchronous_sink<sinks::text_ostream_backend>(backend));
-//   //sink->set_filter();
-//   //sink->set_formatter(expr::stream << "Hi");
-
-//   shared_ptr<logging::core> core = logging::core::get();
-//   core->add_sink(sink);
-// }
+#define PUT_STAT(lg, stat_stream_name, value)\
+  if (true) {\
+    BOOST_LOG_SCOPED_LOGGER_TAG(lg, "StatisticStream", stat_stream_name);\
+    BOOST_LOG_SEV(lg, debug) <<\
+      boost::log::add_value("StatisticValue", (double)(value)); \
+  } else ((void)0)
 
 #endif

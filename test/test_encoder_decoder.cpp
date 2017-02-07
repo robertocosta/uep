@@ -7,8 +7,14 @@
 
 #include <climits>
 #include <map>
+#include <fstream>
 
 using namespace std;
+namespace logging = boost::log;
+namespace src = boost::log::sources;
+namespace expr = boost::log::expressions;
+namespace sinks = boost::log::sinks;
+namespace keywords = boost::log::keywords;
 
 packet random_pkt(int size) {
   static std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g;
@@ -20,27 +26,47 @@ packet random_pkt(int size) {
   return p;
 }
 
+void histogram_print_csv(const std::map<int, int> &h, const std::string &fname) {
+  using namespace std;
+  ofstream ofs(fname, ios_base::trunc);
+  ofs << "required_packets, histo_count" << endl;
+  for (auto i = h.cbegin(); i != h.cend(); ++i) {
+    int x = i->first;
+    int y = i->second;
+    ofs << x << ", " << y << endl;
+  }
+  ofs.close();
+}
+
 struct test_ctx {
 
 };
 
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", severity_level);
+
 
 BOOST_FIXTURE_TEST_SUITE(encdec, test_ctx)
 
 BOOST_AUTO_TEST_CASE(N_histo) {
-  namespace expr = boost::log::expressions;
-  namespace keywords = boost::log::keywords;
-  //  init_sink();
+  setup_stat_sink("test_log.json");
   default_logger logger;
-
-
+  
+  // //  logger.add_attribute();
+  // boost::shared_ptr< sinks::text_ostream_backend > backend =
+  //   boost::make_shared< sinks::text_ostream_backend >();
+  // backend->add_stream(boost::shared_ptr< std::ostream >(&cerr, boost::empty_deleter()));
+  // // Create a frontend and setup filtering
+  // typedef sinks::synchronous_sink< sinks::text_ostream_backend > log_sink_type;
+  // boost::shared_ptr< log_sink_type > log_sink(new log_sink_type(backend));
+  // log_sink->set_filter(expr::attr<int>("Fubar") == 42);
+  // logging::core::get()->add_sink(log_sink);
   //boost::log::core::get()->set_filter(expr::attr<severity_level>("Severity") >= info);
-  boost::log::core::get()->set_logging_enabled(false);
+  //boost::log::core::get()->set_filter(expr::has_attr("decodeable_packets") ||
+  //				      expr::contains<std::string,std::string>("Message", "passing"));
+  //boost::log::core::get()->set_logging_enabled(false);
 
   int L = 100;
   int K = 10000;
-  double c = 0.1;
+  double c = 0.03;
   double delta = 0.5;
   int N = 12000;
   int npkts = 10000;
@@ -78,7 +104,7 @@ BOOST_AUTO_TEST_CASE(N_histo) {
     if (rand() > p) dec.push_coded(move(c));
 
     ++i;
-    if (i % 100 == 0) cout << "Packet num. " << i << endl;
+    //if (i % 100 == 0) cout << "Packet num. " << i << endl;
 
     
     if (dec.has_decoded()) {
@@ -93,6 +119,17 @@ BOOST_AUTO_TEST_CASE(N_histo) {
       enc.discard_block();
     }
   }
+
+  int histo_sum = accumulate(required_N_histogram.cbegin(),
+			     required_N_histogram.cend(),
+			     0,
+			     [](int s, const std::pair<int,int> &p) -> int {
+			       return s + p.second;
+			     });
+
+  BOOST_CHECK_EQUAL(histo_sum, npkts/K);
+  
+  histogram_print_csv(required_N_histogram, "required_N_histogram.csv");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
