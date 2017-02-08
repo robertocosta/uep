@@ -82,4 +82,8 @@ BOOST_AUTO_TEST_CASE(wrong_raw) {
   u.resize(data_header_size + 2);
   u[10] = 2;
   BOOST_CHECK_NO_THROW(parse_raw_data_packet(u));
+
+  u = v;
+  u.resize(1);
+  BOOST_CHECK_THROW(parse_raw_data_packet(u), exception);
 }
