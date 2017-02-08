@@ -72,3 +72,14 @@ std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
     ")";
   return out;
 }
+
+bool operator==(const fountain_packet &lhs, const fountain_packet &rhs ) {
+  return lhs.block_number() == rhs.block_number() &&
+    lhs.sequence_number() == rhs.sequence_number() &&
+    lhs.block_seed() == rhs.block_seed() &&
+    static_cast<const packet &>(lhs) == static_cast<const packet &>(rhs);
+}
+
+bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs ) {
+  return !(lhs == rhs);
+}

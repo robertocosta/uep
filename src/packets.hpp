@@ -5,7 +5,7 @@
 #include <vector>
 
 /** Base packet class that holds a sequence of bytes (chars). */
-class packet : public std::vector<unsigned char> {
+class packet : public std::vector<char> {
 public:
   virtual ~packet() = default;
 };
@@ -63,5 +63,12 @@ fountain_packet &operator^=(fountain_packet &a, const packet &b);
 
 /** Write a text representation of the fountain_packet to a stream */
 std::ostream &operator<<(std::ostream &out, const fountain_packet &p);
+
+bool operator==(const fountain_packet &lhs, const fountain_packet &rhs );
+bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs );
+// bool operator<(const fountain_packet &lhs, const fountain_packet &rhs );
+// bool operator<=(const fountain_packet &lhs, const fountain_packet &rhs );
+// bool operator>(const fountain_packet &lhs, const fountain_packet &rhs );
+// bool operator>=(const fountain_packet &lhs, const fountain_packet &rhs );
 
 #endif
