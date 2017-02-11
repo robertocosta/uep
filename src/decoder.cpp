@@ -90,6 +90,10 @@ int fountain_decoder::block_seed() const {
   return block_seed_;
 }
 
+size_t fountain_decoder::received_count() const {
+  return received_pkts.size();
+}
+
 fountain fountain_decoder::the_fountain() const {
   return fount;
 }

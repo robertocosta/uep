@@ -69,6 +69,8 @@ public:
   int seqno() const;
   /** The seed used in the current block. */
   int block_seed() const;
+  /** The number of queued packets. */
+  size_t queue_size() const;
 
   fountain the_fountain() const;
   seed_generator_type the_seed_generator() const;
@@ -193,6 +195,11 @@ int fountain_encoder<Gen>::seqno() const {
 template<class Gen>
 int fountain_encoder<Gen>::block_seed() const {
   return block_seed_;
+}
+
+template <class Gen>
+size_t fountain_encoder<Gen>::queue_size() const {
+  return input_queue.size();
 }
 
 template<class Gen>

@@ -33,6 +33,7 @@ public:
   int K() const;
   int blockno() const;
   int block_seed() const;
+  size_t received_count() const;
 
   fountain the_fountain() const;
   std::set<fountain_packet>::const_iterator received_packets_begin() const;
