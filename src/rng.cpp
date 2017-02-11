@@ -85,6 +85,13 @@ double robust_soliton_distribution::delta() const {
   return delta_;
 }
 
+double robust_soliton_distribution::beta() const {
+  double S_ = S(K(), c_, delta_);
+  int K_S = lround(K()/S_);
+  double S_delta = S_/delta_;
+  return beta(K(), K_S, S_delta);
+}
+
 fountain::fountain(const degree_distribution &deg) :
   degree_distr(deg),
   packet_distr(0, deg.K()-1),

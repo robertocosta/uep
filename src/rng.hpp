@@ -55,6 +55,8 @@ public:
   double c() const;
   /** Return the delta_max parameter */
   double delta() const;
+  /** Return the PMD normalization coefficient */
+  double beta() const;
 
 private:
   const double c_;
