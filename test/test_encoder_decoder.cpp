@@ -42,9 +42,47 @@ struct test_ctx {
 
 };
 
+BOOST_AUTO_TEST_CASE(seqno_overflows) {
+  int L = 10;
+  int K = 10;
+  double c = 0.03;
+  double delta = 0.5;
 
+  degree_distribution deg = robust_soliton_distribution(K,c,delta);
+  fountain_encoder<> enc(deg);
 
-BOOST_FIXTURE_TEST_SUITE(encdec, test_ctx)
+  for (int i = 0; i < K; i++) {
+    packet p = random_pkt(L);
+    enc.push_input(move(p));
+  }
+
+  BOOST_CHECK_NO_THROW(for (int i = 0; i <= fountain_encoder<>::MAX_SEQNO; ++i) {
+      enc.next_coded();
+    });
+
+  BOOST_CHECK_THROW(enc.next_coded(), exception);
+}
+
+BOOST_AUTO_TEST_CASE(blockno_overflows) {
+  int L = 10;
+  int K = 2;
+  double c = 0.03;
+  double delta = 0.5;
+
+  degree_distribution deg = robust_soliton_distribution(K,c,delta);
+  fountain_encoder<> enc(deg);
+
+  for (int i = 0; i < fountain_encoder<>::MAX_BLOCKNO; i++) {
+    for (int j = 0; j < K; ++j) {
+      packet p = random_pkt(L);
+      enc.push_input(move(p));
+    }
+    BOOST_CHECK_NO_THROW(enc.discard_block());
+    BOOST_CHECK_EQUAL(enc.blockno(), i+1);
+  }
+  BOOST_CHECK_NO_THROW(enc.discard_block());
+  BOOST_CHECK_EQUAL(enc.blockno(), 0);
+}
 
 BOOST_AUTO_TEST_CASE(N_histo) {
   setup_stat_sink("test_log.json");
@@ -131,5 +169,3 @@ BOOST_AUTO_TEST_CASE(N_histo) {
   
   histogram_print_csv(required_N_histogram, "required_N_histogram.csv");
 }
-
-BOOST_AUTO_TEST_SUITE_END()

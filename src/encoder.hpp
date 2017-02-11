@@ -29,6 +29,16 @@ public:
    */
   typedef Gen seed_generator_type;
 
+  /** Maximum allowed value for the sequence numbers.
+   *  If the encoder tries to generate more packets from a single
+   *  input block, an exception is thrown.
+   */
+  static const int MAX_SEQNO = 0xffff;
+  /** Maximum allowed value for the block numbers.
+   *  When the encoder goes past this value it loop back to zero.
+   */
+  static const int MAX_BLOCKNO = 0xffff;
+
   /** Construct using a fountain with degree distribution distr. */
   explicit fountain_encoder(const degree_distribution &distr);
   /** Construct with the fountain f. */
@@ -76,6 +86,8 @@ private:
   std::vector<packet> input_block;
   seed_generator_type seed_gen;
 
+  bool next_seqno_will_overflow;
+
   void check_has_block();
   int next_seed();
 };
@@ -89,7 +101,7 @@ fountain_encoder<Gen>::fountain_encoder(const degree_distribution &distr) :
 
 template<class Gen>
 fountain_encoder<Gen>::fountain_encoder(const fountain &f) :
-  fount(f), blockno_(0), seqno_(0) {
+  fount(f), blockno_(0), seqno_(0), next_seqno_will_overflow(false) {
   input_block.reserve(f.K());
   block_seed_ = next_seed();
   fount.reset(block_seed_);
@@ -112,6 +124,8 @@ template<class Gen>
 fountain_packet fountain_encoder<Gen>::next_coded() {
   if (!has_block())
     throw std::runtime_error("Does not have a full block");
+  if (next_seqno_will_overflow)
+    throw std::runtime_error("Seqno overflow");
   auto sel = fount.next_row(); // genera riga
   BOOST_LOG_SEV(logger, debug) << "Generated next row at the encoder: " <<
     "degree=" << sel.size();// << ", row=" << sel;
@@ -124,9 +138,10 @@ fountain_packet fountain_encoder<Gen>::next_coded() {
   first.block_number(blockno_);
   first.block_seed(block_seed_);
   first.sequence_number(seqno_); // seqno: = prossimo seq. number del pacchetto da inviare
-  if (seqno_ == std::numeric_limits<int>::max())
-    throw std::runtime_error("Seqno overflow");
-  ++seqno_;
+  if (seqno_ == MAX_SEQNO)
+    next_seqno_will_overflow = true;
+  else
+    ++seqno_;
   BOOST_LOG_SEV(logger, debug) << "New encoded packet: " << first;
   return first;
 }
@@ -136,12 +151,14 @@ void fountain_encoder<Gen>::discard_block() {
   input_block.clear();
   block_seed_ = next_seed();
   fount.reset(block_seed_);
-  if (blockno_ == std::numeric_limits<int>::max())
-    throw std::runtime_error("Block number overflow");
-  blockno_++;
+  if (blockno_ == MAX_BLOCKNO)
+    blockno_ = 0;
+  else
+    blockno_++;
   seqno_ = 0;
   BOOST_LOG_SEV(logger, debug) << "Discard block. New blockno=" <<
     blockno_ << ", new seed=" << block_seed_;
+  next_seqno_will_overflow = false;
   check_has_block();
 }
 
