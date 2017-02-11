@@ -40,7 +40,7 @@ void histogram_print_csv(const std::map<int, int> &h, const std::string &fname) 
 
 struct global_fixture {
   boost::shared_ptr<default_cerr_sink> the_cerr_sink;
-  
+
   global_fixture() {
     the_cerr_sink = make_cerr_sink(warning);
     boost::log::core::get()->add_sink(the_cerr_sink);
@@ -95,11 +95,214 @@ BOOST_AUTO_TEST_CASE(blockno_overflows) {
   BOOST_CHECK_EQUAL(enc.blockno(), 0);
 }
 
+BOOST_AUTO_TEST_CASE(correct_decoding) {
+  int L = 1024;
+  int K = 100;
+  double c = 0.03;
+  double delta = 0.01;
+  int N = 200;
+  int nblocks = 4;
+
+  robust_soliton_distribution deg(K,c,delta);
+  fountain_encoder<std::mt19937> enc(deg);
+  fountain_decoder dec(deg);
+
+  vector<packet> original;
+
+  for (int i = 0; i < nblocks*K; i++) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push_input(move(p));
+    if (i == 0 || i == K-2) {
+      BOOST_CHECK(!enc.has_block());
+      BOOST_CHECK_THROW(enc.next_coded(), exception);
+    }
+    else if (i == K-1) {
+      BOOST_CHECK(enc.has_block());
+    }
+  }
+  BOOST_CHECK(enc.has_block());
+  BOOST_CHECK(equal(original.cbegin(), original.cbegin() + K, enc.current_block_begin()));
+  BOOST_CHECK_EQUAL(enc.queue_size(), (nblocks-1)*K);
+
+  for (int i = 0; i < nblocks; ++i) {
+    fountain_packet p = enc.next_coded();
+    dec.push_coded(p);
+    BOOST_CHECK_EQUAL(enc.blockno(), dec.blockno());
+    BOOST_CHECK_EQUAL(enc.block_seed(), dec.block_seed());
+    for (int j = 1; j < N; ++j) {
+      p = enc.next_coded();
+      dec.push_coded(p);
+      if (j < K-1) {
+	BOOST_CHECK(!dec.has_decoded());
+      }
+    }
+    BOOST_CHECK(dec.has_decoded());
+    BOOST_CHECK_EQUAL(enc.blockno(), dec.blockno());
+    BOOST_CHECK_EQUAL(enc.block_seed(), dec.block_seed());
+
+    BOOST_CHECK(equal(original.cbegin() + i*K,
+		      original.cbegin() + (i+1)*K,
+		      dec.decoded_begin()));
+
+    enc.discard_block();
+  }
+  BOOST_CHECK_EQUAL(enc.queue_size(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(drop_packets) {
+  int L = 1024;
+  int K = 100;
+  double c = 0.03;
+  double delta = 0.01;
+  int N = 400;
+  int nblocks = 4;
+  double p = 0.5;
+
+  robust_soliton_distribution deg(K,c,delta);
+  fountain_encoder<std::mt19937> enc(deg);
+  fountain_decoder dec(deg);
+
+  vector<packet> original;
+  mt19937 drop_gen;
+  bernoulli_distribution drop_dist(p);
+
+  for (int i = 0; i < nblocks*K; i++) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push_input(move(p));
+  }
+
+  for (int i = 0; i < nblocks; ++i) {
+    int not_dropped = 0;
+    for (int j = 0; j < N; ++j) {
+      fountain_packet p = enc.next_coded();
+      if (!drop_dist(drop_gen)) {
+	dec.push_coded(p);
+	++not_dropped;
+      }
+      if (not_dropped > 0 && not_dropped < K) {
+	BOOST_CHECK(!dec.has_decoded());
+      }
+      else if (not_dropped == 0) {
+	if (enc.blockno() > 0)
+	  BOOST_CHECK_EQUAL(dec.blockno(), enc.blockno()-1);
+	else
+	  BOOST_CHECK(!dec.has_decoded());
+      }
+    }
+    BOOST_CHECK_EQUAL(not_dropped, dec.received_count());
+    BOOST_CHECK(dec.has_decoded());
+
+    BOOST_CHECK(equal(original.cbegin() + i*K,
+		      original.cbegin() + (i+1)*K,
+		      dec.decoded_begin()));
+
+    enc.discard_block();
+  }
+  BOOST_CHECK_EQUAL(enc.queue_size(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(drop_blocks) {
+  int L = 1024;
+  int K = 100;
+  double c = 0.03;
+  double delta = 0.01;
+  int N = 200;
+  int nblocks = 10;
+  double pblock = 0.5;
+
+  robust_soliton_distribution deg(K,c,delta);
+  fountain_encoder<std::mt19937> enc(deg);
+  fountain_decoder dec(deg);
+
+  vector<packet> original;
+  mt19937 drop_gen;
+  bernoulli_distribution drop_dist(pblock);
+
+  for (int i = 0; i < nblocks*K; i++) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push_input(move(p));
+  }
+
+  for (int i = 0; i < nblocks; ++i) {
+    bool drop_block = drop_dist(drop_gen);
+    for (int j = 0; j < N; ++j) {
+      fountain_packet p = enc.next_coded();
+      if (!drop_block) {
+	dec.push_coded(p);
+      }
+    }
+    if (!drop_block) {
+      BOOST_CHECK_EQUAL(enc.blockno(), dec.blockno());
+      BOOST_CHECK_EQUAL(enc.block_seed(), dec.block_seed());
+      BOOST_CHECK_EQUAL(dec.blockno(), i);
+      BOOST_CHECK(dec.has_decoded());
+
+      BOOST_CHECK(equal(original.cbegin() + i*K,
+			original.cbegin() + (i+1)*K,
+			dec.decoded_begin()));
+    }
+
+    enc.discard_block();
+  }
+  BOOST_CHECK_EQUAL(enc.queue_size(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(reorder_packets) {
+  int L = 1024;
+  int K = 100;
+  double c = 0.03;
+  double delta = 0.01;
+  int N = 200;
+  int nblocks = 4;
+
+  robust_soliton_distribution deg(K,c,delta);
+  fountain_encoder<std::mt19937> enc(deg);
+  fountain_decoder dec(deg);
+
+  vector<packet> original;
+  mt19937 shuffle_eng;
+
+  for (int i = 0; i < nblocks*K; i++) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push_input(move(p));
+  }
+
+  for (int i = 0; i < nblocks; ++i) {
+    vector<fountain_packet> coded_block;
+    for (int j = 0; j < N; ++j) {
+      fountain_packet p = enc.next_coded();
+      coded_block.push_back(move(p));
+    }
+    shuffle(coded_block.begin(), coded_block.end(), shuffle_eng);
+    for (size_t j = 0; j != coded_block.size(); ++j) {
+      dec.push_coded(coded_block[j]);
+      if (j < (size_t)K-1) {
+	BOOST_CHECK(!dec.has_decoded());
+      }
+    }
+    BOOST_CHECK_EQUAL(enc.blockno(), dec.blockno());
+    BOOST_CHECK_EQUAL(enc.block_seed(), dec.block_seed());
+    BOOST_CHECK_EQUAL(dec.blockno(), i);
+    BOOST_CHECK(dec.has_decoded());
+
+    BOOST_CHECK(equal(original.cbegin() + i*K,
+		      original.cbegin() + (i+1)*K,
+		      dec.decoded_begin()));
+    enc.discard_block();
+  }
+  BOOST_CHECK_EQUAL(enc.queue_size(), 0);
+}
+
 struct stat_fixture {
   boost::shared_ptr<default_stat_sink> the_stat_sink;
-  
+
   stat_fixture() {
-    boost::shared_ptr<std::ofstream> ofs(new std::ofstream("test_log.json", std::ios_base::trunc));
+    boost::shared_ptr<std::ofstream>
+      ofs(new std::ofstream("stat_log.json", std::ios_base::trunc));
     the_stat_sink = make_stat_sink(ofs);
     boost::log::core::get()->add_sink(the_stat_sink);
   }
@@ -108,74 +311,3 @@ struct stat_fixture {
     boost::log::core::get()->remove_sink(the_stat_sink);
   }
 };
-
-BOOST_FIXTURE_TEST_CASE(N_histo, stat_fixture) {
-  default_logger logger;
-
-  int L = 100;
-  int K = 10000;
-  double c = 0.03;
-  double delta = 0.5;
-  int N = 12000;
-  int npkts = 10000;
-  double p = 0;
-
-  degree_distribution deg = robust_soliton_distribution(K,c,delta);
-  fountain_encoder<std::mt19937> enc(deg);
-  fountain_decoder dec(deg);
-
-  vector<packet> original;
-  map<int, int> required_N_histogram;
-
-  for (int i = 0; i < npkts; i++) {
-    packet p = random_pkt(L);
-    original.push_back(p);
-    enc.push_input(fountain_packet(move(p)));
-  }
-  // Encoder generato, npkts pacchetti lunghi L generati a random
-
-  // Init the histogram with zeros
-  for (int i = K; i <= N; ++i) {
-    required_N_histogram.insert(make_pair(i, 0));
-  }
-
-  int i = 0;
-  for(;;) {
-    if (!enc.has_block()) { // se ha almeno k pacchetti in coda
-      BOOST_LOG_SEV(logger,info) << "Out of blocks";
-      break;
-    }
-    // codifica: prende un pacchetto lungo L, genera la riga della matrice per codificare, fa lo xor e lo mette in c (fountain_packet)
-
-    
-    fountain_packet c = enc.next_coded();
-    if (rand() > p) dec.push_coded(move(c));
-
-    ++i;
-    //if (i % 100 == 0) cout << "Packet num. " << i << endl;
-
-    
-    if (dec.has_decoded()) {
-      bool equal = std::equal(dec.decoded_begin(), dec.decoded_end(),
-			      original.begin() + dec.blockno() * K);
-      BOOST_CHECK(equal);
-      
-      required_N_histogram[enc.seqno()]++;
-      enc.discard_block();
-    }
-    if (c.sequence_number() == N-1) {
-      enc.discard_block();
-    }
-  }
-
-  int histo_sum = accumulate(required_N_histogram.cbegin(),
-			     required_N_histogram.cend(),
-			     0,
-			     [](int s, const std::pair<int,int> &p) -> int {
-			       return s + p.second;
-			     });
-
-  BOOST_CHECK_EQUAL(histo_sum, npkts/K);
-  
-  histogram_print_csv(required_N_histogram, "required_N_histogram.csv");
-}
