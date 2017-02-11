@@ -25,7 +25,7 @@ public:
 
   void push_coded(const fountain_packet &p);
   void push_coded(fountain_packet &&p);
-  
+
   std::vector<packet>::const_iterator decoded_begin() const;
   std::vector<packet>::const_iterator decoded_end() const;
 
@@ -42,8 +42,18 @@ private:
   typedef bipartite_graph<fountain_packet> bg_type;
   typedef bipartite_graph<fountain_packet>::size_type bg_size_type;
 
-  default_logger logger;
-  
+  struct loggers_t {
+    default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);
+    default_logger decodeable = make_stat_logger("DecoderDecodeablePackets", scalar);
+    default_logger dup_pkts = make_stat_logger("DecoderDuplicatePackets", counter);
+    default_logger in_pkts = make_stat_logger("DecoderInputPackets", counter);
+    default_logger newblock = make_stat_logger("DecoderNewBlock", counter);
+    default_logger old_dropped = make_stat_logger("DecoderOldDropped", counter);
+    default_logger recv_size = make_stat_logger("DecoderTryWithReceived", scalar);
+    default_logger rows = make_stat_logger("DecoderRowDegree", scalar);
+    default_logger text;
+  } loggers;
+
   fountain fount;
   int blockno_;
   int block_seed_;

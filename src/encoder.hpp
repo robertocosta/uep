@@ -76,7 +76,13 @@ public:
   std::vector<packet>::const_iterator current_block_end() const;
 
 private:
-  default_logger logger;
+  struct loggers_t {
+    default_logger enc_pkts = make_stat_logger("EncoderCodedPackets", counter);
+    default_logger in_pkts = make_stat_logger("EncoderInputPackets", counter);
+    default_logger newblock = make_stat_logger("EncoderNewBlock", counter);
+    default_logger rows = make_stat_logger("EncoderRowDegree", scalar);
+    default_logger text;
+  } loggers;
 
   fountain fount;
   int blockno_;
@@ -109,7 +115,8 @@ fountain_encoder<Gen>::fountain_encoder(const fountain &f) :
 
 template<class Gen>
 void fountain_encoder<Gen>::push_input(packet &&p) {
-  BOOST_LOG_SEV(logger, debug) << "Pushed a packet to the encoder";
+  PUT_STAT_COUNTER(loggers.in_pkts);
+  BOOST_LOG_SEV(loggers.text, debug) << "Pushed a packet to the encoder";
   input_queue.push(move(p));
   check_has_block();
 }
@@ -127,8 +134,7 @@ fountain_packet fountain_encoder<Gen>::next_coded() {
   if (next_seqno_will_overflow)
     throw std::runtime_error("Seqno overflow");
   auto sel = fount.next_row(); // genera riga
-  BOOST_LOG_SEV(logger, debug) << "Generated next row at the encoder: " <<
-    "degree=" << sel.size();// << ", row=" << sel;
+  PUT_STAT_SCALAR(loggers.rows, sel.size());
   auto i = sel.cbegin(); // iteratore sulla riga
   fountain_packet first(input_block[*i]); // mette dentro first una copia dell'input
   i++;
@@ -142,7 +148,8 @@ fountain_packet fountain_encoder<Gen>::next_coded() {
     next_seqno_will_overflow = true;
   else
     ++seqno_;
-  BOOST_LOG_SEV(logger, debug) << "New encoded packet: " << first;
+  PUT_STAT_COUNTER(loggers.enc_pkts);
+  BOOST_LOG_SEV(loggers.text, debug) << "New encoded packet: " << first;
   return first;
 }
 
@@ -156,9 +163,10 @@ void fountain_encoder<Gen>::discard_block() {
   else
     blockno_++;
   seqno_ = 0;
-  BOOST_LOG_SEV(logger, debug) << "Discard block. New blockno=" <<
-    blockno_ << ", new seed=" << block_seed_;
   next_seqno_will_overflow = false;
+  PUT_STAT_COUNTER(loggers.newblock);
+  BOOST_LOG_SEV(loggers.text, debug) << "Discard block. New blockno=" <<
+    blockno_ << ", new seed=" << block_seed_;
   check_has_block();
 }
 

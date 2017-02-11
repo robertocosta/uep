@@ -24,32 +24,36 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
     decoded.clear();
     bg.clear();
 
-    BOOST_LOG_SEV(logger, debug) << "Start to receive the next block: " <<
+    PUT_STAT_COUNTER(loggers.newblock);
+    BOOST_LOG_SEV(loggers.text, debug) << "Start to receive the next block: " <<
       "blockno=" << blockno_ << ", seed=" << block_seed_;
   }
   else if (blockno_ == 0 && received_pkts.empty()) {
     block_seed_ = p.block_seed();
     fount.reset(block_seed_);
-    BOOST_LOG_SEV(logger, debug) << "Start to receive the first block: " <<
+    PUT_STAT_COUNTER(loggers.newblock);
+    BOOST_LOG_SEV(loggers.text, debug) << "Start to receive the first block: " <<
       "blockno=" << blockno_ << ", seed=" << block_seed_;
   }
   else if (p.block_number() < blockno_) {
-    BOOST_LOG_SEV(logger, info) << "Drop packet for an old block: " << p;
+    PUT_STAT_COUNTER(loggers.old_dropped);
+    BOOST_LOG_SEV(loggers.text, info) << "Drop packet for an old block: " << p;
     return;
   }
 
   int p_seqno = p.sequence_number();
-  BOOST_LOG_SEV(logger, debug) << "Received an encoded packet: " << p;
+  PUT_STAT_COUNTER(loggers.in_pkts);
+  BOOST_LOG_SEV(loggers.text, debug) << "Received an encoded packet: " << p;
   auto ins_res = received_pkts.insert(move(p));
   if (!ins_res.second) {
-    BOOST_LOG_SEV(logger, info) << "Drop a duplicate packet: " << p;
+    PUT_STAT_COUNTER(loggers.dup_pkts);
+    BOOST_LOG_SEV(loggers.text, info) << "Drop a duplicate packet: " << p;
     return;
   }
   while ((size_t)p_seqno >= original_connections.size()) {
     fountain::row_type row = fount.next_row();
     original_connections.push_back(row);
-    BOOST_LOG_SEV(logger,debug) << "Generated next row at the decoder: " <<
-      "degree=" << row.size(); //<< ", row=" << row;
+    PUT_STAT_SCALAR(loggers.rows, row.size());
   }
 
   if (/*received_pkts.size() >= (size_t)K() &&*/ !has_decoded()) {
@@ -141,25 +145,27 @@ void fountain_decoder::decode_degree_one(std::set<bg_size_type> &ripple) {
 }
 
 void fountain_decoder::run_message_passing() {
-  BOOST_LOG_SEV(logger, debug) << "Run message passing with " <<
+  PUT_STAT_SCALAR(loggers.recv_size, received_pkts.size());
+  BOOST_LOG_SEV(loggers.text, debug) << "Run message passing with " <<
     received_pkts.size() << " received pkts";
+  
   init_bg();
 
   std::set<bg_size_type> ripple;
   for (;;) {
     decode_degree_one(ripple);
-    BOOST_LOG_SEV(logger, debug) << "The ripple has size " << ripple.size();
+    BOOST_LOG_SEV(loggers.text, debug) << "The ripple has size " << ripple.size();
     if (bg_decoded_count == K() || ripple.empty()) break;
     process_ripple(ripple);
   }
 
-  PUT_STAT(logger, "DecodeablePackets", bg_decoded_count);
-  PUT_STAT(logger, "ReceivedPackets", received_pkts.size());
-  
+  PUT_STAT_SCALAR(loggers.decodeable, bg_decoded_count);
+    
   if (bg_decoded_count == K()) {
     decoded.resize(K());
     copy(bg.input_begin(), bg.input_end(), decoded.begin());
-    BOOST_LOG_SEV(logger, debug) << "Decoding complete";
+    PUT_STAT_COUNTER(loggers.dec_blocks);
+    BOOST_LOG_SEV(loggers.text, debug) << "Decoding complete";
   }
 }
 

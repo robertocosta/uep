@@ -1,8 +1,8 @@
 #define BOOST_TEST_MODULE encdec_test
 #include <boost/test/unit_test.hpp>
 
-#include "encoder.hpp"
 #include "decoder.hpp"
+#include "encoder.hpp"
 #include "log.hpp"
 
 #include <climits>
@@ -10,11 +10,11 @@
 #include <fstream>
 
 using namespace std;
-namespace logging = boost::log;
-namespace src = boost::log::sources;
 namespace expr = boost::log::expressions;
-namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace src = boost::log::sources;
 
 packet random_pkt(int size) {
   static std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g;
@@ -38,9 +38,20 @@ void histogram_print_csv(const std::map<int, int> &h, const std::string &fname) 
   ofs.close();
 }
 
-struct test_ctx {
+struct global_fixture {
+  boost::shared_ptr<default_cerr_sink> the_cerr_sink;
+  
+  global_fixture() {
+    the_cerr_sink = make_cerr_sink(warning);
+    boost::log::core::get()->add_sink(the_cerr_sink);
+  }
 
+  ~global_fixture() {
+    boost::log::core::get()->remove_sink(the_cerr_sink);
+  }
 };
+
+BOOST_GLOBAL_FIXTURE(global_fixture);
 
 BOOST_AUTO_TEST_CASE(seqno_overflows) {
   int L = 10;
@@ -84,23 +95,22 @@ BOOST_AUTO_TEST_CASE(blockno_overflows) {
   BOOST_CHECK_EQUAL(enc.blockno(), 0);
 }
 
-BOOST_AUTO_TEST_CASE(N_histo) {
-  setup_stat_sink("test_log.json");
-  default_logger logger;
+struct stat_fixture {
+  boost::shared_ptr<default_stat_sink> the_stat_sink;
   
-  // //  logger.add_attribute();
-  // boost::shared_ptr< sinks::text_ostream_backend > backend =
-  //   boost::make_shared< sinks::text_ostream_backend >();
-  // backend->add_stream(boost::shared_ptr< std::ostream >(&cerr, boost::empty_deleter()));
-  // // Create a frontend and setup filtering
-  // typedef sinks::synchronous_sink< sinks::text_ostream_backend > log_sink_type;
-  // boost::shared_ptr< log_sink_type > log_sink(new log_sink_type(backend));
-  // log_sink->set_filter(expr::attr<int>("Fubar") == 42);
-  // logging::core::get()->add_sink(log_sink);
-  //boost::log::core::get()->set_filter(expr::attr<severity_level>("Severity") >= info);
-  //boost::log::core::get()->set_filter(expr::has_attr("decodeable_packets") ||
-  //				      expr::contains<std::string,std::string>("Message", "passing"));
-  //boost::log::core::get()->set_logging_enabled(false);
+  stat_fixture() {
+    boost::shared_ptr<std::ofstream> ofs(new std::ofstream("test_log.json", std::ios_base::trunc));
+    the_stat_sink = make_stat_sink(ofs);
+    boost::log::core::get()->add_sink(the_stat_sink);
+  }
+
+  ~stat_fixture() {
+    boost::log::core::get()->remove_sink(the_stat_sink);
+  }
+};
+
+BOOST_FIXTURE_TEST_CASE(N_histo, stat_fixture) {
+  default_logger logger;
 
   int L = 100;
   int K = 10000;
