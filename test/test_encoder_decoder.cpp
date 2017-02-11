@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(seqno_overflows) {
   double delta = 0.5;
 
   degree_distribution deg = robust_soliton_distribution(K,c,delta);
-  fountain_encoder<> enc(deg);
+  fountain_encoder<std::mt19937> enc(deg);
 
   for (int i = 0; i < K; i++) {
     packet p = random_pkt(L);
@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(blockno_overflows) {
   double delta = 0.5;
 
   degree_distribution deg = robust_soliton_distribution(K,c,delta);
-  fountain_encoder<> enc(deg);
+  fountain_encoder<std::mt19937> enc(deg);
 
   for (int i = 0; i < fountain_encoder<>::MAX_BLOCKNO; i++) {
     for (int j = 0; j < K; ++j) {
@@ -121,7 +121,7 @@ BOOST_FIXTURE_TEST_CASE(N_histo, stat_fixture) {
   double p = 0;
 
   degree_distribution deg = robust_soliton_distribution(K,c,delta);
-  fountain_encoder<> enc(deg);
+  fountain_encoder<std::mt19937> enc(deg);
   fountain_decoder dec(deg);
 
   vector<packet> original;
