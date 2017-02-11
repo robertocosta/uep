@@ -16,8 +16,15 @@ class run_tests(Task):
     def run(self):
         retcodes = []
         for t in self.inputs:
+            fpath = "./" + t.bldpath()
             #print("Run %s:" % t.bldpath())
-            retcodes.append(self.exec_command(["./" + t.bldpath()]))
+            try:
+                retcodes.append(self.exec_command([fpath]))
+            except Exception as e:
+                if e.msg.find("OSError: [Errno 13] Permission denied") == -1:
+                    raise
+                else:
+                    pass # Ignore not executable files
         if all(map(lambda x: x == 0, retcodes)):
             return 0
         else:
