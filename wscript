@@ -1,6 +1,8 @@
 import os
-from waflib.Task import Task
+from waflib import Options
 from waflib.Build import BuildContext
+from waflib.Task import Task
+from waflib.Task import always_run
 
 APPNAME = 'uep'
 VERSION = '0.1'
@@ -12,6 +14,7 @@ class TestContext(BuildContext):
     cmd = 'do_test'
     fun = 'do_test'
 
+@always_run
 class run_tests(Task):
     def run(self):
         retcodes = []
@@ -73,7 +76,7 @@ def configure(ctx):
     ctx.write_config_header('config.h')
 
 def test(ctx):
-    os.system('./waf build do_test')
+    Options.commands = ['build', 'do_test'] + Options.commands
 
 def do_test(ctx):
     rt = run_tests(env=ctx.env)
