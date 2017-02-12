@@ -297,6 +297,99 @@ BOOST_AUTO_TEST_CASE(reorder_packets) {
   BOOST_CHECK_EQUAL(enc.queue_size(), 0);
 }
 
+struct decoder_overflow_fixture {
+  int L = 10;
+  int K = 2;
+  double c = 0.03;
+  double delta = 0.01;
+  int N = 100;
+  int nblocks = 0xffff * 2;
+
+  int last_block_passed = 0xffff - 50;
+
+  robust_soliton_distribution deg;
+  fountain_encoder<std::mt19937> enc;
+  fountain_decoder dec;
+
+  vector<packet> original;
+
+  decoder_overflow_fixture() :
+    deg(K,c,delta), enc(deg), dec(deg) {
+    for (int i = 0; i < nblocks*K; i++) {
+      packet p = random_pkt(L);
+      original.push_back(p);
+      enc.push_input(move(p));
+    }
+
+    for (int i = 0; i <= last_block_passed; ++i) {
+      pass_next_block(i);
+    }
+  }
+
+  void pass_next_block(int i) {
+    for (int j = 0; j < N; ++j) {
+      fountain_packet p = enc.next_coded();
+      dec.push_coded(p);
+      if (dec.has_decoded()) break;
+    }
+    BOOST_CHECK(dec.has_decoded());
+    BOOST_CHECK(equal(original.cbegin() + i*K,
+		      original.cbegin() + (i+1)*K,
+		      dec.decoded_begin()));
+    enc.discard_block();
+  }
+};
+
+BOOST_FIXTURE_TEST_CASE(decoder_overflow, decoder_overflow_fixture) {
+  for (++last_block_passed;
+       last_block_passed <= 0xffff;
+       ++last_block_passed) {
+    pass_next_block(last_block_passed);
+  }
+  BOOST_CHECK_EQUAL(enc.blockno(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 0xffff);
+
+  pass_next_block(last_block_passed);
+  BOOST_CHECK_EQUAL(dec.blockno(), 0);
+  pass_next_block(++last_block_passed);
+  BOOST_CHECK_EQUAL(dec.blockno(), 1);
+}
+
+BOOST_FIXTURE_TEST_CASE(decoder_overflow_jump, decoder_overflow_fixture) {
+  for (int i = 0; i < 0xffff - last_block_passed + 10; ++i)
+    enc.discard_block();
+  BOOST_CHECK_EQUAL(enc.blockno(), 10);
+  pass_next_block(0xffff + 11);
+  BOOST_CHECK_EQUAL(dec.blockno(), 10);
+}
+
+BOOST_FIXTURE_TEST_CASE(decoder_ignore_jump_back, decoder_overflow_fixture) {
+  vector<fountain_packet> old_block;
+  int old_blockno = last_block_passed+1;
+  for (int i = 0; i < N; ++i) {
+    old_block.push_back(enc.next_coded());
+  }
+  enc.discard_block();
+
+  pass_next_block(last_block_passed+2);
+  pass_next_block(last_block_passed+3);
+
+  for (auto i = old_block.cbegin(); i != old_block.cend(); ++i) {
+    dec.push_coded(*i);
+  }
+  BOOST_CHECK_EQUAL(dec.blockno(), last_block_passed+3);
+
+  for (int i = last_block_passed+4; i <= 0xffff + 3; ++i) {
+    pass_next_block(i);
+  }
+
+  BOOST_CHECK(old_blockno > dec.blockno());
+  for (auto i = old_block.cbegin(); i != old_block.cend(); ++i) {
+    dec.push_coded(*i);
+  }
+  BOOST_CHECK_EQUAL(dec.blockno(), (0xffff+3) & 0xffff);
+}
+
 struct stat_fixture {
   boost::shared_ptr<default_stat_sink> the_stat_sink;
 

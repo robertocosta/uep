@@ -14,10 +14,30 @@ fountain_decoder::fountain_decoder(const fountain &f) :
 }
 
 void fountain_decoder::push_coded(fountain_packet &&p) {
-  if (p.block_number() > blockno_) {
+  if (blockno_ == 0 && received_pkts.empty()) { // First packet
+    block_seed_ = p.block_seed();
+    fount.reset(block_seed_);
+    PUT_STAT_COUNTER(loggers.newblock);
+    BOOST_LOG_SEV(loggers.text, debug) << "Start to receive the first block: " <<
+      "blockno=" << blockno_ << ", seed=" << block_seed_;
+  }
+  else if (p.block_number() != blockno_) { // Packet from another block
+    int dist;
+    if (p.block_number() > blockno_)
+      dist = p.block_number() - blockno_;
+    else if (p.block_number() < blockno_)
+      dist = MAX_BLOCKNO - blockno_ + p.block_number() + 1;
+
+    if (dist > BLOCK_WINDOW) { // Old block
+      PUT_STAT_COUNTER(loggers.old_dropped);
+      BOOST_LOG_SEV(loggers.text, info) << "Drop packet for an old block: " << p;
+      return;
+    }
+
+    // New block
     blockno_ = p.block_number();
     block_seed_ = p.block_seed();
-    
+
     received_pkts.clear();
     original_connections.clear();
     fount.reset(block_seed_);
@@ -27,18 +47,6 @@ void fountain_decoder::push_coded(fountain_packet &&p) {
     PUT_STAT_COUNTER(loggers.newblock);
     BOOST_LOG_SEV(loggers.text, debug) << "Start to receive the next block: " <<
       "blockno=" << blockno_ << ", seed=" << block_seed_;
-  }
-  else if (blockno_ == 0 && received_pkts.empty()) {
-    block_seed_ = p.block_seed();
-    fount.reset(block_seed_);
-    PUT_STAT_COUNTER(loggers.newblock);
-    BOOST_LOG_SEV(loggers.text, debug) << "Start to receive the first block: " <<
-      "blockno=" << blockno_ << ", seed=" << block_seed_;
-  }
-  else if (p.block_number() < blockno_) {
-    PUT_STAT_COUNTER(loggers.old_dropped);
-    BOOST_LOG_SEV(loggers.text, info) << "Drop packet for an old block: " << p;
-    return;
   }
 
   int p_seqno = p.sequence_number();
@@ -117,7 +125,7 @@ void fountain_decoder::init_bg() {
     int i_seqno = i->sequence_number();
     if ((size_t)i_seqno >= bg.output_size()) {
       bg.resize_output(i_seqno + 1);
-    }      
+    }
     bg.output_at(i_seqno) = *i;
     const fountain::row_type &conns = original_connections[i_seqno];
     bg.add_links_to_output(i_seqno, conns.cbegin(), conns.cend());
@@ -126,7 +134,7 @@ void fountain_decoder::init_bg() {
 
 void fountain_decoder::decode_degree_one(std::set<bg_size_type> &ripple) {
   ripple.clear();
-  
+
   std::vector<std::pair<bg_size_type, bg_size_type> > delete_conns;
   for (auto i = bg.output_degree_one_begin();
        i != bg.output_degree_one_end();
@@ -152,7 +160,7 @@ void fountain_decoder::run_message_passing() {
   PUT_STAT_SCALAR(loggers.recv_size, received_pkts.size());
   BOOST_LOG_SEV(loggers.text, debug) << "Run message passing with " <<
     received_pkts.size() << " received pkts";
-  
+
   init_bg();
 
   std::set<bg_size_type> ripple;
@@ -164,7 +172,7 @@ void fountain_decoder::run_message_passing() {
   }
 
   PUT_STAT_SCALAR(loggers.decodeable, bg_decoded_count);
-    
+
   if (bg_decoded_count == K()) {
     decoded.resize(K());
     copy(bg.input_begin(), bg.input_end(), decoded.begin());

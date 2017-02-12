@@ -20,6 +20,13 @@ private:
 
 class fountain_decoder {
 public:
+  /** Maximum allowed value for the block numbers.
+   *  The decoder expects that it loops back to zero after this value.
+   */
+  static const int MAX_BLOCKNO = 0xffff;
+  /** Maximum forward distance to not consider a block from the past. */
+  static const int BLOCK_WINDOW = MAX_BLOCKNO / 2;
+
   explicit fountain_decoder(const degree_distribution &distr);
   explicit fountain_decoder(const fountain &f);
 
