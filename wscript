@@ -75,6 +75,9 @@ def configure(ctx):
 
     ctx.write_config_header('config.h')
 
+def doxygen(ctx):
+    os.system("cd doc && doxygen")
+
 def test(ctx):
     Options.commands = ['build', 'do_test'] + Options.commands
 

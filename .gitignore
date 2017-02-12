@@ -10,6 +10,8 @@
 # /config.log
 # /config.status
 # /configure
+/doc/doxygen_sqlite3.db
+/doc/html
 # /m4/
 # /stamp-h1
 # Makefile
