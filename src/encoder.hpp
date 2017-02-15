@@ -10,6 +10,7 @@
 #include <queue>
 #include <stdexcept>
 #include <vector>
+#include <utility>
 
 /** Standard LT-code encoder.
  *
@@ -100,7 +101,7 @@ private:
   int next_seed();
 };
 
-// Templates definition
+// Template definitions
 
 template<class Gen>
 fountain_encoder<Gen>::fountain_encoder(const degree_distribution &distr) :
@@ -119,14 +120,14 @@ template<class Gen>
 void fountain_encoder<Gen>::push_input(packet &&p) {
   PUT_STAT_COUNTER(loggers.in_pkts);
   BOOST_LOG_SEV(loggers.text, debug) << "Pushed a packet to the encoder";
-  input_queue.push(move(p));
+  input_queue.push(std::move(p));
   check_has_block();
 }
 
 template<class Gen>
 void fountain_encoder<Gen>::push_input(const packet &p) {
   packet p_copy(p);
-  push_input(move(p_copy));
+  push_input(std::move(p_copy));
 }
 
 template<class Gen>
@@ -231,7 +232,7 @@ void fountain_encoder<Gen>::check_has_block() {
       packet p;
       std::swap(p, input_queue.front());
       input_queue.pop();
-      input_block.push_back(move(p));
+      input_block.push_back(std::move(p));
     }
   }
 }
