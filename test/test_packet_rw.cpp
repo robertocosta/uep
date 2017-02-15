@@ -3,8 +3,6 @@
 
 #include "packets_rw.hpp"
 
-#include <sstream>
-
 using namespace std;
 
 BOOST_AUTO_TEST_CASE(read_write_test) {
@@ -26,12 +24,6 @@ BOOST_AUTO_TEST_CASE(read_write_test) {
 
   fountain_packet decoded_fp = parse_raw_data_packet(raw);
   BOOST_CHECK_EQUAL(test_fp, decoded_fp);
-
-  decoded_fp.block_seed(0);
-  BOOST_CHECK_NE(test_fp, decoded_fp);
-  decoded_fp.block_seed(test_fp.block_seed());
-  decoded_fp[0] = 0x44;
-  BOOST_CHECK_NE(test_fp, decoded_fp);
 }
 
 BOOST_AUTO_TEST_CASE(limit_test) {

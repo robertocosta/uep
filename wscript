@@ -40,7 +40,8 @@ def options(ctx):
                    action="store_true", default=False)
 
 def configure(ctx):
-    common_cxxflags = ['-Wall', '-std=c++11', '-ggdb', '-O0']
+    common_cxxflags = ['-Wall', '-std=c++11', '-ggdb', '-O0', '-pg']
+    common_linkflags = ['-pg']
     boost_defines = []
     if not ctx.options.static:
         boost_defines.append('BOOST_ALL_DYN_LINK')
@@ -58,17 +59,20 @@ def configure(ctx):
     ctx.check_python_version()
     ctx.check_cxx(lib=system_libs,
                   cxxflags=common_cxxflags,
+                  linkflags=common_linkflags,
                   includes="src",
                   uselib_store='SYSTEM_LIBS')
     if ctx.options.static:
         ctx.check_cxx(stlib=boost_libs,
                       cxxflags=common_cxxflags,
+                      linkflags=common_linkflags,
                       includes=["src"],
                       defines=boost_defines,
                       uselib_store='BOOST_LIBS')
     else:
         ctx.check_cxx(lib=boost_libs,
                       cxxflags=common_cxxflags,
+                      linkflags=common_linkflags,
                       includes=["src"],
                       defines=boost_defines,
                       uselib_store='BOOST_LIBS')
@@ -96,6 +100,10 @@ def build(ctx):
     ctx.program(target="test_rng",
                 source=["test/test_rng.cpp",
                         "src/rng.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_packets",
+                source=["test/test_packets.cpp",
+                        "src/packets.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_encoder_decoder",
                 source=["test/test_encoder_decoder.cpp",
