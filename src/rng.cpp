@@ -5,10 +5,10 @@
 using namespace std;
 using namespace std::placeholders;
 
-degree_distribution::degree_distribution(int K, const pmd_t &pmd) :
+degree_distribution::degree_distribution(std::size_t K, const pmd_t &pmd) :
   K_(K), pmd_(pmd) {
   vector<double> weights;
-  for (int d = 1; d <= K; ++d) {
+  for (size_t d = 1; d <= K; ++d) {
     weights.push_back(pmd_(d));
   }
 
@@ -17,7 +17,7 @@ degree_distribution::degree_distribution(int K, const pmd_t &pmd) :
   distrib.param(p);
 }
 
-int degree_distribution::K() const {
+std::size_t degree_distribution::K() const {
   return K_;
 }
 
@@ -25,21 +25,21 @@ degree_distribution::pmd_t degree_distribution::pmd() const {
   return pmd_;
 }
 
-soliton_distribution::soliton_distribution(int input_pkt_count) :
+soliton_distribution::soliton_distribution(std::size_t input_pkt_count) :
   degree_distribution(input_pkt_count, bind(soliton_pmd, input_pkt_count, _1)) {
 }
 
-double soliton_distribution::soliton_pmd(int K, int d) {
+double soliton_distribution::soliton_pmd(std::size_t K, std::size_t d) {
   if (d == 1) return 1/(double)K;
   else if (d >= 2 && d <= K) return 1/((double)d*(d-1));
   else return 0;
 }
 
-double robust_soliton_distribution::S(int K, double c, double delta) {
+double robust_soliton_distribution::S(std::size_t K, double c, double delta) {
   return c * log(K/delta) * sqrt(K);
 }
 
-double robust_soliton_distribution::tau(int K_S, double S_delta, int i) {
+double robust_soliton_distribution::tau(std::size_t K_S, double S_delta, std::size_t i) {
   if (i >= 1 && i <= K_S - 1)
     return 1/((double)K_S * i);
   else if (i == K_S)
@@ -48,19 +48,19 @@ double robust_soliton_distribution::tau(int K_S, double S_delta, int i) {
     return 0;
 }
 
-double robust_soliton_distribution::beta(int K, int K_S, double S_delta) {
+double robust_soliton_distribution::beta(std::size_t K, std::size_t K_S, double S_delta) {
   double sum = 0;
-  for (int i = 1; i <= K; ++i) {
+  for (size_t i = 1; i <= K; ++i) {
     sum += soliton_distribution::soliton_pmd(K,i) + tau(K_S, S_delta, i);
   }
   return sum;
 }
 
-double robust_soliton_distribution::robust_pmd(int K, double c, double delta,
-					       int d) {
+double robust_soliton_distribution::robust_pmd(std::size_t K, double c, double delta,
+					       std::size_t d) {
   if (d >= 1 && d <= K) {
     double S_ = S(K, c, delta);
-    int K_S = lround(K/S_);
+    size_t K_S = lround(K/S_);
     double S_delta = S_/delta;
     double beta_ = beta(K, K_S, S_delta);
     return (soliton_distribution::soliton_pmd(K,d) +
@@ -69,7 +69,7 @@ double robust_soliton_distribution::robust_pmd(int K, double c, double delta,
   else return 0;
 }
 
-robust_soliton_distribution::robust_soliton_distribution(int input_pkt_count,
+robust_soliton_distribution::robust_soliton_distribution(std::size_t input_pkt_count,
 							 double c,
 							 double delta) :
   degree_distribution(input_pkt_count,
@@ -87,28 +87,30 @@ double robust_soliton_distribution::delta() const {
 
 double robust_soliton_distribution::beta() const {
   double S_ = S(K(), c_, delta_);
-  int K_S = lround(K()/S_);
+  size_t K_S = lround(K()/S_);
   double S_delta = S_/delta_;
   return beta(K(), K_S, S_delta);
 }
 
-fountain::fountain(const degree_distribution &deg) :
+lt_row_generator::lt_row_generator(const degree_distribution &deg) :
   degree_distr(deg),
   packet_distr(0, deg.K()-1),
-  sel_count(0) {
-}
+  sel_count(0),
+  last_seed(rng_type::default_seed) {}
 
-fountain::fountain(const degree_distribution &deg, int seed) :
-  fountain(deg) {
+lt_row_generator::lt_row_generator(const degree_distribution &deg,
+				   rng_type::result_type seed) :
+  lt_row_generator(deg) {
   generator.seed(seed);
+  last_seed = seed;
 }
 
-fountain::row_type fountain::next_row() {
-  int degree = degree_distr(generator);
+lt_row_generator::row_type lt_row_generator::next_row() {
+  size_t degree = degree_distr(generator);
   row_type s;
   s.reserve(degree);
-  for (int i = 0; i < degree; ++i) {
-    int si;
+  for (size_t i = 0; i < degree; ++i) {
+    size_t si;
     do {
       si = packet_distr(generator);
     }	while (find(s.begin(), s.end(), si) != s.end());
@@ -118,20 +120,30 @@ fountain::row_type fountain::next_row() {
   return s;
 }
 
-int fountain::generated_rows() const {
+std::size_t lt_row_generator::generated_rows() const {
   return sel_count;
 }
 
-int fountain::K() const {
+std::size_t lt_row_generator::K() const {
   return degree_distr.K();
 }
 
-void fountain::reset() {
+lt_row_generator::rng_type::result_type lt_row_generator::seed() const {
+  return last_seed;
+}
+
+void lt_row_generator::reset() {
   generator.seed();
+  last_seed = rng_type::default_seed;
   sel_count = 0;
 }
 
-void fountain::reset(int seed) {
+void lt_row_generator::reset(rng_type::result_type seed) {
   generator.seed(seed);
+  last_seed = seed;
   sel_count = 0;
+}
+
+lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double delta) {
+  return lt_row_generator(robust_soliton_distribution(K, c, delta));
 }
