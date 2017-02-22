@@ -110,6 +110,9 @@ def build(ctx):
                         "src/rng.cpp",
                         "src/packets.cpp",
                         "src/decoder.cpp"],
+    ctx.program(target="test_counters",
+                source=["test/test_counters.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_skip_iterator",
                 source=["test/test_skip_iterator.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
