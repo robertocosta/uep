@@ -3,16 +3,23 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "lazy_xor.hpp"
 #include "message_passing.hpp"
 #include "packets.hpp"
 
 using namespace std;
 using namespace uep;
 
+template <class T>
+bool operator==(const lazy_xor<T> &lhs, const lazy_xor<T> &rhs) {
+  return lhs.evaluate() == rhs.evaluate();
+}
+
 struct fpSel {typedef fountain_packet sym_type;};
 struct uintSel {typedef unsigned int sym_type;};
+struct lazySel {typedef lazy_xor<fountain_packet> sym_type;};
 
-typedef boost::mpl::vector<uintSel, fpSel> sym_selectors;
+typedef boost::mpl::vector<uintSel, fpSel, lazySel> sym_selectors;
 
 template <class SymSel>
 struct sym_builder_t {};
@@ -30,6 +37,24 @@ struct sym_builder_t<uintSel> {
   unsigned int operator()(unsigned int i) const {
     return i;
   }
+};
+
+template <>
+struct sym_builder_t<lazySel> {
+  lazySel::sym_type operator()(char i) {
+    const size_t size = 1024;
+    fountain_packet *fp = new fountain_packet(size, i);
+    deleteme.push_back(fp);
+    return lazy_xor<fountain_packet>(fp);
+  }
+
+  ~sym_builder_t() {
+    for (fountain_packet *fp : deleteme) {
+      delete fp;
+    }
+  }
+private:
+  std::list<fountain_packet*> deleteme;
 };
 
 template <class SymbolSel>
@@ -134,4 +159,53 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_set
   BOOST_CHECK(!S::partial->has_decoded());
   BOOST_CHECK_EQUAL(S::partial->decoded_count(), 1);
   BOOST_CHECK(*(S::partial->decoded_symbols_begin()) == S::expected[1]);
+}
+
+BOOST_AUTO_TEST_CASE(lazy_xor_basic) {
+  const char x1 = 0x11, x2 = 0x22;
+  lazy_xor<char> lx1(&x1);
+  lazy_xor<char> lx2(&x2);
+  lazy_xor<char> lx3 = lx1 ^ lx2;
+  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x11);
+  BOOST_CHECK_EQUAL(lx2.evaluate(), 0x22);
+  BOOST_CHECK_EQUAL(lx3.evaluate(), 0x33);
+  BOOST_CHECK_THROW(lazy_xor<char>().evaluate(), runtime_error);
+
+  BOOST_CHECK_EQUAL(lx1.size(), 1);
+  BOOST_CHECK_EQUAL(lx2.size(), 1);
+  BOOST_CHECK_EQUAL(lx3.size(), 2);
+  BOOST_CHECK_EQUAL(lazy_xor<char>().size(), 0);
+
+  BOOST_CHECK_EQUAL(x1, 0x11);
+  BOOST_CHECK_EQUAL(x2, 0x22);
+}
+
+BOOST_AUTO_TEST_CASE(lazy_xor_elision) {
+  const char x1 = 0x11, x2 = 0x22;
+  lazy_xor<char> lx1(&x1);
+  lazy_xor<char> lx2(&x2);
+  lazy_xor<char> lx3;
+  lx3 ^= lx1;
+  BOOST_CHECK_EQUAL(lx3.size(), 1);
+  lx3 ^= lx2;
+  BOOST_CHECK_EQUAL(lx3.size(), 2);
+  lx3 ^= lx1;
+  BOOST_CHECK_EQUAL(lx3.size(), 1);
+  BOOST_CHECK_EQUAL(lx3.evaluate(), 0x22);
+}
+
+BOOST_AUTO_TEST_CASE(lazy_xor_fp) {
+  vector<fountain_packet> v;
+  for (int i = 0; i < 10; ++i) {
+    v.push_back(fountain_packet(1024, 0x11 * (i+1)));
+  }
+  BOOST_CHECK_EQUAL(v[0][0], 0x11);
+  BOOST_CHECK_EQUAL(v[9][0], (char)0xaa);
+
+  lazy_xor<fountain_packet> lx;
+  for (auto i = v.cbegin(); i != v.cend(); ++i) {
+    lx ^= lazy_xor<fountain_packet>(&(*i));
+  }
+  BOOST_CHECK_EQUAL(lx.size(), 10);
+  BOOST_CHECK(lx.evaluate() == packet(1024, 0xbb));
 }
