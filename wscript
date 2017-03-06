@@ -116,6 +116,8 @@ def build(ctx):
     ctx.program(target="test_skip_iterator",
                 source=["test/test_skip_iterator.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_message_passing",
+                source=["test/test_message_passing.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_udp",
                 source=["src/udp_client_server.cpp"],
