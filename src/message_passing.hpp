@@ -4,6 +4,7 @@
 #include <functional>
 #include <list>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include <boost/graph/adjacency_list.hpp>
@@ -20,41 +21,35 @@ namespace uep {
 template <class T>
 class message_passing_context {
   struct vertex_prop;
+public:
+  typedef T symbol_type;
+  typedef std::pair<std::size_t, const T&> decoded_value_type;
+private:
   typedef boost::adjacency_list<boost::listS,
 				boost::vecS,
 				boost::undirectedS,
 				vertex_prop> graph_t;
-  typedef std::list<typename graph_t::vertex_descriptor> deglist_t;
-  typedef std::set<
-    typename graph_t::vertex_descriptor,
-    std::function<bool(typename graph_t::vertex_descriptor,
-		       typename graph_t::vertex_descriptor)>
-    > decoded_t;
-  typedef std::vector<typename graph_t::vertex_descriptor> ripple_t;
-
+  typedef typename graph_t::vertex_descriptor vdesc;
+  typedef std::list<vdesc> deglist_t;
+  typedef std::function<bool(vdesc,vdesc)> index_comparator_t;
+  typedef std::set<vdesc, index_comparator_t> decoded_t;
+  typedef std::vector<vdesc> ripple_t;
+  typedef std::function<const T&(vdesc)> vertex_converter_t;
+  typedef std::function<decoded_value_type(vdesc)> pair_converter_t;
 public:
-  typedef T symbol_type;
-  /** Constant iterator over the decoded input symbols. */
-  typedef boost::transform_iterator<
-    std::function<const T&(typename graph_t::vertex_descriptor)>,
-    typename decoded_t::iterator
-    > decoded_iterator;
+  typedef boost::transform_iterator<pair_converter_t,
+				    typename decoded_t::iterator
+				    > decoded_iterator;
+  typedef boost::transform_iterator<vertex_converter_t,
+				    typename decoded_t::iterator
+				    > decoded_symbols_iterator;
 
-  /** Construct an empty context. */
-  //message_passing_context() : message_passing_context(0) {}
-private:
-  /** Construct a context with in_size default-constructed input symbols. */
-  message_passing_context(std::size_t in_size) :
-    K(in_size),
-    the_graph(in_size),
-    decoded(make_index_less()),
-    vertex_conv(make_vertex_conv()) {}
-public:
-  // must check what happens when this is copied/moved
+  // must check what happens when copied/moved
   message_passing_context(const message_passing_context&) = delete;
   message_passing_context(message_passing_context&&) = delete;
   message_passing_context &operator=(const message_passing_context&) = delete;
   message_passing_context &operator=(message_passing_context&&) = delete;
+
   /** Construct a context with in_size default-constructed input
    *  symbols, output symbols copied from [first_out,last_out) and
    *  edges copied from [first_edge,last_edge).
@@ -87,11 +82,19 @@ public:
   bool has_decoded() const { return decoded_count() == input_size(); }
 
   decoded_iterator decoded_begin() const {
-    return decoded_iterator(decoded.begin(), vertex_conv);
+    return decoded_iterator(decoded.cbegin(), pair_conv);
   }
 
   decoded_iterator decoded_end() const {
-    return decoded_iterator(decoded.end(), vertex_conv);
+    return decoded_iterator(decoded.cend(), pair_conv);
+  }
+
+  decoded_symbols_iterator decoded_symbols_begin() const {
+    return decoded_symbols_iterator(decoded.cbegin(), vertex_conv);
+  }
+
+  decoded_symbols_iterator decoded_symbols_end() const {
+    return decoded_symbols_iterator(decoded.cend(), vertex_conv);
   }
 
 private:
@@ -100,7 +103,16 @@ private:
   deglist_t deglist;
   decoded_t decoded;
   ripple_t ripple;
-  std::function<const T&(typename graph_t::vertex_descriptor)> vertex_conv;
+  vertex_converter_t vertex_conv;
+  pair_converter_t pair_conv;
+
+  /** Construct a context with in_size default-constructed input symbols. */
+  message_passing_context(std::size_t in_size) :
+    K(in_size),
+    the_graph(in_size),
+    decoded(make_index_less()),
+    vertex_conv(make_vertex_conv()),
+    pair_conv(make_pair_conv()) {}
 
   // typename graph_t::vertex_descriptor input_vertex(std::size_t pos) const {
   //   return boost::vertex(pos, the_graph);
@@ -125,8 +137,14 @@ private:
     };
   }
 
-  std::function<const T&(typename graph_t::vertex_descriptor)>
-  make_vertex_conv() const {
+  pair_converter_t make_pair_conv() const {
+    return
+      [this](typename graph_t::vertex_descriptor v) -> decoded_value_type {
+      return decoded_value_type(the_graph[v].index, the_graph[v].symbol);
+    };
+  }
+
+  vertex_converter_t make_vertex_conv() const {
     return
       [this](typename graph_t::vertex_descriptor v) -> const T& {
       return the_graph[v].symbol;

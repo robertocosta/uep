@@ -92,7 +92,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, SymSel, sym_selectors, mp_setup<Sy
 
   S::mp->run();
   BOOST_CHECK(S::mp->has_decoded());
-  BOOST_CHECK(equal(S::mp->decoded_begin(), S::mp->decoded_end(), S::expected.cbegin()));
+  BOOST_CHECK(equal(S::mp->decoded_symbols_begin(), S::mp->decoded_symbols_end(), S::expected.cbegin()));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_multiple, SymSel, sym_selectors, mp_setup<SymSel>) {
@@ -102,7 +102,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_multiple, SymSel, sym_selectors, mp_setup<Sy
   S::mp->run();
   S::mp->run();
   BOOST_CHECK(S::mp->has_decoded());
-  BOOST_CHECK(equal(S::mp->decoded_begin(), S::mp->decoded_end(), S::expected.cbegin()));
+  BOOST_CHECK(equal(S::mp->decoded_symbols_begin(), S::mp->decoded_symbols_end(), S::expected.cbegin()));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_fail, SymSel, sym_selectors, mp_setup<SymSel>) {
@@ -121,7 +121,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_partial, SymSel, sym_selectors, mp_setup<Sym
   S::partial->run();
   BOOST_CHECK(!S::partial->has_decoded());
   BOOST_CHECK_EQUAL(S::partial->decoded_count(), 1);
-  BOOST_CHECK(*(S::partial->decoded_begin()) == S::expected[1]);
+  BOOST_CHECK(*(S::partial->decoded_symbols_begin()) == S::expected[1]);
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_setup<SymSel>) {
@@ -133,5 +133,5 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_set
   S::partial->run();
   BOOST_CHECK(!S::partial->has_decoded());
   BOOST_CHECK_EQUAL(S::partial->decoded_count(), 1);
-  BOOST_CHECK(*(S::partial->decoded_begin()) == S::expected[1]);
+  BOOST_CHECK(*(S::partial->decoded_symbols_begin()) == S::expected[1]);
 }
