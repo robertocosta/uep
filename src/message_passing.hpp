@@ -44,11 +44,21 @@ public:
 				    typename decoded_t::iterator
 				    > decoded_symbols_iterator;
 
-  // must check what happens when copied/moved
-  message_passing_context(const message_passing_context&) = delete;
-  message_passing_context(message_passing_context&&) = delete;
-  message_passing_context &operator=(const message_passing_context&) = delete;
-  message_passing_context &operator=(message_passing_context&&) = delete;
+  message_passing_context(const message_passing_context&) = default;
+  message_passing_context(message_passing_context&&) = default;
+  message_passing_context &operator=(const message_passing_context&) = default;
+  message_passing_context &operator=(message_passing_context&&) = default;
+
+  message_passing_context() : K(0), decoded(make_index_less()),
+			      vertex_conv(make_vertex_conv()),
+			      pair_conv(make_pair_conv()) {
+  }
+
+  /** Construct a context with in_size default-constructed input symbols. */
+  message_passing_context(std::size_t in_size) : message_passing_context() {
+    K = in_size;
+    the_graph = graph_t(K);
+  }
 
   /** Construct a context with in_size default-constructed input
    *  symbols, output symbols copied from [first_out,last_out) and
@@ -97,6 +107,13 @@ public:
     return decoded_symbols_iterator(decoded.cend(), vertex_conv);
   }
 
+  void clear() {
+    K = 0;
+    the_graph.clear();
+    deglist.clear();
+    decoded.clear();
+  }
+
 private:
   std::size_t K;
   graph_t the_graph;
@@ -106,13 +123,6 @@ private:
   vertex_converter_t vertex_conv;
   pair_converter_t pair_conv;
 
-  /** Construct a context with in_size default-constructed input symbols. */
-  message_passing_context(std::size_t in_size) :
-    K(in_size),
-    the_graph(in_size),
-    decoded(make_index_less()),
-    vertex_conv(make_vertex_conv()),
-    pair_conv(make_pair_conv()) {}
 
   // typename graph_t::vertex_descriptor input_vertex(std::size_t pos) const {
   //   return boost::vertex(pos, the_graph);

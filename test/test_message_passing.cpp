@@ -209,3 +209,66 @@ BOOST_AUTO_TEST_CASE(lazy_xor_fp) {
   BOOST_CHECK_EQUAL(lx.size(), 10);
   BOOST_CHECK(lx.evaluate() == packet(1024, 0xbb));
 }
+
+struct two_mp_setup : public mp_setup<uintSel> {
+  mp_t *mp2;
+  const vector<unsigned int> out2{1,2};
+  const size_t K2 = 2;
+  vector<pair<size_t,size_t>> edges2;
+
+  two_mp_setup() {
+    edges2.push_back(make_pair(0,1));
+    edges2.push_back(make_pair(1,0));
+    mp2 = new mp_t(K2, out2.cbegin(), out2.cend(), edges2.cbegin(), edges2.cend());
+  }
+
+  ~two_mp_setup() {
+    delete mp2;
+  }
+};
+
+BOOST_FIXTURE_TEST_CASE(mp_copy, two_mp_setup) {
+  mp2->run();
+  BOOST_CHECK(mp2->has_decoded());
+  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
+		    mp2->decoded_symbols_end(), out2.crbegin()));
+
+  *mp2 = *mp;
+  mp->run();
+  BOOST_CHECK(!mp2->has_decoded());
+  mp2->run();
+  BOOST_CHECK(mp2->has_decoded());
+  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
+		    mp2->decoded_symbols_end(), expected.cbegin()));
+}
+
+BOOST_FIXTURE_TEST_CASE(mp_move, two_mp_setup) {
+  mp2->run();
+  BOOST_CHECK(mp2->has_decoded());
+  BOOST_CHECK_EQUAL(mp2->input_size(), 2);
+  BOOST_CHECK(mp2->decoded_begin() != mp2->decoded_end());
+  *mp2 = mp_t();
+  BOOST_CHECK_EQUAL(mp2->input_size(), 0);
+  BOOST_CHECK(mp2->has_decoded());
+  BOOST_CHECK(mp2->decoded_begin() == mp2->decoded_end());
+}
+
+BOOST_FIXTURE_TEST_CASE(mp_copy_c, two_mp_setup) {
+  mp_t mp3(*mp2);
+  BOOST_CHECK(!mp3.has_decoded());
+  BOOST_CHECK_EQUAL(mp3.input_size(), 2);
+  mp2->run();
+  BOOST_CHECK(mp2->has_decoded());
+  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
+		    mp2->decoded_symbols_end(), out2.crbegin()));
+
+  mp_t mp4(*mp2);
+  BOOST_CHECK(mp4.has_decoded());
+  BOOST_CHECK(equal(mp4.decoded_symbols_begin(),
+		    mp4.decoded_symbols_end(), out2.crbegin()));
+}
+
+BOOST_FIXTURE_TEST_CASE(mp_move_c, two_mp_setup) {
+  mp_t mp3(mp_t(10));
+  BOOST_CHECK_EQUAL(mp3.input_size(), 10);
+}
