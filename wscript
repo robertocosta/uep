@@ -116,6 +116,12 @@ def build(ctx):
     ctx.program(target="test_flatten_iterator",
                 source=["test/test_flatten_iterator.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_block_decoder",
+                source=["test/test_block_decoder.cpp",
+                        "src/block_decoder.cpp",
+                        "src/packets.cpp",
+                        "src/rng.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_message_passing",
                 source=["test/test_message_passing.cpp",
                         "src/packets.cpp"],

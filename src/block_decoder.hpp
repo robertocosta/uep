@@ -1,0 +1,108 @@
+#ifndef UEP_BLOCK_DECODER_HPP
+#define UEP_BLOCK_DECODER_HPP
+
+#include <functional>
+#include <stdexcept>
+#include <unordered_set>
+#include <set>
+#include <utility>
+#include <vector>
+
+#include "lazy_xor.hpp"
+#include "message_passing.hpp"
+#include "packets.hpp"
+#include "rng.hpp"
+
+namespace uep {
+
+/** Comparator used to sort fountain_packets using < on their seqno. */
+struct seqno_less {
+  bool operator()(const fountain_packet &lhs, const fountain_packet &rhs) {
+    return lhs.sequence_number() < rhs.sequence_number();
+  }
+};
+
+/** Convert lazy_xors to packets. */
+struct lazy2p_conv {
+  packet operator()(const lazy_xor<packet> &lx) const {
+    return lx.evaluate();
+  }
+};
+
+/** Build lazy_xors from fountain_packets. */
+struct fp2lazy_conv {
+  lazy_xor<packet> operator()(const fountain_packet &p) const {
+    return lazy_xor<packet>(&p);
+  }
+};
+
+/** Class to decode a single LT-encoded block of packets.
+ *  The LT-code parameters are given by the lt_row_generator passed to
+ *  the constructor. The seed is read from the fountain_packets.
+ */
+class block_decoder {
+  typedef lazy_xor<packet> mp_symbol_t;
+  typedef message_passing_context<mp_symbol_t> mp_ctx_t;
+  typedef std::set<fountain_packet, seqno_less> received_t;
+  typedef std::vector<lt_row_generator::row_type> link_cache_t;
+
+public:
+  typedef lt_row_generator::rng_type::result_type seed_t;
+  typedef boost::transform_iterator<lazy2p_conv,
+				    mp_ctx_t::decoded_symbols_iterator
+				    > const_block_iterator;
+
+  explicit block_decoder(const lt_row_generator &rg);
+
+  /** Reset the decoder to the initial state. */
+  void reset();
+  /** Add an encoded packet to the current block.
+   * If the packet is a duplicate (same sequence_number), it is
+   * ignored and the method returns false.
+   */
+  bool push(fountain_packet &&p);
+  /** \sa push(fountain_packet&&) */
+  bool push(const fountain_packet &p);
+
+  /** Return the seed used to decode the current block. */
+  seed_t seed() const;
+  /** Return the current block's block_number. */
+  int block_number() const;
+  /** Return true when the entire input block has been decoded. */
+  bool has_decoded() const;
+  /** Number of input packets thathave been successfully decoded. */
+  std::size_t decoded_count() const;
+  /** Return an iterator to the beginning of the decoded packets.
+   * The interval [block_begin(), block_end()) always contains the
+   * decoded_count() packets that have been decoded.
+   * \sa block_end()
+   */
+  const_block_iterator block_begin() const;
+  /** Return an iterator to the end of the decoded packets.
+   * \sa block_begin()
+   */
+  const_block_iterator block_end() const;
+
+  //void do_partial_decoding(bool value);
+  //bool do_partial_decoding() const;
+
+  /** Return true when the decoder has decoded a full block. */
+  explicit operator bool() const;
+  /** Return true when the encoder does not have decoded a full block. */
+  bool operator!() const;
+
+private:
+  lt_row_generator rowgen;
+  received_t received_pkts;
+  link_cache_t link_cache;
+  mp_ctx_t mp_ctx;
+  int blockno;
+  std::size_t pktsize;
+
+  void check_correct_block(const fountain_packet &p);
+  void run_message_passing();
+};
+
+}
+
+#endif
