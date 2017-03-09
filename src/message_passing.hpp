@@ -20,6 +20,10 @@ namespace uep {
  */
 template <class T>
 class message_passing_context {
+  struct index_comp;
+  struct index_map;
+  struct v2pair_conv;
+  struct v2sym_conv;
   struct vertex_prop;
 public:
   typedef T symbol_type;
@@ -31,16 +35,13 @@ private:
 				vertex_prop> graph_t;
   typedef typename graph_t::vertex_descriptor vdesc;
   typedef std::list<vdesc> deglist_t;
-  typedef std::function<bool(vdesc,vdesc)> index_comparator_t;
-  typedef std::set<vdesc, index_comparator_t> decoded_t;
+  typedef std::set<vdesc, index_comp> decoded_t;
   typedef std::vector<vdesc> ripple_t;
-  typedef std::function<const T&(vdesc)> vertex_converter_t;
-  typedef std::function<decoded_value_type(vdesc)> pair_converter_t;
 public:
-  typedef boost::transform_iterator<pair_converter_t,
+  typedef boost::transform_iterator<v2pair_conv,
 				    typename decoded_t::iterator
 				    > decoded_iterator;
-  typedef boost::transform_iterator<vertex_converter_t,
+  typedef boost::transform_iterator<v2sym_conv,
 				    typename decoded_t::iterator
 				    > decoded_symbols_iterator;
 
@@ -49,17 +50,15 @@ public:
   message_passing_context &operator=(const message_passing_context&) = default;
   message_passing_context &operator=(message_passing_context&&) = default;
 
-  message_passing_context() : K(0), decoded(make_index_less()),
-			      vertex_conv(make_vertex_conv()),
-			      pair_conv(make_pair_conv()) {
-  }
-
+  message_passing_context() : K(0), decoded(index_comp(&the_graph)) {}
   /** Construct a context with in_size default-constructed input symbols. */
-  message_passing_context(std::size_t in_size) : message_passing_context() {
-    K = in_size;
-    the_graph = graph_t(K);
-  }
-
+  explicit message_passing_context(std::size_t in_size);
+  /** Construct a context with in_size input_symbols and the given
+   *  output symbols.
+   */
+  template <class SymIter>
+  explicit message_passing_context(std::size_t in_size,
+				   SymIter first_out, SymIter last_out);
   /** Construct a context with in_size default-constructed input
    *  symbols, output symbols copied from [first_out,last_out) and
    *  edges copied from [first_edge,last_edge).
@@ -73,6 +72,7 @@ public:
 				   OutSymIter last_out,
 				   EdgeIter first_edge,
 				   EdgeIter last_edge);
+
   /** Run the message-passing algorithm with the current context.
    *  After the input symbols are fully decoded, this method does
    *  nothing.  If the input symbols are partially decoded, they are
@@ -84,7 +84,15 @@ public:
   // Implement if incremental construction is needed
   // void add_output_symbol(const T &sym);
   // void add_input_symbol();
-  // void add_edge(std::size_t i, std::size_t j);
+
+  /** Add an edge that links input symbol i to output symbol j.
+   *  Both symbols must already exist.
+   */
+  void add_edge(std::size_t i, std::size_t j) {
+    const index_map m(&K);
+    add_edge_vdesc(boost::vertex(i, the_graph),
+		   boost::vertex(m(j), the_graph));
+  }
 
   std::size_t input_size() const { return K; }
   std::size_t output_size() const { return boost::num_vertices(the_graph) - K; }
@@ -92,19 +100,23 @@ public:
   bool has_decoded() const { return decoded_count() == input_size(); }
 
   decoded_iterator decoded_begin() const {
-    return decoded_iterator(decoded.cbegin(), pair_conv);
+    const v2pair_conv c(&the_graph);
+    return decoded_iterator(decoded.cbegin(), c);
   }
 
   decoded_iterator decoded_end() const {
-    return decoded_iterator(decoded.cend(), pair_conv);
+    const v2pair_conv c(&the_graph);
+    return decoded_iterator(decoded.cend(), c);
   }
 
   decoded_symbols_iterator decoded_symbols_begin() const {
-    return decoded_symbols_iterator(decoded.cbegin(), vertex_conv);
+    const v2sym_conv c(&the_graph);
+    return decoded_symbols_iterator(decoded.cbegin(), c);
   }
 
   decoded_symbols_iterator decoded_symbols_end() const {
-    return decoded_symbols_iterator(decoded.cend(), vertex_conv);
+    const v2sym_conv c(&the_graph);
+    return decoded_symbols_iterator(decoded.cend(), c);
   }
 
   void clear() {
@@ -112,6 +124,7 @@ public:
     the_graph.clear();
     deglist.clear();
     decoded.clear();
+    ripple.clear();
   }
 
 private:
@@ -120,46 +133,12 @@ private:
   deglist_t deglist;
   decoded_t decoded;
   ripple_t ripple;
-  vertex_converter_t vertex_conv;
-  pair_converter_t pair_conv;
 
-
-  // typename graph_t::vertex_descriptor input_vertex(std::size_t pos) const {
-  //   return boost::vertex(pos, the_graph);
-  // }
-
-  // typename graph_t::vertex_descriptor output_vertex(std::size_t pos) const {
-  //   return boost::vertex(K + pos, the_graph);
-  // }
-
+  void add_edge_vdesc(vdesc u, vdesc v);
   void decode_degree_one();
   void process_ripple();
-
-  std::function<bool(typename graph_t::vertex_descriptor,
-		     typename graph_t::vertex_descriptor)>
-  make_index_less() const {
-    return
-      [this](typename graph_t::vertex_descriptor lhs,
-	     typename graph_t::vertex_descriptor rhs) -> bool {
-      std::size_t lhs_i = the_graph[lhs].index;
-      std::size_t rhs_i = the_graph[rhs].index;
-      return lhs_i < rhs_i;
-    };
-  }
-
-  pair_converter_t make_pair_conv() const {
-    return
-      [this](typename graph_t::vertex_descriptor v) -> decoded_value_type {
-      return decoded_value_type(the_graph[v].index, the_graph[v].symbol);
-    };
-  }
-
-  vertex_converter_t make_vertex_conv() const {
-    return
-      [this](typename graph_t::vertex_descriptor v) -> const T& {
-      return the_graph[v].symbol;
-    };
-  }
+  void add_to_deglist(vdesc u);
+  void remove_from_deglist(vdesc u);
 };
 
 template <class T>
@@ -168,9 +147,93 @@ struct message_passing_context<T>::vertex_prop {
   std::size_t index;
   //If std::list this is invalidated only on deletion
   typename deglist_t::iterator deglist_iter;
+
+  vertex_prop() = default;
+  explicit vertex_prop(std::size_t i) :
+    index(i) {}
+  explicit vertex_prop(std::size_t i, const T &s) :
+    symbol(s), index(i) {}
 };
 
-// Template definitions
+template <class T>
+struct message_passing_context<T>::v2pair_conv {
+  const graph_t *the_graph;
+
+  v2pair_conv() : the_graph(nullptr) {}
+  explicit v2pair_conv(const graph_t *g) : the_graph(g) {}
+
+  decoded_value_type operator()(vdesc v) const {
+    return decoded_value_type((*the_graph)[v].index,
+			      (*the_graph)[v].symbol);
+  }
+};
+
+template <class T>
+struct message_passing_context<T>::v2sym_conv {
+  const graph_t *the_graph;
+
+  v2sym_conv() : the_graph(nullptr) {}
+  explicit v2sym_conv(const graph_t *g) : the_graph(g) {}
+
+  const T &operator()(vdesc v) const {
+    return (*the_graph)[v].symbol;
+  }
+};
+
+template <class T>
+struct message_passing_context<T>::index_comp {
+  const graph_t *the_graph;
+
+  index_comp() : the_graph(nullptr) {}
+  explicit index_comp(const graph_t *g) : the_graph(g) {}
+
+  bool operator()(vdesc lhs, vdesc rhs) const {
+    std::size_t lhs_i = (*the_graph)[lhs].index;
+    std::size_t rhs_i = (*the_graph)[rhs].index;
+    return lhs_i < rhs_i;
+  }
+};
+
+template <class T>
+struct message_passing_context<T>::index_map {
+  const std::size_t *in_size;
+
+  index_map() : in_size(nullptr) {}
+  explicit index_map(const std::size_t *s) : in_size(s) {}
+
+  std::pair<std::size_t,std::size_t>
+  operator()(std::pair<std::size_t,std::size_t> e) const {
+    e.second += *in_size;
+    return e;
+  }
+
+  std::size_t operator()(std::size_t out_index) const {
+    return out_index + *in_size;
+  }
+};
+
+//              message_passing_context<T> definitions
+
+template <class T>
+message_passing_context<T>::message_passing_context(std::size_t in_size) :
+  message_passing_context() {
+  K = in_size;
+  for (std::size_t i = 0; i < K; ++i) {
+    boost::add_vertex(vertex_prop(i), the_graph);
+  }
+}
+
+template <class T>
+template <class SymIter>
+message_passing_context<T>::message_passing_context(std::size_t in_size,
+						    SymIter first_out,
+						    SymIter last_out) :
+  message_passing_context(in_size) {
+  std::size_t i = boost::num_vertices(the_graph);
+  while (first_out != last_out) {
+    boost::add_vertex(vertex_prop(i++, *first_out++), the_graph);
+  }
+}
 
 template <class T>
 template <class OutSymIter, class EdgeIter>
@@ -179,22 +242,21 @@ message_passing_context<T>::message_passing_context(std::size_t in_size,
 						    OutSymIter last_out,
 						    EdgeIter first_edge,
 						    EdgeIter last_edge) :
-  message_passing_context(in_size) {
+  message_passing_context() {
   using namespace std;
   using namespace std::placeholders;
   using namespace boost;
 
+  K = in_size;
+
   // Init the graph with the edges (also transform (i,j) -> (i, j+K))
-  auto tx_e = [in_size](pair<size_t,size_t> e) -> pair<size_t,size_t> {
-    e.second += in_size;
-    return e;
-  };
-  typedef transform_iterator<decltype(tx_e), EdgeIter> tx_edge_iter;
-  tx_edge_iter first_e_tx(first_edge, tx_e), last_e_tx(last_edge, tx_e);
+  const index_map imap(&K);
+  typedef transform_iterator<index_map, EdgeIter> tx_edge_iter;
+  tx_edge_iter first_e_tx(first_edge, imap), last_e_tx(last_edge, imap);
   size_t out_size = last_out - first_out;
   the_graph = graph_t(first_e_tx, last_e_tx, K + out_size);
 
-  // Copy the output symbols into the graph
+  // Setup the indices, copy the symbols
   auto vr = vertices(the_graph);
   size_t i = 0;
   while (i < K) {
@@ -277,6 +339,31 @@ void message_passing_context<T>::run() {
     if (ripple.empty() || has_decoded()) break;
     process_ripple();
   }
+}
+
+template <class T>
+void message_passing_context<T>::add_edge_vdesc(vdesc u, vdesc v) {
+  using namespace std;
+  using namespace boost;
+
+  size_t deg_before = out_degree(v, the_graph);
+  // Check parallel edges??
+  boost::add_edge(u, v, the_graph);
+  if (deg_before == 0) add_to_deglist(v);
+  else if (deg_before == 1) remove_from_deglist(v);
+}
+
+template <class T>
+void message_passing_context<T>::add_to_deglist(vdesc u) {
+  deglist.push_back(u);
+  the_graph[u].deglist_iter = --deglist.end();
+}
+
+template <class T>
+void message_passing_context<T>::remove_from_deglist(vdesc u) {
+  auto iter = the_graph[u].deglist_iter;
+  the_graph[u].deglist_iter = decltype(iter)();
+  deglist.erase(iter);
 }
 
 }

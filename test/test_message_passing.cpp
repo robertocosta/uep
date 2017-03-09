@@ -67,7 +67,7 @@ struct mp_setup {
   size_t K = 3;
   vector<sym_type> expected;
   vector<sym_type> out;
-  vector<pair<size_t,size_t>> edges;
+  vector<pair<size_t,size_t>> edges, decodeable_edges;
   sym_builder_t<SymbolSel> sym_builder;
 
   mp_setup() {
@@ -87,6 +87,8 @@ struct mp_setup {
     edges.push_back(make_pair(2,3));
     edges.push_back(make_pair(0,1));
     edges.push_back(make_pair(2,1));
+
+    decodeable_edges = edges;
 
     mp = new mp_t(K, out.cbegin(), out.cend(), edges.cbegin(), edges.cend());
     edges.push_back(make_pair(0,2));
@@ -271,4 +273,24 @@ BOOST_FIXTURE_TEST_CASE(mp_copy_c, two_mp_setup) {
 BOOST_FIXTURE_TEST_CASE(mp_move_c, two_mp_setup) {
   mp_t mp3(mp_t(10));
   BOOST_CHECK_EQUAL(mp3.input_size(), 10);
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_incremental_build,
+				 SymSel, sym_selectors, mp_setup<SymSel>) {
+  typedef mp_setup<SymSel> S;
+
+  typename S::mp_t mp(3, S::out.cbegin(), S::out.cend());
+  BOOST_CHECK_EQUAL(mp.input_size(), 3);
+  BOOST_CHECK_EQUAL(mp.output_size(), 4);
+
+  for (auto i = S::decodeable_edges.cbegin();
+       i != S::decodeable_edges.cend(); ++i) {
+    mp.add_edge(i->first, i->second);
+  }
+
+  mp.run();
+  BOOST_CHECK(mp.has_decoded());
+  BOOST_CHECK(equal(mp.decoded_symbols_begin(),
+		    mp.decoded_symbols_end(),
+		    S::expected.cbegin()));
 }
