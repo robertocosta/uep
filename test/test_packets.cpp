@@ -50,3 +50,12 @@ BOOST_AUTO_TEST_CASE(packet_xor) {
 
   BOOST_CHECK((p ^ q) == expected);
 }
+
+BOOST_AUTO_TEST_CASE(packet_wrong_xor) {
+  packet p(10, 0x11);
+  packet q(9, 0x22);
+  fountain_packet r(11, 0x33);
+  BOOST_CHECK_THROW(p ^ q, runtime_error);
+  BOOST_CHECK_THROW(q ^ p, runtime_error);
+  BOOST_CHECK_THROW(r ^ p, runtime_error);
+}

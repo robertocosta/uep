@@ -212,6 +212,21 @@ BOOST_AUTO_TEST_CASE(lazy_xor_fp) {
   BOOST_CHECK(lx.evaluate() == packet(1024, 0xbb));
 }
 
+BOOST_AUTO_TEST_CASE(lazy_xor_wrong) {
+  fountain_packet p1(11, 0x11);
+  fountain_packet p2(10, 0x22);
+
+  lazy_xor<packet> lz1(&p1), lz2(&p2);
+  lz1 ^= lz2;
+  BOOST_CHECK_THROW(lz1.evaluate(), runtime_error);
+  BOOST_CHECK_NO_THROW(lz2.evaluate());
+
+  lazy_xor<fountain_packet> flz1(&p1), flz2(&p2);
+  flz1 ^= flz2;
+  BOOST_CHECK_THROW(flz1.evaluate(), runtime_error);
+  BOOST_CHECK_NO_THROW(flz2.evaluate());
+}
+
 struct two_mp_setup : public mp_setup<uintSel> {
   mp_t *mp2;
   const vector<unsigned int> out2{1,2};
