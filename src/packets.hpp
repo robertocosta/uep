@@ -103,8 +103,11 @@ public:
   void swap(packet &other);
 
   /** Perform a shallow copy of the packet.
+   *  To be useful this method requires the move-constructor and
+   *  move-assignment to not perform a full copy of the data.
    *  \return A packet with a shared pointer to this packet's same
    *  data.
+   *  \sa packet(packet&&), operator=(packet&&)
    */
   packet shallow_copy() const;
   /** Number of packets sharing this packet's data. */

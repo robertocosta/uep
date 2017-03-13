@@ -286,9 +286,8 @@ fountain_packet fountain_packet::shallow_copy() const {
 }
 
 fountain_packet &operator^=(fountain_packet &a, const packet &b) {
-  packet &a_p = a;
-  a_p ^= b;
-  return static_cast<fountain_packet&>(a_p);
+  a.xor_data(b);
+  return a;
 }
 
 std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
