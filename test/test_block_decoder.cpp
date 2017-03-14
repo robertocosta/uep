@@ -104,3 +104,42 @@ BOOST_FIXTURE_TEST_CASE(reject_wrong_size, setup_packets) {
   fountain_packet wrong_size(42, 3, seed, 1500, 0x44);
   BOOST_CHECK_THROW(dec.push(wrong_size), runtime_error);
 }
+
+BOOST_FIXTURE_TEST_CASE(duplicate_packets, setup_packets) {
+  block_decoder dec(lt_row_generator(robust_soliton_distribution(3,0.1,0.5)));
+  for (int i = 0; i < 4; ++i) {
+    const fountain_packet &p = received[i];
+    BOOST_CHECK(dec.push(p));
+    for (int j = 1; j < 100; ++j) {
+      BOOST_CHECK(!dec.push(p));
+    }
+  }
+  BOOST_CHECK(dec.has_decoded());
+  auto i = dec.block_begin();
+  auto j = expected.cbegin();
+  while (i != dec.block_end()) {
+    BOOST_CHECK(*i == *j);
+    ++i; ++j;
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE(out_of_order, setup_packets) {
+  block_decoder dec(lt_row_generator(robust_soliton_distribution(3,0.1,0.5)));
+  vector<fountain_packet> recv;
+  std::mt19937 g;
+  for (int i = 0; i < 10; ++i)
+    recv.insert(recv.cend(), received.cbegin(), received.cend());
+  std::shuffle(recv.begin(), recv.end(), g);
+
+  for (auto i = recv.cbegin(); i != recv.cend(); ++i)
+    dec.push(*i);
+  recv.clear();
+
+  BOOST_CHECK(dec.has_decoded());
+  auto i = dec.block_begin();
+  auto j = expected.cbegin();
+  while (i != dec.block_end()) {
+    BOOST_CHECK(*i == *j);
+    ++i; ++j;
+  }
+}
