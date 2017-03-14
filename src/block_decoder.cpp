@@ -75,6 +75,14 @@ std::size_t block_decoder::decoded_count() const {
   return decoded.size();
 }
 
+std::size_t block_decoder::received_count() const {
+  return received_pkts.size();
+}
+
+std::size_t block_decoder::block_size() const {
+  return rowgen.K();
+}
+
 block_decoder::const_block_iterator block_decoder::block_begin() const {
   return decoded.cbegin();
 }

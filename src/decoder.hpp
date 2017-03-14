@@ -1,81 +1,77 @@
-#ifndef DECODER_HPP
-#define DECODER_HPP
+#ifndef UEP_DECODER_HPP
+#define UEP_DECODER_HPP
 
-#include "bipartite_graph.hpp"
+#include "block_decoder.hpp"
+#include "block_queues.hpp"
+#include "counter.hpp"
 #include "log.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
+#include "utils.hpp"
 
-#include <set>
-#include <vector>
+namespace uep {
 
-class seqno_less {
+/** Standard LT-code decoder.
+ */
+class lt_decoder {
 public:
-  bool operator()(const fountain_packet &lhs, const fountain_packet &rhs) {
-    return less(lhs.sequence_number(), rhs.sequence_number());
-  }
-private:
-  std::less<int> less;
-};
+  typedef block_decoder::const_block_iterator const_block_iterator;
 
-class fountain_decoder {
-public:
   /** Maximum allowed value for the block numbers.
    *  The decoder expects that it loops back to zero after this value.
    */
-  static const int MAX_BLOCKNO = 0xffff;
+  static const std::size_t MAX_BLOCKNO = 0xffff;
   /** Maximum forward distance to not consider a block from the past. */
-  static const int BLOCK_WINDOW = MAX_BLOCKNO / 2;
+  static const std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
 
-  explicit fountain_decoder(const degree_distribution &distr);
-  explicit fountain_decoder(const fountain &f);
+  explicit lt_decoder(std::size_t K, double c, double delta);
+  explicit lt_decoder(const degree_distribution &distr);
+  explicit lt_decoder(const lt_row_generator &rg);
 
-  void push_coded(const fountain_packet &p);
-  void push_coded(fountain_packet &&p);
+  void push(const fountain_packet &p);
+  void push(fountain_packet &&p);
 
-  std::vector<packet>::const_iterator decoded_begin() const;
-  std::vector<packet>::const_iterator decoded_end() const;
+  packet next_decoded();
 
+  /** Const iterator pointing to the start of the last decoded block. */
+  const_block_iterator decoded_begin() const;
+  /** Const iterator pointing to the end of the last decoded block. */
+  const_block_iterator decoded_end() const;
+
+  /** Return true if the current block has been decoded. */
   bool has_decoded() const;
-  int K() const;
-  int blockno() const;
+  /** Return the block size. */
+  std::size_t K() const;
+  /** Return the current block number. */
+  std::size_t blockno() const;
+  /** Return the current block seed. */
   int block_seed() const;
-  size_t received_count() const;
-
-  fountain the_fountain() const;
-  std::set<fountain_packet>::const_iterator received_packets_begin() const;
-  std::set<fountain_packet>::const_iterator received_packets_end() const;
+  /** Number of unique packets received for the current block. */
+  std::size_t received_count() const;
+  /** Number of packets decoded for the current block. */
+  std::size_t decoded_count() const;
+  /** Number of output queued packets. */
+  std::size_t queue_size() const;
 
 private:
-  typedef bipartite_graph<fountain_packet> bg_type;
-  typedef bipartite_graph<fountain_packet>::size_type bg_size_type;
+  block_decoder the_block_decoder;
+  output_block_queue the_output_queue;
+  circular_counter<std::size_t> blockno_counter;
+  bool has_enqueued;
 
-  struct loggers_t {
-    default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);
-    default_logger decodeable = make_stat_logger("DecoderDecodeablePackets", scalar);
-    default_logger dup_pkts = make_stat_logger("DecoderDuplicatePackets", counter);
-    default_logger in_pkts = make_stat_logger("DecoderInputPackets", counter);
-    default_logger newblock = make_stat_logger("DecoderNewBlock", counter);
-    default_logger old_dropped = make_stat_logger("DecoderOldDropped", counter);
-    default_logger recv_size = make_stat_logger("DecoderTryWithReceived", scalar);
-    default_logger rows = make_stat_logger("DecoderRowDegree", scalar);
-    default_logger text;
-  } loggers;
-
-  fountain fount;
-  int blockno_;
-  int block_seed_;
-  std::set<fountain_packet, seqno_less> received_pkts;
-  std::vector<fountain::row_type> original_connections;
-  std::vector<packet> decoded;
-
-  bg_type bg;
-  int bg_decoded_count;
-
-  void run_message_passing();
-  void init_bg();
-  void decode_degree_one(std::set<bg_size_type> &ripple);
-  void process_ripple(const std::set<bg_size_type> &ripple);
+  // struct loggers_t {
+  //   default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);
+  //   default_logger decodeable = make_stat_logger("DecoderDecodeablePackets", scalar);
+  //   default_logger dup_pkts = make_stat_logger("DecoderDuplicatePackets", counter);
+  //   default_logger in_pkts = make_stat_logger("DecoderInputPackets", counter);
+  //   default_logger newblock = make_stat_logger("DecoderNewBlock", counter);
+  //   default_logger old_dropped = make_stat_logger("DecoderOldDropped", counter);
+  //   default_logger recv_size = make_stat_logger("DecoderTryWithReceived", scalar);
+  //   default_logger rows = make_stat_logger("DecoderRowDegree", scalar);
+  //   default_logger text;
+  // } loggers;
 };
+
+}
 
 #endif

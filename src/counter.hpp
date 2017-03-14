@@ -101,6 +101,14 @@ public:
     if (max_seqno <= 0) throw std::invalid_argument("The max cannot be <= 0");
   }
 
+  circular_counter &operator=(const circular_counter &other) {
+    if (other.max_seqno != max_seqno)
+      throw std::runtime_error("The max values must be the same");
+    next_seqno = other.next_seqno;
+    looped_once = other.looped_once;
+    return *this;
+  }
+
   void set(IntType value) {
     if (value < 0 || value > max_seqno)
       throw std::invalid_argument("The value must be between 0 and max_value");

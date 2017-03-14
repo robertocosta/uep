@@ -75,6 +75,10 @@ public:
   bool has_decoded() const;
   /** Number of input packets thathave been successfully decoded. */
   std::size_t decoded_count() const;
+  /** Number of received unique packets. */
+  std::size_t received_count() const;
+  /** Block size. */
+  std::size_t block_size() const;
   /** Return an iterator to the beginning of the decoded packets.
    * The interval [block_begin(), block_end()) always contains the
    * decoded_count() packets that have been decoded.

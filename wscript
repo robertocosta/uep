@@ -105,11 +105,6 @@ def build(ctx):
                 source=["test/test_packets.cpp",
                         "src/packets.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="test_encoder_decoder",
-                source=["test/test_encoder_decoder.cpp",
-                        "src/rng.cpp",
-                        "src/packets.cpp",
-                        "src/decoder.cpp"],
     ctx.program(target="test_counters",
                 source=["test/test_counters.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
@@ -127,6 +122,15 @@ def build(ctx):
                         "src/block_encoder.cpp",
                         "src/packets.cpp",
                         "src/rng.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_encoder_decoder",
+                source=["test/test_encoder_decoder.cpp",
+                        "src/rng.cpp",
+                        "src/packets.cpp",
+                        "src/decoder.cpp",
+                        "src/block_encoder.cpp",
+                        "src/block_decoder.cpp",
+                        "src/block_queues.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_message_passing",
                 source=["test/test_message_passing.cpp",
