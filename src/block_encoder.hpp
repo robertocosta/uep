@@ -6,15 +6,21 @@
 #include "packets.hpp"
 #include "rng.hpp"
 
-/** Class used to perform the LT-encoding of a single block. */
+namespace uep {
+
+/** Class used to perform the LT-encoding of a single block.
+ * The LT-code parameters are given by the lt_row_generator passed to
+ *  the constructor. The seed for the row generator is manipulated
+ *  through seed() and set_seed(seed_t).
+ */
 class block_encoder {
 public:
-  typedef std::vector<packet>::iterator block_iterator;
-  typedef std::vector<packet>::const_iterator const_block_iterator;
   typedef lt_row_generator::rng_type::result_type seed_t;
+  typedef std::vector<packet>::const_iterator const_block_iterator;
+  typedef std::vector<packet>::iterator block_iterator;
 
   explicit block_encoder(const lt_row_generator &rg);
-  
+
   /** Reset the row generator with the specified seed. */
   void set_seed(seed_t seed);
   /** Replace the current block with [first,last). */
@@ -49,7 +55,7 @@ public:
   explicit operator bool() const;
   /** Return true when the encoder does not have a block. */
   bool operator!() const;
-  
+
 private:
   lt_row_generator rowgen;
   std::vector<packet> block;
@@ -60,24 +66,34 @@ private:
 
 template <class InputIt>
 void block_encoder::set_block(InputIt first, InputIt last) {
-  if ((last - first) != block_size())
-    throw std::logic_error("The block must have fixed length");
   block.clear();
   out_count = 0;
+  std::size_t c = 0;
   for (;first != last; ++first) {
     block.push_back(*first);
+    ++c;
+  }
+  if (c != block_size()) {
+    block.clear();
+    throw std::logic_error("The block must have fixed length");
   }
 }
 
 template <class InputIt>
 void block_encoder::set_block_shallow(InputIt first, InputIt last) {
-  if ((last-first) != block_size())
-    throw std::logic_error("The block must have fixed length");
   block.clear();
   out_count = 0;
+  std::size_t c = 0;
   for (;first != last; ++first) {
     block.push_back(first->shallow_copy());
+    ++c;
   }
+  if (c != block_size()) {
+    block.clear();
+    throw std::logic_error("The block must have fixed length");
+  }
+}
+
 }
 
 #endif

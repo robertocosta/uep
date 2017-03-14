@@ -122,6 +122,12 @@ def build(ctx):
                         "src/packets.cpp",
                         "src/rng.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_block_encoder",
+                source=["test/test_block_encoder.cpp",
+                        "src/block_encoder.cpp",
+                        "src/packets.cpp",
+                        "src/rng.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_message_passing",
                 source=["test/test_message_passing.cpp",
                         "src/packets.cpp"],

@@ -2,11 +2,13 @@
 
 using namespace std;
 
+namespace uep {
+
 block_encoder::block_encoder(const lt_row_generator &rg) :
   rowgen(rg), out_count(0) {
   block.reserve(rg.K());
 }
-  
+
 void block_encoder::set_seed(seed_t seed) {
   rowgen.reset(seed);
 }
@@ -54,6 +56,7 @@ packet block_encoder::next_coded() {
   for (; i != row.cend(); ++i) {
     first ^= block[*i];
   }
+  ++out_count;
   return first;
 }
 
@@ -63,4 +66,6 @@ block_encoder::operator bool() const {
 
 bool block_encoder::operator!() const {
   return !can_encode();
+}
+
 }
