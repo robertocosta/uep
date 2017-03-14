@@ -7,6 +7,7 @@ namespace uep {
 block_decoder::block_decoder(const lt_row_generator &rg) :
   rowgen(rg) {
   link_cache.reserve(rg.K());
+  decoded.reserve(rg.K());
 }
 
 void block_decoder::check_correct_block(const fountain_packet &p) {
@@ -52,10 +53,10 @@ bool block_decoder::push(const fountain_packet &p) {
 }
 
 void block_decoder::reset() {
-  rowgen.reset();
+  //rowgen.reset();
   received_pkts.clear();
   link_cache.clear();
-  mp_ctx.clear();
+  decoded.clear();
 }
 
 block_decoder::seed_t block_decoder::seed() const {
@@ -67,19 +68,19 @@ int block_decoder::block_number() const {
 }
 
 bool block_decoder::has_decoded() const {
-  return mp_ctx.decoded_count() == rowgen.K();
+  return decoded.size() == rowgen.K();
 }
 
 std::size_t block_decoder::decoded_count() const {
-  return mp_ctx.decoded_count();
+  return decoded.size();
 }
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
-  return const_block_iterator(mp_ctx.decoded_symbols_begin(), lazy2p_conv());
+  return decoded.cbegin();
 }
 
 block_decoder::const_block_iterator block_decoder::block_end() const {
-  return const_block_iterator(mp_ctx.decoded_symbols_end(), lazy2p_conv());
+  return decoded.cend();
 }
 
 block_decoder::operator bool() const {
@@ -97,17 +98,27 @@ void block_decoder::run_message_passing() {
 				    > mp_ctx_out_iter;
   mp_ctx_out_iter out_b(received_pkts.cbegin(), fp2lazy_conv());
   mp_ctx_out_iter out_e(received_pkts.cend(), fp2lazy_conv());
-  mp_ctx = mp_ctx_t(rowgen.K(), out_b, out_e);
+  mp_ctx_t mp_ctx(rowgen.K(), out_b, out_e);
 
+  size_t mp_out_index = 0;
   for (auto j = received_pkts.cbegin(); j != received_pkts.cend(); ++j) {
     const lt_row_generator::row_type &row = link_cache[j->sequence_number()];
     for (auto i = row.cbegin(); i != row.cend(); ++i) {
-      mp_ctx.add_edge(*i, j->sequence_number());
+      mp_ctx.add_edge(*i, mp_out_index);
     }
+    ++mp_out_index;
   }
 
   // Run mp
   mp_ctx.run();
+
+  // Copy decoded packets
+  if (mp_ctx.decoded_count() != 0) {
+    mp_packet_iter mp_sb(mp_ctx.decoded_symbols_begin(), lazy2p_conv());
+    mp_packet_iter mp_se(mp_ctx.decoded_symbols_end(), lazy2p_conv());
+    decoded.resize(mp_ctx.decoded_count());
+    copy(mp_sb, mp_se, decoded.begin());
+  }
 }
 
 }

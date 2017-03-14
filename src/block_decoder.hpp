@@ -45,12 +45,15 @@ class block_decoder {
   typedef message_passing_context<mp_symbol_t> mp_ctx_t;
   typedef std::set<fountain_packet, seqno_less> received_t;
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
+  typedef std::vector<packet> decoded_t;
 
-public:
-  typedef lt_row_generator::rng_type::result_type seed_t;
   typedef boost::transform_iterator<lazy2p_conv,
 				    mp_ctx_t::decoded_symbols_iterator
-				    > const_block_iterator;
+				    > mp_packet_iter;
+
+public:
+  typedef decoded_t::const_iterator const_block_iterator;
+  typedef lt_row_generator::rng_type::result_type seed_t;
 
   explicit block_decoder(const lt_row_generator &rg);
 
@@ -95,7 +98,7 @@ private:
   lt_row_generator rowgen;
   received_t received_pkts;
   link_cache_t link_cache;
-  mp_ctx_t mp_ctx;
+  decoded_t decoded;
   int blockno;
   std::size_t pktsize;
 
