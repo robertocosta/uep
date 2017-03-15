@@ -56,7 +56,7 @@ def configure(ctx):
                   'boost_filesystem']
 
     ctx.load('compiler_cxx python')
-    ctx.check_python_version()
+    ctx.check_python_version((2,7))
     ctx.check_cxx(lib=system_libs,
                   cxxflags=common_cxxflags,
                   linkflags=common_linkflags,
