@@ -11,31 +11,30 @@
 #include <pthread.h>
 #include <stdexcept>
 
+int msgLength = 128;
 
 void* SocketHandler(void*);
 void* SocketHandler(void* lp){
 	// Ho ricevuto una connessione in ingresso da un client (TCP)
 	int *csock = (int*)lp;
-	// Preparo lo spazio per Client Info
-	char clientInfo[1024];
-	int clientInfoLen = 1024;
-	int bytecount;
-	memset(clientInfo, 0, clientInfoLen);
+	
 	// Attendo la ricezione di Client Info
-	if((bytecount = recv(*csock, clientInfo, clientInfoLen, 0))== -1){
+	char clientInfo[msgLength];
+	int bytecount;
+	memset(clientInfo, 0, msgLength);
+	if((bytecount = recv(*csock, clientInfo, msgLength, 0))== -1){
 		fprintf(stderr, "Error receiving data %d\n", errno);
 		free(csock);
 	}
-	printf("Client Info Received: \"%s\"\n", clientInfo);
+	printf("Received: %s\n", clientInfo);
 	
 	// Creazione Data Server e Encoder
-	printf("Creazione Data Server e Encoder \n");
+	printf("*** Creation of Data Server and Encoder ***\n");
 	
-	// Invio al client il pacchetto Server Info (UDP Range, Dimensione video, Errori, UEP Params)
-	printf("Invio al client il pacchetto Server Info \n");
-	char serverInfo[] = "Server_Info";
-	int serverInfoLen = 20;
-	if((bytecount = send(*csock, serverInfo, serverInfoLen, 0))== -1){
+	// Invio al client del pacchetto Server Info (UDP Range, Dimensione video, Errori, UEP Params)
+	char serverInfo[msgLength] = "SERVER INFO: udp port";
+	printf("Sending: %s\n",serverInfo);
+	if((bytecount = send(*csock, serverInfo, msgLength, 0))== -1){
 		fprintf(stderr, "Error sending data %d\n", errno);
 		//goto FINISH;
 	}
@@ -60,13 +59,12 @@ void* SocketHandler(void* lp){
 			//		recv bloccante
 	}*/
 	// Attendo il comando PLAY
-	char command[1024];
-	int commandLen = 1024;
-	if((bytecount = recv(*csock, command, commandLen, 0))== -1){
+	char command[msgLength];
+	if((bytecount = recv(*csock, command, msgLength, 0))== -1){
 		fprintf(stderr, "Error receiving data %d\n", errno);
 		free(csock);
 	}
-	printf("Received command: \"%s\"\n", command);
+	printf("Received: %s\n", command);
 	return 0;
 }
 
