@@ -14,29 +14,60 @@
 
 void* SocketHandler(void*);
 void* SocketHandler(void* lp){
+	// Ho ricevuto una connessione in ingresso da un client (TCP)
 	int *csock = (int*)lp;
-
-	char buffer[1024];
-	int buffer_len = 1024;
+	// Preparo lo spazio per Client Info
+	char clientInfo[1024];
+	int clientInfoLen = 1024;
 	int bytecount;
-
-	memset(buffer, 0, buffer_len);
-	if((bytecount = recv(*csock, buffer, buffer_len, 0))== -1){
+	memset(clientInfo, 0, clientInfoLen);
+	// Attendo la ricezione di Client Info
+	if((bytecount = recv(*csock, clientInfo, clientInfoLen, 0))== -1){
 		fprintf(stderr, "Error receiving data %d\n", errno);
 		free(csock);
 	}
-	printf("Received bytes: %d\nReceived string: \"%s\"\n", bytecount, buffer);
-	strcat(buffer, " SERVER ECHO");
-	return 0;
-	/*
-	if((bytecount = send(*csock, buffer, strlen(buffer), 0))== -1){
+	printf("Client Info Received: \"%s\"\n", clientInfo);
+	
+	// Creazione Data Server e Encoder
+	printf("Creazione Data Server e Encoder \n");
+	
+	// Invio al client il pacchetto Server Info (UDP Range, Dimensione video, Errori, UEP Params)
+	printf("Invio al client il pacchetto Server Info \n");
+	char serverInfo[] = "Server_Info";
+	int serverInfoLen = 20;
+	if((bytecount = send(*csock, serverInfo, serverInfoLen, 0))== -1){
 		fprintf(stderr, "Error sending data %d\n", errno);
-		goto FINISH;
+		//goto FINISH;
 	}
-	printf("Sent bytes %d\n", bytecount);
-	FINISH:
-	free(csock);
-	return 0;*/
+	/*
+	while (true) {
+		//Attesa del pacchetto Client info con Play / Pause / Stop
+		//buffer = char[1024];
+		
+		// buffer contiene PLAY / PAUSE / STOP
+			//	se è STOP
+				
+					close(*csock);
+					free(csock);
+					Distrugge Encoder, Data Server
+					return 0;		
+				
+			//	se è PLAY
+			//		recv non bloccante
+			//		Fa girare l'encoder che manda via UDP
+			//			UDP chiama encode / next packet
+			//	se è PAUSE
+			//		recv bloccante
+	}*/
+	// Attendo il comando PLAY
+	char command[1024];
+	int commandLen = 1024;
+	if((bytecount = recv(*csock, command, commandLen, 0))== -1){
+		fprintf(stderr, "Error receiving data %d\n", errno);
+		free(csock);
+	}
+	printf("Received command: \"%s\"\n", command);
+	return 0;
 }
 
 class TCPServer{
@@ -115,13 +146,9 @@ class TCPServer{
 
 };
 
-
-
-
 int main(int argv, char** argc){
 	int tcp_port= 1101;
 	TCPServer my_tcp(tcp_port);
 	my_tcp.Listen();
-	
 	return 0;
 }
