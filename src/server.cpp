@@ -20,12 +20,13 @@ template<class Duration>
 using TimePoint = std::chrono::time_point<Clock, Duration>;
 
 unsigned int streamState = 0; // 1: play, 2: pause, 3: stop
-
+int msgLength = 128;
+/*
 typedef std::chrono::high_resolution_clock Time;
 typedef std::chrono::milliseconds ms;
 typedef std::chrono::duration<float> fsec;
 auto t0 = Time::now();
-int msgLength = 128;
+
 
 void* sendUDP(int* streamSt){
 	printf("Sending stream at bitrate R...\n");
@@ -44,7 +45,7 @@ void* sendUDP(int* streamSt){
 		
 	return 0;
 }
-
+*/
 void* SocketHandler(void*);
 void* SocketHandler(void* lp){
 	// Ho ricevuto una connessione in ingresso da un client (TCP)
