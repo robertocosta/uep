@@ -9,10 +9,43 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <thread>
 #include <stdexcept>
 
-int msgLength = 128;
+#include <chrono>
+using Clock = std::chrono::high_resolution_clock;
+using Ms = std::chrono::milliseconds;
+using Sec = std::chrono::seconds;
+template<class Duration>
+using TimePoint = std::chrono::time_point<Clock, Duration>;
 
+unsigned int streamState = 0; // 1: play, 2: pause, 3: stop
+int msgLength = 128;
+/*
+typedef std::chrono::high_resolution_clock Time;
+typedef std::chrono::milliseconds ms;
+typedef std::chrono::duration<float> fsec;
+auto t0 = Time::now();
+
+
+void* sendUDP(int* streamSt){
+	printf("Sending stream at bitrate R...\n");
+	// Send UDP
+	t0 = Time::now();
+	auto t1 = Time::now();
+	fsec fs = t1 - t0;
+	ms d = std::chrono::duration_cast<ms>(fs);
+	int millis = d.count();
+	int waitingT = 1000000-millis*1000;
+	if (waitingT>0){
+		*streamSt = 2;
+		usleep(waitingT);
+	}
+		
+		
+	return 0;
+}
+*/
 void* SocketHandler(void*);
 void* SocketHandler(void* lp){
 	// Ho ricevuto una connessione in ingresso da un client (TCP)
@@ -36,35 +69,65 @@ void* SocketHandler(void* lp){
 	printf("Sending: %s\n",serverInfo);
 	if((bytecount = send(*csock, serverInfo, msgLength, 0))== -1){
 		fprintf(stderr, "Error sending data %d\n", errno);
-		//goto FINISH;
 	}
-	/*
-	while (true) {
-		//Attesa del pacchetto Client info con Play / Pause / Stop
-		//buffer = char[1024];
+	
+	while (streamState != 3){
+		// Se deve mandare pacchetti, lo fa a bitrate definito in un thread separato
+		/*
+		if (streamState == 1){
+			
+			 
+			pthread_t t1;
+			pthread_create(&t1,NULL,&sendUDP,&streamState);
+			Here we send R bit (R: desired bitrate) in a different thread
+			in modo che il flusso del programma non si blocchi con usleep
+			clock_t begin = clock();
+			clock_t end = clock();
+			double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+			double remaining_secs = 1 - elapsed_secs;
+			usleep(remaining_secs*1000000);
+			
+		}
+		*/
 		
-		// buffer contiene PLAY / PAUSE / STOP
-			//	se è STOP
-				
-					close(*csock);
-					free(csock);
-					Distrugge Encoder, Data Server
-					return 0;		
-				
-			//	se è PLAY
-			//		recv non bloccante
-			//		Fa girare l'encoder che manda via UDP
-			//			UDP chiama encode / next packet
-			//	se è PAUSE
-			//		recv bloccante
-	}*/
-	// Attendo il comando PLAY
-	char command[msgLength];
-	if((bytecount = recv(*csock, command, msgLength, 0))== -1){
-		fprintf(stderr, "Error receiving data %d\n", errno);
-		free(csock);
-	}
-	printf("Received: %s\n", command);
+		// Attende un comando
+		char command[msgLength];
+		if((bytecount = recv(*csock, command, msgLength, 0))== -1){
+			fprintf(stderr, "Error receiving data %d\n", errno);
+			free(csock);
+		}
+		
+		// Comando 1: PLAY
+		char playString[msgLength] = "CLIENT INFO: play";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, playString);
+		if (strcmp(command,playString)==0) {
+			if (streamState!=1) streamState = 1;
+			// UDP.play();
+		}
+
+		// Comando 2: PAUSE
+		char pauseString[msgLength] = "CLIENT INFO: pause";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, pauseString);
+		if (strcmp(command,pauseString)==0) {
+			printf("Pausing stream...\n");
+			if (streamState!=2) streamState = 2;
+			// UDP.pause();
+		}
+
+		// Comando 3: STOP
+		char stopString[msgLength] = "CLIENT INFO: stop";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, stopString);
+		if ((strcmp(command,stopString)==0)||(streamState==3)) {
+			printf("Stopping stream...\n");
+			if (streamState!=3) streamState = 3;
+			close(*csock);
+			free(csock);
+			// UDP.stop();
+			// Distrugge Encoder, Data Server
+			return 0;		
+		}
+	}	
+	
 	return 0;
 }
 
