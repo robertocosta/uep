@@ -7,10 +7,11 @@
 
 #include "block_encoder.hpp"
 #include "block_queues.hpp"
+#include "counter.hpp"
 #include "log.hpp"
+#include "lt_param_set.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
-#include "counter.hpp"
 #include "utils.hpp"
 
 namespace uep {
@@ -26,6 +27,8 @@ namespace uep {
 template<class Gen = std::random_device>
 class lt_encoder {
 public:
+  /** The collection of parameters required to setup the encoder. */
+  typedef robust_lt_parameter_set parameter_set;
   /** The type of the object called to seed the row generator at each
    *  new block.
    */
@@ -50,17 +53,21 @@ public:
 		decltype(fountain_packet().block_number())
 		>::max() >= MAX_BLOCKNO,
 		"the blockno type is too small");
-  
+
+  /** Construct using a parameter set. */
+  explicit lt_encoder(const parameter_set &ps) :
+    lt_encoder(ps.K, ps.c, ps.delta) {}
+
   /** Construct using a robust_soliton_distribution with parameters K,
    *  c, delta.
    */
   explicit lt_encoder(std::size_t K, double c, double delta) :
     lt_encoder(make_robust_lt_row_generator(K,c,delta)) {}
-  
+
   /** Construct using an lt_row_generator with degree distribution distr. */
   explicit lt_encoder(const degree_distribution &distr) :
     lt_encoder(lt_row_generator(distr)) {}
-  
+
   /** Construct with the row_generator rg. */
   explicit lt_encoder(const lt_row_generator &rg) :
     the_input_queue(rg.K()),
@@ -76,7 +83,7 @@ public:
     packet p_copy(p);
     push(move(p_copy));
   }
-  
+
   /** Enqueue packet p in the input queue. */
   void push(packet &&p) {
     using std::move;
@@ -85,7 +92,7 @@ public:
     //BOOST_LOG_SEV(loggers.text, debug) << "Pushed a packet to the encoder";
     check_has_block();
   }
-  
+
   /** Generate the next coded packet from the current block. */
   fountain_packet next_coded() {
     fountain_packet p(the_block_encoder.next_coded());
@@ -96,7 +103,7 @@ public:
     //BOOST_LOG_SEV(loggers.text, debug) << "New encoded packet: " << p;
     return p;
   }
-  
+
   /** Drop the current block of packets and prepare to encode the next
    *  one.
    */
@@ -129,7 +136,7 @@ public:
   lt_row_generator row_generator() const {
     return the_block_encoder.row_generator();
   }
-  
+
   seed_generator_type seed_generator() const { return the_seed_gen; }
   const_block_iterator current_block_begin() const {
      return the_input_queue.block_begin();

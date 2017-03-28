@@ -5,6 +5,7 @@
 #include "block_queues.hpp"
 #include "counter.hpp"
 #include "log.hpp"
+#include "lt_param_set.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
 #include "utils.hpp"
@@ -15,6 +16,7 @@ namespace uep {
  */
 class lt_decoder {
 public:
+  typedef robust_lt_parameter_set parameter_set;
   typedef block_decoder::const_block_iterator const_block_iterator;
 
   /** Maximum allowed value for the block numbers.
@@ -24,6 +26,7 @@ public:
   /** Maximum forward distance to not consider a block from the past. */
   static const std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
 
+  explicit lt_decoder(const parameter_set &ps);
   explicit lt_decoder(std::size_t K, double c, double delta);
   explicit lt_decoder(const degree_distribution &distr);
   explicit lt_decoder(const lt_row_generator &rg);

@@ -8,6 +8,9 @@ using namespace std;
 
 namespace uep {
 
+lt_decoder::lt_decoder(const parameter_set &ps) :
+  lt_decoder(ps.K, ps.c, ps.delta) {}
+
 lt_decoder::lt_decoder(std::size_t K, double c, double delta) :
   lt_decoder(make_robust_lt_row_generator(K, c, delta)) {
 }
