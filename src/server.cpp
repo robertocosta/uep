@@ -9,34 +9,125 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <thread>
 #include <stdexcept>
 
+#include <chrono>
+using Clock = std::chrono::high_resolution_clock;
+using Ms = std::chrono::milliseconds;
+using Sec = std::chrono::seconds;
+template<class Duration>
+using TimePoint = std::chrono::time_point<Clock, Duration>;
+
+unsigned int streamState = 0; // 1: play, 2: pause, 3: stop
+
+typedef std::chrono::high_resolution_clock Time;
+typedef std::chrono::milliseconds ms;
+typedef std::chrono::duration<float> fsec;
+auto t0 = Time::now();
+int msgLength = 128;
+
+void* sendUDP(int* streamSt){
+	printf("Sending stream at bitrate R...\n");
+	// Send UDP
+	t0 = Time::now();
+	auto t1 = Time::now();
+	fsec fs = t1 - t0;
+	ms d = std::chrono::duration_cast<ms>(fs);
+	int millis = d.count();
+	int waitingT = 1000000-millis*1000;
+	if (waitingT>0){
+		*streamSt = 2;
+		usleep(waitingT);
+	}
+		
+		
+	return 0;
+}
 
 void* SocketHandler(void*);
 void* SocketHandler(void* lp){
+	// Ho ricevuto una connessione in ingresso da un client (TCP)
 	int *csock = (int*)lp;
-
-	char buffer[1024];
-	int buffer_len = 1024;
+	
+	// Attendo la ricezione di Client Info
+	char clientInfo[msgLength];
 	int bytecount;
-
-	memset(buffer, 0, buffer_len);
-	if((bytecount = recv(*csock, buffer, buffer_len, 0))== -1){
+	memset(clientInfo, 0, msgLength);
+	if((bytecount = recv(*csock, clientInfo, msgLength, 0))== -1){
 		fprintf(stderr, "Error receiving data %d\n", errno);
 		free(csock);
 	}
-	printf("Received bytes: %d\nReceived string: \"%s\"\n", bytecount, buffer);
-	strcat(buffer, " SERVER ECHO");
-	return 0;
-	/*
-	if((bytecount = send(*csock, buffer, strlen(buffer), 0))== -1){
+	printf("Received: %s\n", clientInfo);
+	
+	// Creazione Data Server e Encoder
+	printf("*** Creation of Data Server and Encoder ***\n");
+	
+	// Invio al client del pacchetto Server Info (UDP Range, Dimensione video, Errori, UEP Params)
+	char serverInfo[msgLength] = "SERVER INFO: udp port";
+	printf("Sending: %s\n",serverInfo);
+	if((bytecount = send(*csock, serverInfo, msgLength, 0))== -1){
 		fprintf(stderr, "Error sending data %d\n", errno);
-		goto FINISH;
 	}
-	printf("Sent bytes %d\n", bytecount);
-	FINISH:
-	free(csock);
-	return 0;*/
+	
+	while (streamState != 3){
+		// Se deve mandare pacchetti, lo fa a bitrate definito in un thread separato
+		/*
+		if (streamState == 1){
+			
+			 
+			pthread_t t1;
+			pthread_create(&t1,NULL,&sendUDP,&streamState);
+			Here we send R bit (R: desired bitrate) in a different thread
+			in modo che il flusso del programma non si blocchi con usleep
+			clock_t begin = clock();
+			clock_t end = clock();
+			double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+			double remaining_secs = 1 - elapsed_secs;
+			usleep(remaining_secs*1000000);
+			
+		}
+		*/
+		
+		// Attende un comando
+		char command[msgLength];
+		if((bytecount = recv(*csock, command, msgLength, 0))== -1){
+			fprintf(stderr, "Error receiving data %d\n", errno);
+			free(csock);
+		}
+		
+		// Comando 1: PLAY
+		char playString[msgLength] = "CLIENT INFO: play";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, playString);
+		if (strcmp(command,playString)==0) {
+			if (streamState!=1) streamState = 1;
+			// UDP.play();
+		}
+
+		// Comando 2: PAUSE
+		char pauseString[msgLength] = "CLIENT INFO: pause";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, pauseString);
+		if (strcmp(command,pauseString)==0) {
+			printf("Pausing stream...\n");
+			if (streamState!=2) streamState = 2;
+			// UDP.pause();
+		}
+
+		// Comando 3: STOP
+		char stopString[msgLength] = "CLIENT INFO: stop";
+		//printf(	"Received:_____ \"%s\".\nCompared with: \"%s\".\n", command, stopString);
+		if ((strcmp(command,stopString)==0)||(streamState==3)) {
+			printf("Stopping stream...\n");
+			if (streamState!=3) streamState = 3;
+			close(*csock);
+			free(csock);
+			// UDP.stop();
+			// Distrugge Encoder, Data Server
+			return 0;		
+		}
+	}	
+	
+	return 0;
 }
 
 class TCPServer{
@@ -115,13 +206,9 @@ class TCPServer{
 
 };
 
-
-
-
 int main(int argv, char** argc){
 	int tcp_port= 1101;
 	TCPServer my_tcp(tcp_port);
 	my_tcp.Listen();
-	
 	return 0;
 }
