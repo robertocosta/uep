@@ -54,9 +54,20 @@ def configure(ctx):
                   'boost_thread',
                   'boost_date_time',
                   'boost_filesystem']
+    # ffmpeg_libs = ['avformat',
+    #                'avcodec',
+    #                'avutil',
+    #                'swresample']
 
     ctx.load('compiler_cxx python')
     ctx.check_python_version((2,7))
+    # ctx.check_cxx(lib=ffmpeg_libs,
+    #               cxxflags=common_cxxflags,
+    #               linkflags=common_linkflags,
+    #               includes=["src",
+    #                         "/home/ricc/local/include"],
+    #               libpath="/home/ricc/local/lib",
+    #               uselib_store='FFMPEG_LIBS')
     ctx.check_cxx(lib=system_libs,
                   cxxflags=common_cxxflags,
                   linkflags=common_linkflags,
@@ -96,6 +107,24 @@ def build(ctx):
     ctx(rule="cp ${SRC} ${TGT}",
         source = ctx.path.ant_glob("src/*.py"),
         target = '.')
+
+    # ctx.program(target="test_ffmpeg",
+    #             source=["test/test_ffmpeg.cpp"],
+    #             use=['SYSTEM_LIBS',
+    #                  'BOOST_LIBS',
+    #                  'FFMPEG_LIBS'])
+
+    ctx.program(target="test_data_client_server",
+                source=["test/test_data_client_server.cpp",
+                        "src/packets.cpp",
+                        "src/packets_rw.cpp",
+                        "src/rng.cpp",
+                        "src/decoder.cpp",
+                        "src/block_encoder.cpp",
+                        "src/block_decoder.cpp",
+                        "src/block_queues.cpp"],
+                use=['SYSTEM_LIBS',
+                     'BOOST_LIBS'])
 
     ctx.program(target="test_rng",
                 source=["test/test_rng.cpp",
