@@ -55,6 +55,10 @@ public:
   std::size_t decoded_count() const;
   /** Number of output queued packets. */
   std::size_t queue_size() const;
+  bool has_queued_packets() const;
+
+  explicit operator bool() const;
+  bool operator!() const;
 
 private:
   block_decoder the_block_decoder;

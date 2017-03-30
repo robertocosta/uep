@@ -101,6 +101,16 @@ size_t lt_decoder::queue_size() const {
   return the_output_queue.size();
 }
 
+bool lt_decoder::has_queued_packets() const {
+  return queue_size() > 0;
+}
 
+lt_decoder::operator bool() const {
+  return has_queued_packets();
+}
+
+bool lt_decoder::operator!() const {
+  return !has_queued_packets();
+}
 
 }

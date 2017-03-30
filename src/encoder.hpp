@@ -145,6 +145,9 @@ public:
     return the_input_queue.block_end();
   }
 
+  explicit operator bool() const { return has_block(); }
+  bool operator!() const { return !has_block(); }
+
 private:
     input_block_queue the_input_queue;
     block_encoder the_block_encoder;
