@@ -1,0 +1,25 @@
+package controlMessage;
+
+message ClientInfo {
+	optional string StreamName = 1;
+	optional bool play = 2;
+	optional bool pause = 3;
+	optional bool stop = 4;
+	optional int32 bufferState = 5;
+	optional message linkState {
+		optional int32 throughput = 1;
+		optional int32 delay = 2;
+	}
+}
+
+message ServerInfo {
+	optional int32 UDPport = 1;
+	optional int32 mediaSize = 2;
+	optional bool finished = 3;
+	optional bool fileNotFound = 4;
+	optional message UEP {
+		optional int32 k = 1;
+		optional int32 c = 2;
+		optional int32 delta = 3;
+	}
+}

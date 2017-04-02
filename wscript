@@ -165,8 +165,11 @@ def build(ctx):
                 source=["test/test_message_passing.cpp",
                         "src/packets.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="test_udp",
-                source=["src/udp_client_server.cpp"],
+    ctx.program(target="test_client",
+                source=["src/client.cpp"],
+                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+    ctx.program(target="test_server",
+                source=["src/server.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_packet_rw",
                 source=["test/test_packet_rw.cpp",
