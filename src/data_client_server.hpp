@@ -178,6 +178,10 @@ public:
     return socket_.local_endpoint();
   }
 
+  const Source &source() const {
+    return *source_;
+  }
+
 private:
   std::unique_ptr<Encoder> encoder_;
   std::unique_ptr<Source> source_;
