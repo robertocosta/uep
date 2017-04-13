@@ -7,7 +7,9 @@
 #include "encoder.hpp"
 #include "decoder.hpp"
 
-
+/* Produce random packets of fixed size.
+ * Parameters: rng seed, pkt size, stop after max_count pkts
+ */
 struct random_packet_source {
   struct parameter_set {
     std::mt19937::result_type seed;
@@ -20,6 +22,8 @@ struct random_packet_source {
   std::size_t max_count;
   std::size_t count;
 
+  std::vector<packet> original;
+
   explicit random_packet_source(const parameter_set &ps) :
     rng(ps.seed), size(ps.size), max_count(ps.max_count), count(0) {};
 
@@ -31,6 +35,7 @@ struct random_packet_source {
     for (std::size_t i=0; i < size; i++) {
       p[i] = rng();
     }
+    original.push_back(p);
     return p;
   }
 
@@ -41,6 +46,10 @@ struct random_packet_source {
   bool operator!() const { return !static_cast<bool>(*this); }
 };
 
+/* Store the received packets in a vector
+ * No paramters
+ * Can access publicly the vector
+ */
 struct memory_sink {
   struct parameter_set {};
   explicit memory_sink(const parameter_set&) {}
@@ -69,30 +78,28 @@ using namespace uep::net;
 using namespace boost::asio;
 
 struct setup_cs {
-  io_service io;
+  io_service io; // Global io_service object
 
-  std::size_t L = 1024;
+  std::size_t L = 1024; // pkt size
 
   lt_encoder<std::mt19937>::parameter_set enc_ps;
   lt_decoder::parameter_set dec_ps;
   random_packet_source::parameter_set src_ps;
   memory_sink::parameter_set sink_ps;
 
-  std::vector<packet> original;
-
   data_server<lt_encoder<std::mt19937>,random_packet_source> ds;
   data_client<lt_decoder,memory_sink> dc;
 
   setup_cs() :
-    enc_ps{100, 0.1, 0.5},
+    enc_ps{100, 0.1, 0.5}, // parametrs of the encoder/decoder (K = 100, c = 0.1, delta = 0.5)
     dec_ps{100, 0.1, 0.5},
-    src_ps{0x42, L, 100*10},
-    ds(io),
-    dc(io) {
-      ds.setup_encoder(enc_ps);
-      ds.setup_source(src_ps);
-      ds.target_send_rate(1024);
-      ds.open("127.0.0.1", "9999");
+    src_ps{0x42, L, 100*10}, // generate 10*K packets of size L, fixed seed
+    ds(io), // construct the data_server
+    dc(io) { // construct the data_client
+      ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
+      ds.setup_source(src_ps); // setup the source  inside the data_server
+      ds.target_send_rate(102400); // Set a target send rate of 102400 byte/s = 100 pkt/s
+      ds.open("127.0.0.1", "9999"); // Setup the data_server socket: random_port -> 127.0.0.1:9999
 
 
 
@@ -100,28 +107,37 @@ struct setup_cs {
       BOOST_CHECK_EQUAL(src_ps.size, L);
       BOOST_CHECK_EQUAL(src_ps.max_count, 100*10);
 
-      dc.setup_decoder(dec_ps);
-      dc.setup_sink(sink_ps);
-      dc.bind("9999");
+      dc.setup_decoder(dec_ps); // setup the decoder inside the data_client
+      dc.setup_sink(sink_ps); // setup the sink inside the data_client
+      dc.bind("9999"); // bind the data_client to the port 9999
   }
 };
 
 BOOST_FIXTURE_TEST_CASE(test_send, setup_cs) {
+  // After setup_cs::setup_cs() ...
+
   //BOOST_CHECK(enc.has_block());
 
-  auto srv_ep = ds.server_endpoint();
-  dc.start_receive(srv_ep);
+  auto srv_ep = ds.server_endpoint(); // get the random source port used by the data_server
+  dc.start_receive(srv_ep); // schdule the data_client to listen on its bound port for packets from the server's ip:port
 
+  // schedule a stop after 10 seconds
   boost::asio::steady_timer end_timer(io, std::chrono::seconds(10));
   end_timer.async_wait([this]
 		       (const boost::system::error_code&) -> void {
-			 cerr << "Stopping" << endl;
+			 //cerr << "Stopping" << endl;
 			 ds.stop();
 			 dc.close();
 		       });
-  ds.start();
-  io.run();
+  ds.start(); // start the periodic tx of packets
+  io.run(); // enter the io_service loop: process both the server and the client scheduled actions until they stop (empty action queue)
 
-  BOOST_CHECK(equal(original.cbegin(), original.cend(),
-		    dc.sink().received.cbegin()));
+  const std::vector<packet> &orig = ds.source().original;
+  const std::vector<packet> &recv = dc.sink().received;
+
+  // verify number of packets
+  BOOST_CHECK_EQUAL(recv.size(), 100); // one fully decoded block
+  BOOST_CHECK_EQUAL(orig.size(), 100); // one block was extracted
+  // verify correct reception
+  BOOST_CHECK(equal(recv.cbegin(), recv.cend(), orig.cbegin()));
 }
