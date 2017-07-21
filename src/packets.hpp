@@ -39,7 +39,7 @@ public:
    */
   packet(const packet &p);
   /** Move-construct a packet.
-   *  This constructor does not copy the packet data, but duplicates
+   *  This constructor does not copy the packet data, but moves
    *  the shared pointer to it.
    *  \sa shallow_copy(), packet(const packet&)
    */
@@ -104,7 +104,7 @@ public:
 
   /** Perform a shallow copy of the packet.
    *  To be useful this method requires the move-constructor and
-   *  move-assignment to not perform a full copy of the data.
+   *  move-assignment not to perform a full copy of the data.
    *  \return A packet with a shared pointer to this packet's same
    *  data.
    *  \sa packet(packet&&), operator=(packet&&)
@@ -141,7 +141,11 @@ packet &operator^=(packet &a, const packet &b);
  */
 packet operator^(const packet &a, const packet &b);
 
-/** Packet class used to represent an LT-coded packet. */
+/** Packet class used to represent an LT-coded packet.
+ *  This kind of packets holds, in addition to the data, a block
+ *  number and sequence number to order it and a seed to allow the
+ *  regeneration of the same rows in the LT-code.
+ */
 class fountain_packet : public packet {
 public:
   fountain_packet();
@@ -151,7 +155,7 @@ public:
 			   size_type count, char value);
   /** Construct a fountain_packet with a copy of a packet's data. */
   explicit fountain_packet(const packet &p);
-  /** Construct a fountain_packet sharing a packet's data. */
+  /** Construct a fountain_packet moving a packet's data. */
   explicit fountain_packet(packet &&p);
   fountain_packet(const fountain_packet &fp) = default;
   fountain_packet(fountain_packet &&fp) = default;
@@ -187,6 +191,9 @@ private:
 };
 
 /** In-place bitwise-XOR between the data held by two packets.
+ *  Keep the block number, sequence number and seed of the
+ * fountain_packet.  Other cases are ambiguous and can only return a
+ * packet using the superclass' operator.
  *  \param a The packet whose content will be modified.
  *  \param b The other packet.
  *  \return A reference to a.

@@ -78,6 +78,7 @@ public:
    */
   explicit lt_row_generator(const degree_distribution &deg,
 			    rng_type::result_type seed);
+
   /** Generate the next packet selection. */
   row_type next_row();
   /** Return the number of rows already generated. */
@@ -99,7 +100,9 @@ private:
   rng_type::result_type last_seed;
 };
 
-/** Build an lt_row_generator using a robust_soliton_distribution */
+/** Shorthand to build an lt_row_generator using a
+ *  robust_soliton_distribution
+ */
 lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double delta);
 
 // Template definitions
