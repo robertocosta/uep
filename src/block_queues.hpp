@@ -64,8 +64,16 @@ private:
   void check_has_block();
 };
 
+/** Class used to pack together blocks of packets.
+ *  This class copies (deeply or shallowly) every block of packets
+ *  passed to it in a FIFO queue. Then it allows access to the oldest
+ *  one in a way similar to the std::queue class.
+ */
 class output_block_queue {
 public:
+  /** Construct a queue that only accepts blocks of size
+   *  block_size.
+   */
   explicit output_block_queue(std::size_t block_size);
 
   /** Push all the packets in the [first,last) sequence to the end of
@@ -78,6 +86,7 @@ public:
    */
   template <class InputIt>
   void push_shallow(InputIt first, InputIt last);
+
   /** Return a const reference to the packet at the top of the queue. */
   const packet &front() const;
   /** Remove the packet at the front of the queue. */
