@@ -1,24 +1,31 @@
 language: cpp
-
-os:
-  - linux
+compiler: gcc
+os: linux
 dist: trusty
 sudo: required
 
-compiler:
-  - gcc
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-6
+      - libstdc++-6-dev
+      - libpthread-stubs0-dev
 
-before_install: |
-  sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  sudo apt-get update -qq
-  sudo apt-get install -qq \
-    g++-4.9 \
-    libstdc++-4.9-dev \
-    libpthread-stubs0-dev \
-    libboost1.55-all-dev
-  if [ "$CXX" = "g++" ]; then
-    export CXX="g++-4.9" CC="gcc-4.9"
-  fi
+# cache:
+#   directories:
+#     - boost_1_62_0
 
-before_script: ./waf configure
-script: ./waf test
+before_install:
+  - wget 'https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.tar.gz'
+  - tar -xzf 'boost_1_62_0.tar.gz'
+  - pushd 'boost_1_62_0'
+  - export CC=gcc-6
+  - ./bootstrap.sh
+  - travis_wait 20 sudo ./b2 toolset=gcc-6 link=shared threading=multi runtime-link=shared -d0 install
+  - popd
+
+before_script: export CC=gcc-6 && export CXX=g++-6 && ./waf configure
+
+script: export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib" && ./waf test
