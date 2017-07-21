@@ -12,7 +12,7 @@
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/utility/manipulators.hpp>
-#include <boost/utility/empty_deleter.hpp>
+#include <boost/core/null_deleter.hpp>
 
 enum severity_level {
   debug,
@@ -45,7 +45,7 @@ public:
     boost::log::value_ref<std::string, tag::stat_stream > name = rec[stat_stream];
     if (!name) return;
     boost::log::value_ref<statistic_type, tag::stat_type > type = rec[stat_type];
-    if (!type || !type.get() == scalar) return;
+    if (!type || !(type.get() == scalar)) return;
     boost::log::value_ref<double, tag::stat_value> value = rec[stat_value];
     if (!value) return;
     auto i = stat_map.find(name.get());
@@ -84,7 +84,7 @@ public:
     boost::log::value_ref<std::string, tag::stat_stream > name = rec[stat_stream];
     if (!name) return;
     boost::log::value_ref<statistic_type, tag::stat_type > type = rec[stat_type];
-    if (!type || !type.get() == counter) return;
+    if (!type || !(type.get() == counter)) return;
     auto i = stat_map.find(name.get());
     if (i == stat_map.end())
       stat_map.insert(make_pair(name.get(), 1));
@@ -169,14 +169,14 @@ inline boost::shared_ptr<default_stat_sink> make_stat_sink(const boost::shared_p
 
 inline boost::shared_ptr<default_cerr_sink> make_cerr_sink(severity_level level) {
   using boost::shared_ptr;
-  using boost::empty_deleter;
+  using boost::null_deleter;
   using boost::make_shared;
   namespace sinks = boost::log::sinks;
   namespace expr = boost::log::expressions;
 
   shared_ptr<sinks::text_ostream_backend> backend =
     make_shared<sinks::text_ostream_backend>();
-  backend->add_stream(shared_ptr<std::ostream>(&std::cerr, empty_deleter()));
+  backend->add_stream(shared_ptr<std::ostream>(&std::cerr, null_deleter()));
 
   shared_ptr<default_cerr_sink> log_sink(new default_cerr_sink(backend));
   log_sink->set_filter(!expr::has_attr(stat_stream) && severity >= level);
