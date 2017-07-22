@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE packet_rw_test
 #include <boost/test/unit_test.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 
 #include "packets_rw.hpp"
 
@@ -78,4 +79,65 @@ BOOST_AUTO_TEST_CASE(wrong_raw) {
   u = v;
   u.resize(1);
   BOOST_CHECK_THROW(parse_raw_data_packet(u), exception);
+}
+
+BOOST_AUTO_TEST_CASE(build_ack) {
+  const char *expected1 = "\x01\x00\xff";
+  const char *expected2 = "\x01\xff\x00";
+
+  std::size_t blockno1 = 0xff, blockno2 = 0xff00;
+  std::vector<char> ack1 = build_raw_ack(blockno1);
+  std::vector<char> ack2 = build_raw_ack(blockno2);
+
+  BOOST_CHECK(equal(ack1.cbegin(), ack1.cend(), expected1));
+  BOOST_CHECK(equal(ack2.cbegin(), ack2.cend(), expected2));
+}
+
+BOOST_AUTO_TEST_CASE(parse_ack) {
+  const char *raw_str1 = "\x01\x00\xff";
+  const char *raw_str2 = "\x01\xff\x00";
+  const std::vector<char> raw1(raw_str1, raw_str1+ack_header_size);
+  const std::vector<char> raw2(raw_str2, raw_str2+ack_header_size);
+
+  const std::size_t blockno1 = 0xff, blockno2 = 0xff00;
+
+  BOOST_CHECK_EQUAL(blockno1, parse_raw_ack_packet(raw1));
+  BOOST_CHECK_EQUAL(blockno2, parse_raw_ack_packet(raw2));
+}
+
+BOOST_AUTO_TEST_CASE(ack_build_parse) {
+  const std::size_t bns[] = {0, 0xffff, 0x1234, 1, 0x1000};
+
+  for (int i = 0; i < 5; ++i) {
+    std::vector<char> raw = build_raw_ack(bns[i]);
+    size_t parsed = parse_raw_ack_packet(raw);
+    BOOST_CHECK_EQUAL(parsed, bns[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(ack_fail) {
+  std::vector<char> shr(2, '\x01');
+  std::vector<char> lng(4, '\x01');
+  std::vector<char> empty;
+
+  BOOST_CHECK_THROW(parse_raw_ack_packet(empty), runtime_error);
+  BOOST_CHECK_THROW(parse_raw_ack_packet(shr), runtime_error);
+  BOOST_CHECK_THROW(parse_raw_ack_packet(lng), runtime_error);
+
+  std::size_t overflow_bn = 0x10000;
+  BOOST_CHECK_THROW(build_raw_ack(overflow_bn), boost::numeric::positive_overflow);
+}
+
+BOOST_AUTO_TEST_CASE(wrong_type) {
+  std::vector<char> raw_ack(ack_header_size);
+  raw_ack[0] = raw_packet_type::block_ack;
+  std::vector<char> raw_data(data_header_size);
+  raw_data[0] = raw_packet_type::data;
+
+  BOOST_CHECK_THROW(parse_raw_data_packet(raw_ack), runtime_error);
+  BOOST_CHECK_THROW(parse_raw_ack_packet(raw_data), runtime_error);
+
+  raw_data[0] = 0xff;
+  BOOST_CHECK_THROW(parse_raw_data_packet(raw_data), runtime_error);
+  BOOST_CHECK_THROW(parse_raw_ack_packet(raw_data), runtime_error);
 }

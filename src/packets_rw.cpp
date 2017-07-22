@@ -20,7 +20,7 @@ T extract_raw(IterType &in) {
   typedef typename iterator_traits<IterType>::value_type iter_value_type;
   static_assert(is_same<iter_value_type,char>::value,
 		"IterType is not an iterator over char");
-  
+
   T out;
   char *raw_out = reinterpret_cast<char*>(&out);
   IterType start = in;
@@ -68,6 +68,7 @@ std::vector<char> build_raw_packet(const fountain_packet &fp) {
   uint32_t seed = numeric_cast<int32_t>(fp.block_seed());
   append_hton_int(out, seed);
 
+  // This is not needed when using UDP (length is known)
   uint16_t length = numeric_cast<uint16_t>(fp.size());
   append_hton_int(out, length);
 
@@ -102,4 +103,29 @@ fountain_packet parse_raw_data_packet(const std::vector<char> &rp) {
   }
 
   return fp;
+}
+
+std::vector<char> build_raw_ack(std::size_t blockno) {
+  vector<char> out;
+  out.reserve(ack_header_size);
+
+  out.push_back(raw_packet_type::block_ack);
+
+  uint16_t block_ack = numeric_cast<uint16_t>(blockno);
+  append_hton_int(out, block_ack);
+
+  return out;
+}
+
+std::size_t parse_raw_ack_packet(const std::vector<char> &rp) {
+  if (rp.size() != ack_header_size)
+    throw runtime_error("The packet has the wrong length");
+  auto i = rp.cbegin();
+
+  char type = *i++;
+  if (type != raw_packet_type::block_ack)
+    throw runtime_error("Not an ACK packet");
+
+  uint16_t blockno = extract_ntoh_uint16(i);
+  return blockno;
 }
