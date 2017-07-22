@@ -182,6 +182,14 @@ BOOST_AUTO_TEST_CASE(lazy_xor_basic) {
   BOOST_CHECK_EQUAL(x2, 0x22);
 }
 
+BOOST_AUTO_TEST_CASE(lazy_xor_shorthand) {
+  const char x1 = 0x11, x2 = 0x22;
+  lazy_xor<char> lx1(&x1);
+  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x11);
+  lx1.xor_with(&x2);
+  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x33);
+}
+
 BOOST_AUTO_TEST_CASE(lazy_xor_elision) {
   const char x1 = 0x11, x2 = 0x22;
   lazy_xor<char> lx1(&x1);

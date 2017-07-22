@@ -6,13 +6,17 @@
 
 namespace uep {
 
-/** Class used to delay the application of XORs on some other type. */
+/** Class used to delay the application of XORs on some other type.
+ *  This class accumulates pointers to XOR-able objects, eliding when
+ *  possible, and actually performs the XOR between the accumulated
+ *  set of objects with a call to evaluate().
+*/
 template <class T>
 class lazy_xor {
 public:
   /* Build an empty lazy_xor. */
   lazy_xor() = default;
-  /* Build a lazy_xor that using the intitial value pointed to by initial.
+  /* Build a lazy_xor using the intitial value pointed to by initial.
    * The pointer must remain valid during the lifetime of the lazy_xor
    * object.
    */
@@ -44,11 +48,20 @@ public:
     }
   }
 
-  /** Perform the XOR between the underlying objects and return the result.
-   *  This method throws an exception when called on empty objects
+  /** Cumulative XOR with another object.
+   *  The other pointer must remain valid for the entire lifetime of
+   *  the lazy_xor object.
+   */
+  void xor_with(const T *other) {
+    xor_with(lazy_xor<T>(other));
+  }
+
+  /** Perform the XOR between the underlying objects and return the
+   *  result.  This method throws a runtime_error when called on empty
+   *  objects
    */
   T evaluate() const {
-    if (empty()) throw std::runtime_error("Cannot evaluate empty xor-set");
+    if (empty()) throw std::runtime_error("Cannot evaluate an empty lazy_xor");
     auto i = to_xor.cbegin();
     T e(*(*i++));
     for (; i != to_xor.cend(); ++i) {
@@ -66,6 +79,8 @@ public:
   explicit operator bool() const { return !empty(); }
   /** Return the same as empty(). */
   bool operator!() const { return empty(); }
+
+  //friend bool operator==(const lazy_xor<T> &lhs, const lazy_xor<T> &rhs);
 
 private:
   std::unordered_set<const T*> to_xor;
@@ -87,6 +102,19 @@ template <class T>
 void swap(lazy_xor<T> &lhs, lazy_xor<T> &rhs) {
   lhs.swap(rhs);
 }
+
+/** Equality comparison between lazy_xors. To be equal they must store
+ *  the same set of pointers.
+ */
+// template <class T>
+// bool operator==(const lazy_xor<T> &lhs, const lazy_xor<T> &rhs) {
+//   return lhs.to_xor == rhs.to_xor;
+// }
+
+// template <class T>
+// bool operator!=(const lazy_xor<T> &lhs, const lazy_xor<T> &rhs) {
+//   return !(lhs == rhs);
+// }
 
 }
 
