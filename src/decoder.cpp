@@ -23,34 +23,42 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
   the_block_decoder(rg),
   the_output_queue(rg.K()),
   blockno_counter(MAX_BLOCKNO),
-  has_enqueued(false) {
+  has_enqueued(false),
+  uniq_recv_count(0),
+  tot_dec_count(0) {
   blockno_counter.set(0);
 }
 
 void lt_decoder::push(fountain_packet &&p) {
   if (blockno_counter.last() != static_cast<size_t>(p.block_number())) {
+    // Check if more recent
     decltype(blockno_counter) recv_blockno(MAX_BLOCKNO);
     recv_blockno.set(p.block_number());
     size_t dist = blockno_counter.forward_distance(recv_blockno);
 
     if (dist > BLOCK_WINDOW) {
+      // This is an old block
       // PUT_STAT_COUNTER(loggers.old_dropped);
       // BOOST_LOG_SEV(loggers.text, info) << "Drop packet for an old block: " << p;
       return;
     }
     else {
+      // Start to decode the new block
       the_block_decoder.reset();
       has_enqueued = false;
       blockno_counter = recv_blockno;
     }
   }
 
-  the_block_decoder.push(move(p));
+  bool uniq = the_block_decoder.push(move(p));
+  if (uniq) ++uniq_recv_count;
 
+  // Extract the fully decoded block (just once)
   if (!has_enqueued && the_block_decoder ) {
     the_output_queue.push_shallow(the_block_decoder.block_begin(),
 				  the_block_decoder.block_end());
     has_enqueued = true;
+    tot_dec_count += K();
   }
 }
 
@@ -103,6 +111,14 @@ size_t lt_decoder::queue_size() const {
 
 bool lt_decoder::has_queued_packets() const {
   return queue_size() > 0;
+}
+
+std::size_t lt_decoder::total_received_count() const {
+  return uniq_recv_count;
+}
+
+std::size_t lt_decoder::total_decoded_count() const {
+  return tot_dec_count;
 }
 
 lt_decoder::operator bool() const {
