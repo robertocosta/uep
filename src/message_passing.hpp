@@ -94,31 +94,46 @@ public:
 		   boost::vertex(m(j), the_graph));
   }
 
+  /** Return the number of input symbols. */
   std::size_t input_size() const { return K; }
+  /** Return the number of output symbols. */
   std::size_t output_size() const { return boost::num_vertices(the_graph) - K; }
+  /** Return the number of input symbols that have been correctly
+   *  decoded up to the last call to run().
+   */
   std::size_t decoded_count() const { return decoded.size(); }
+  /** Return true when all the input symbols have been decoded. */
   bool has_decoded() const { return decoded_count() == input_size(); }
 
+  /** Return a constant iterator to the start of the decoded (index,
+   *  symbol) pairs.
+   */
   decoded_iterator decoded_begin() const {
     const v2pair_conv c(&the_graph);
     return decoded_iterator(decoded.cbegin(), c);
   }
 
+  /** Return a constant iterator to the end of the decoded (index,
+   *  symbol) pairs.
+   */
   decoded_iterator decoded_end() const {
     const v2pair_conv c(&the_graph);
     return decoded_iterator(decoded.cend(), c);
   }
 
+  /** Return a constant iterator to the start of the decoded symbols. */
   decoded_symbols_iterator decoded_symbols_begin() const {
     const v2sym_conv c(&the_graph);
     return decoded_symbols_iterator(decoded.cbegin(), c);
   }
 
+  /** Return a constant iterator to the end of the decoded symbols. */
   decoded_symbols_iterator decoded_symbols_end() const {
     const v2sym_conv c(&the_graph);
     return decoded_symbols_iterator(decoded.cend(), c);
   }
 
+  /** Reset the message_passing_context to the initial state. */
   void clear() {
     K = 0;
     the_graph.clear();
@@ -141,6 +156,10 @@ private:
   void remove_from_deglist(vdesc u);
 };
 
+/** Class to hold the vertex properties. I.e. the vertex index, the
+ *  associated symbol and an iterator to the corresponding vertex
+ *  descriptor in the degree-one list.
+ */
 template <class T>
 struct message_passing_context<T>::vertex_prop {
   T symbol;
@@ -155,6 +174,7 @@ struct message_passing_context<T>::vertex_prop {
     symbol(s), index(i) {}
 };
 
+/** Converter from vertex descriptors to (index, symbol) pairs. */
 template <class T>
 struct message_passing_context<T>::v2pair_conv {
   const graph_t *the_graph;
@@ -168,6 +188,7 @@ struct message_passing_context<T>::v2pair_conv {
   }
 };
 
+/** Converter from vertex descriptors to symbols. */
 template <class T>
 struct message_passing_context<T>::v2sym_conv {
   const graph_t *the_graph;
@@ -180,6 +201,7 @@ struct message_passing_context<T>::v2sym_conv {
   }
 };
 
+/** Comparator for vertex descriptors. Applies < on the vertices' indices. */
 template <class T>
 struct message_passing_context<T>::index_comp {
   const graph_t *the_graph;
@@ -194,6 +216,9 @@ struct message_passing_context<T>::index_comp {
   }
 };
 
+/** Mapper from (input_index, output_index) pairs to a pair of indices
+ *  as stored by the graph class.
+ */
 template <class T>
 struct message_passing_context<T>::index_map {
   const std::size_t *in_size;
@@ -212,7 +237,7 @@ struct message_passing_context<T>::index_map {
   }
 };
 
-//              message_passing_context<T> definitions
+//		message_passing_context<T> definitions
 
 template <class T>
 message_passing_context<T>::message_passing_context(std::size_t in_size) :

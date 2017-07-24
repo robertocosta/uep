@@ -22,14 +22,14 @@ struct seqno_less {
   }
 };
 
-/** Convert lazy_xors to packets. */
+/** Converter to evaluate lazy_xors into packets. */
 struct lazy2p_conv {
   packet operator()(const lazy_xor<packet> &lx) const {
     return lx.evaluate();
   }
 };
 
-/** Build lazy_xors from fountain_packets. */
+/** Converter to build lazy_xors from fountain_packets. */
 struct fp2lazy_conv {
   lazy_xor<packet> operator()(const fountain_packet &p) const {
     return lazy_xor<packet>(&p);
@@ -73,7 +73,7 @@ public:
   int block_number() const;
   /** Return true when the entire input block has been decoded. */
   bool has_decoded() const;
-  /** Number of input packets thathave been successfully decoded. */
+  /** Number of input packets that have been successfully decoded. */
   std::size_t decoded_count() const;
   /** Number of received unique packets. */
   std::size_t received_count() const;

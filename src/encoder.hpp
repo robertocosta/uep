@@ -45,6 +45,8 @@ public:
    */
   static const std::size_t MAX_BLOCKNO = 0xffff;
 
+  // Check that the types used for block numbers and sequence numbers
+  // are big enough.
   static_assert(std::numeric_limits<
 		decltype(fountain_packet().sequence_number())
 		>::max() >= MAX_SEQNO,
@@ -54,7 +56,7 @@ public:
 		>::max() >= MAX_BLOCKNO,
 		"the blockno type is too small");
 
-  /** Construct using a parameter set. */
+  /** Construct using the given parameter set. */
   explicit lt_encoder(const parameter_set &ps) :
     lt_encoder(ps.K, ps.c, ps.delta) {}
 
@@ -128,35 +130,41 @@ public:
   std::size_t seqno() const { return seqno_counter.last(); }
   /** The seed used in the current block. */
   int block_seed() const { return the_block_encoder.seed(); }
-  /** The number of queued packets. */
+  /** The number of queued packets, excluding the current block. */
   std::size_t queue_size() const { return the_input_queue.queue_size(); }
   /** Total number of packets held by the encoder. */
   std::size_t size() const { return the_input_queue.size(); }
 
+  /** Return a copy of the lt_row_generator used. */
   lt_row_generator row_generator() const {
     return the_block_encoder.row_generator();
   }
-
+  /** Return a copy of the RNG used to produce the block seeds. */
   seed_generator_type seed_generator() const { return the_seed_gen; }
+
+  /** Return an iterator to the start of the current block. */
   const_block_iterator current_block_begin() const {
-     return the_input_queue.block_begin();
+    return the_input_queue.block_begin();
   }
+  /** Return an iterator to the end of the current block. */
   const_block_iterator current_block_end() const {
     return the_input_queue.block_end();
   }
 
+  /** Is true when coded packets can be produced. */
   explicit operator bool() const { return has_block(); }
+  /** Is true when there is not a full block available. */
   bool operator!() const { return !has_block(); }
 
 private:
-    input_block_queue the_input_queue;
-    block_encoder the_block_encoder;
-    seed_generator_type the_seed_gen;
-    counter<std::size_t> seqno_counter;
-    circular_counter<std::size_t> blockno_counter;
+  input_block_queue the_input_queue;
+  block_encoder the_block_encoder;
+  seed_generator_type the_seed_gen;
+  counter<std::size_t> seqno_counter;
+  circular_counter<std::size_t> blockno_counter;
 
 
-    // struct loggers_t {
+  // struct loggers_t {
   //   default_logger enc_pkts = make_stat_logger("EncoderCodedPackets", counter);
   //   default_logger in_pkts = make_stat_logger("EncoderInputPackets", counter);
   //   default_logger newblock = make_stat_logger("EncoderNewBlock", counter);

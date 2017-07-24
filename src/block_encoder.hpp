@@ -10,8 +10,8 @@ namespace uep {
 
 /** Class used to perform the LT-encoding of a single block.
  * The LT-code parameters are given by the lt_row_generator passed to
- *  the constructor. The seed for the row generator is manipulated
- *  through seed() and set_seed(seed_t).
+ * the constructor. The seed for the row generator is manipulated
+ * through seed() and set_seed(seed_t).
  */
 class block_encoder {
 public:
