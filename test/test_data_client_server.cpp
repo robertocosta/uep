@@ -99,6 +99,7 @@ struct setup_cs {
       ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
       ds.setup_source(src_ps); // setup the source  inside the data_server
       ds.target_send_rate(10240); // Set a target send rate of 10240 byte/s = 10 pkt/s
+      ds.enable_ack(false);
       ds.open("127.0.0.1", "9999"); // Setup the data_server socket: random_port -> 127.0.0.1:9999
 
 
@@ -109,6 +110,7 @@ struct setup_cs {
 
       dc.setup_decoder(dec_ps); // setup the decoder inside the data_client
       dc.setup_sink(sink_ps); // setup the sink inside the data_client
+      dc.enable_ack(false);
       dc.bind("9999"); // bind the data_client to the port 9999
   }
 };

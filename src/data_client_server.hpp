@@ -40,7 +40,8 @@ public:
     io_service_(io),
     strand_(io_service_),
     socket_(io_service_),
-    recv_buffer(UDP_MAX_PAYLOAD) {
+    recv_buffer(UDP_MAX_PAYLOAD),
+    ack_enabled(true) {
   }
 
   /** Replace the decoder object with one built from the given
@@ -94,6 +95,16 @@ public:
     strand_.dispatch(std::bind(&data_client::handle_close, this));
   }
 
+  /** Enable or disable the sending of ACKs. */
+  void enable_ack(bool b) {
+    ack_enabled = b;
+  }
+
+  /** Return true when the sending of ACKs is enabled. */
+  bool is_ack_enabled() const {
+    return ack_enabled;
+  }
+
   /** Return a const reference to the sink object. */
   const Sink &sink() const {
     return *sink_;
@@ -141,9 +152,15 @@ private:
 				 *   the async transmission.
 				 */
 
+  std::atomic<bool> ack_enabled; /**< Set when the data_client should
+				  *   send back ACKs.
+				  */
+
   /** Schedule the transmission of an ACK to the server. */
   void schedule_ack(std::size_t blockno) {
     using namespace std::placeholders;
+
+    if (!ack_enabled) return;
 
     ack_buffer = build_raw_ack(blockno);
     socket_.async_send_to(boost::asio::buffer(ack_buffer),
@@ -240,6 +257,7 @@ public:
     socket_(io_service_),
     target_send_rate_(std::numeric_limits<double>::infinity()),
     is_stopped_(true),
+    ack_enabled(true),
     last_ack(ack_header_size),
     pkt_timer(io_service_) {
   }
@@ -303,6 +321,16 @@ public:
     return socket_.local_endpoint();
   }
 
+  /** Enable or disable the sending of ACKs. */
+  void enable_ack(bool b) {
+    ack_enabled = b;
+  }
+
+  /** Return true when the sending of ACKs is enabled. */
+  bool is_ack_enabled() const {
+    return ack_enabled;
+  }
+
   /** Return a const reference to the source object. */
   const Source &source() const {
     return *source_;
@@ -339,6 +367,9 @@ private:
   bool is_stopped_; /**< Set when the data_server should not send
 		     *	 packets.
 		     */
+  std::atomic<bool> ack_enabled; /**< Set when the data_server should
+				  *   listen for incoming ACKs.
+				  */
   std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
 			       *   by the encoder.
 			       */
@@ -394,6 +425,7 @@ private:
     using namespace std::placeholders;
 
     if (is_stopped_) return; // Not yet started or has finished
+    if (!ack_enabled) return;
 
     // Listen
     socket_.async_receive_from(boost::asio::buffer(last_ack), client_endpoint_,
