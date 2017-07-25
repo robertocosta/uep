@@ -10,13 +10,21 @@
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 
+#include "counter.hpp"
 #include "packets_rw.hpp"
 
 namespace uep {
 namespace net {
 
+/** Receive coded packets via a UDP socket.
+ *
+ *  This class listens on a socket for fountain_packets, passes them
+ *  to an object of class Decoder, then passes the decoded packets to
+ *  an object of class Sink.
+ */
 template <class Decoder, class Sink>
 class data_client {
+  /** Maximum payload size that can be carried by a UDP packet. */
   static const std::size_t UDP_MAX_PAYLOAD = 0x10000;
 
 public:
@@ -25,19 +33,31 @@ public:
   typedef typename Decoder::parameter_set decoder_parameter_set;
   typedef typename Sink::parameter_set sink_parameter_set;
 
+  /** Construct a data_client tied to an io_service. This does not
+   *  bind the socket yet.
+   */
   explicit data_client(boost::asio::io_service &io) :
-    io_service_(io), strand_(io_service_), socket_(io_service_),
+    io_service_(io),
+    strand_(io_service_),
+    socket_(io_service_),
     recv_buffer(UDP_MAX_PAYLOAD) {
   }
 
+  /** Replace the decoder object with one built from the given
+   *  parameters.
+   */
   void setup_decoder(const decoder_parameter_set &ps) {
     decoder_.reset(new Decoder(ps));
   }
 
+  /** Replace the sink object with one built from the given
+   *  parameters.
+   */
   void setup_sink(const sink_parameter_set &ps) {
     sink_.reset(new Sink(ps));
   }
 
+  /** Bind the socket to the given port. */
   void bind(const std::string &service) {
     using boost::asio::ip::udp;
     udp::resolver resolver(io_service_);
@@ -47,6 +67,9 @@ public:
     socket_.bind(listen_endpoint_);
   }
 
+  /** Listen asynchronously for packets coming from a given remote
+   *  (source) endpoint.
+   */
   void start_receive(const boost::asio::ip::udp::endpoint &src_ep) {
     using namespace std::placeholders;
     server_endpoint_ = src_ep;
@@ -57,53 +80,128 @@ public:
 					 _1, _2));
   }
 
+  /** Listen asynchronously for packets coming from a given remote
+   *  (source) IP address and port.
+   */
   void start_receive(const std::string &src_addr, unsigned short src_port) {
     using namespace boost::asio;
     ip::address a = ip::address::from_string(src_addr);
     start_receive(ip::udp::endpoint(a, src_port));
   }
 
+  /** Schedule the closing of the data_client. */
   void close() {
     strand_.dispatch(std::bind(&data_client::handle_close, this));
   }
 
+  /** Return a const reference to the sink object. */
   const Sink &sink() const {
     return *sink_;
   }
 
+  /** Return a const reference to the decoder object. */
+  const Decoder &decoder() const {
+    return *decoder_;
+  }
+
 private:
-  std::unique_ptr<Decoder> decoder_; // could not be default-constructible
-  std::unique_ptr<Sink> sink_; // could not be default-constructible
+  std::unique_ptr<Decoder> decoder_; /**< Use a pointer to allow
+				      *   default-construction.
+				      */
+  std::unique_ptr<Sink> sink_; /**< Use a pointer to allow
+				*   default-construction.
+				*/
 
   boost::asio::io_service &io_service_;
-  boost::asio::io_service::strand strand_;
+  boost::asio::io_service::strand strand_; /**< Strand used to
+					    *   synchronize the
+					    *   asynchronous methods
+					    *   across threads.
+					    */
   boost::asio::ip::udp::socket socket_;
-  boost::asio::ip::udp::endpoint listen_endpoint_;
-  boost::asio::ip::udp::endpoint server_endpoint_;
+  boost::asio::ip::udp::endpoint listen_endpoint_; /**< The local
+						    *   endpoint where
+						    *   the
+						    *   data_client is
+						    *   listening.
+						    */
+  boost::asio::ip::udp::endpoint server_endpoint_; /**< The remote
+						    *   endpoint from
+						    *   where the
+						    *   data_client
+						    *   expects to
+						    *   receive
+						    *   packets.
+						    */
 
-  std::vector<char> recv_buffer;
+  std::vector<char> recv_buffer; /**< Buffer to hold the last received
+				  *   UDP payload.
+				  */
+  std::vector<char> ack_buffer; /**< Buffer to hold the raw ack during
+				 *   the async transmission.
+				 */
 
+  /** Schedule the transmission of an ACK to the server. */
+  void schedule_ack(std::size_t blockno) {
+    using namespace std::placeholders;
+
+    ack_buffer = build_raw_ack(blockno);
+    socket_.async_send_to(boost::asio::buffer(ack_buffer),
+			  server_endpoint_,
+			  strand_.wrap(std::bind(&data_client::handle_sent_ack,
+						 this,
+						 _1, _2)));
+  }
+
+  /** Called when a new packet is received. */
   void handle_received(const boost::system::error_code& ec, std::size_t size) {
-    if (ec == boost::asio::error::operation_aborted) return;
+    using std::move;
+    using namespace std::placeholders;
+
+    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
     if (ec) throw boost::system::system_error(ec);
     if (size == 0) throw std::runtime_error("Empty packet");
+
     recv_buffer.resize(size);
-    fountain_packet p = parse_raw_data_packet(recv_buffer);
-    using std::move;
+    fountain_packet p;
+    try {
+      p = parse_raw_data_packet(recv_buffer);
+    }
+    catch (std::runtime_error e) {
+      // should handle malformed packets
+      throw e;
+    }
+
+    //std::size_t current_blockno = p.block_number();
     decoder_->push(move(p));
 
+    // Extract eventual decoded packets
     while (*decoder_ && *sink_) {
       sink_->push(decoder_->next_decoded());
     }
 
-    using namespace std::placeholders;
+    // ACK when the block is decoded
+    if (decoder_->has_decoded()) {
+      auto bnc = decoder_->block_number_counter();
+      schedule_ack(bnc.next());
+    }
+
+    // Keep listening
     socket_.async_receive_from(boost::asio::buffer(recv_buffer),
-			    server_endpoint_,
-			    std::bind(&data_client::handle_received,
-				      this,
-				      _1, _2));
+			       server_endpoint_,
+			       std::bind(&data_client::handle_received,
+					 this,
+					 _1, _2));
   }
 
+  /** Called when the ACK has been sent. */
+  void handle_sent_ack(const boost::system::error_code& ec, std::size_t size) {
+    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
+    if (ec) throw boost::system::system_error(ec);
+    if (size != ack_buffer.size()) throw std::runtime_error("Was not sent fully");
+  }
+
+  /** Called after close(). */
   void handle_close() {
     socket_.cancel();
     socket_.close();
@@ -111,12 +209,19 @@ private:
 };
 
 /** Send the packets output by an encoder through a UDP socket.
- *  This class wraps the Encoder to provide thread-safety, the Encoder
- *  class must have a constructor that takes a const
- *  Encoder::parameter_set&, a push(packet&&) and push(const packet&)
- *  to provide the input data, a next_coded() that returns a coded
- *  packet, and a next_block() that proceeds to the next block of
- *  packets.
+ *
+ *  This class extracts packets from a Source object, testing if they
+ *  are available by converting the source to bool. The Source class
+ *  must also implement a next_packet() method that returns a new
+ *  packet.
+ *
+ *  The Encoder class receives the packets produced by the source via
+ *  push(packet&&) or push(const packet&). It generates coded packets
+ *  using next_coded() and skips to the next block when next_block()
+ *  is called.
+ *
+ *  The send rate can be dynamically limited by specifying it in
+ *  bit/s. If it is too high the server sends at maximum rate.
  */
 template <class Encoder, class Source>
 class data_server {
@@ -126,119 +231,231 @@ public:
   typedef typename Encoder::parameter_set encoder_parameter_set;
   typedef typename Source::parameter_set source_parameter_set;
 
+  /** Construct a data_server tied to an io_service. This does not
+   *  bind the socket yet.
+   */
   explicit data_server(boost::asio::io_service &io) :
     io_service_(io),
     strand_(io_service_),
     socket_(io_service_),
     target_send_rate_(std::numeric_limits<double>::infinity()),
     is_stopped_(true),
-    more_data_(false),
+    last_ack(ack_header_size),
     pkt_timer(io_service_) {
   }
 
+  /** Replace the encoder with a new one built using the given
+   *  parameter set.
+   */
   void setup_encoder(const encoder_parameter_set &ps) {
     encoder_.reset(new Encoder(ps));
   }
 
+  /** Replace the source with a new one built using the given
+   *  parameter set.
+   */
   void setup_source(const source_parameter_set &ps) {
     source_.reset(new Source(ps));
-    more_data_ = static_cast<bool>(*source_);
   }
 
+  /** Resolve the destination (client) endpoint and bind the socket. */
   void open(const std::string &dest_host, const std::string &dest_service) {
     using boost::asio::ip::udp;
     udp::resolver resolver(io_service_);
     udp::resolver::query query(udp::v4(), dest_host, dest_service);
-    client_endpoint_ = *resolver.resolve(query);
-
+    auto i = resolver.resolve(query);
+    if (i == udp::resolver::iterator()) {
+      throw std::runtime_error("No endpoint found");
+    }
+    client_endpoint_ = *i;
     socket_.open(udp::v4());
   }
 
+  /** Schedule the start of a transmission toward the client endpoint. */
   void start() {
     strand_.dispatch(std::bind(&data_server::handle_started, this));
   }
 
+  /** Schedule the stop of the current transmission. */
   void stop() {
     strand_.dispatch(std::bind(&data_server::handle_stopped, this));
   }
 
+  /** Schedule the passage to the next block of packets. */
   void next_block() {
     strand_.dispatch(std::bind(&Encoder::next_block, encoder_.get()));
   }
 
+  /** Set the target send rate in bit/s. */
   void target_send_rate(double sr) {
     target_send_rate_ = sr;
   }
 
+  /** Get the current target send rate (bit/s). */
   double target_send_rate() const {
     return target_send_rate_;
   }
 
+  /** Get the UDP endpoint that the server socket is currently bound
+   *  to.
+   */
   boost::asio::ip::udp::endpoint server_endpoint() const {
     return socket_.local_endpoint();
   }
 
+  /** Return a const reference to the source object. */
   const Source &source() const {
     return *source_;
   }
 
+  /** Return a const referece to the encoder object. */
+  const Encoder &encoder() const {
+    return *encoder_;
+  }
+
 private:
-  std::unique_ptr<Encoder> encoder_;
-  std::unique_ptr<Source> source_;
+  std::unique_ptr<Encoder> encoder_; /**< The encoder. Use a pointer
+				      *	  to allow for
+				      *	  default-construction.
+				      */
+  std::unique_ptr<Source> source_; /**< The source. Use a pointer to
+				    *	allow for
+				    *	default-construction.
+				    */
 
   boost::asio::io_service &io_service_;
-  boost::asio::io_service::strand strand_;
+  boost::asio::io_service::strand strand_; /**< Strand used to
+					    *   synchronize the
+					    *   asynchronous methods
+					    *   across threads.
+					    */
   boost::asio::ip::udp::socket socket_;
   boost::asio::ip::udp::endpoint client_endpoint_;
 
-  std::atomic<double> target_send_rate_;
+  std::atomic<double> target_send_rate_; /**< Target send rate in
+					  *   bit/s.
+					  */
 
-  bool is_stopped_;
-  bool more_data_;
-  std::vector<char> last_pkt;
+  bool is_stopped_; /**< Set when the data_server should not send
+		     *	 packets.
+		     */
+  std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
+			       *   by the encoder.
+			       */
+  std::vector<char> last_ack; /**< Last _raw_ ack packet received. */
   std::chrono::steady_clock::time_point last_sent_time;
-  boost::asio::steady_timer pkt_timer;
+  boost::asio::steady_timer pkt_timer; /**< Timer used to schedule the
+					*   packet transmissions.
+					*/
 
+  /** Encode the next packet and schedule its transmission according
+   *  to the target send rate.
+   */
   void schedule_next_pkt() {
+    using std::move;
+    //using std::chrono::seconds;
+    using std::chrono::microseconds;
+    using namespace std::placeholders;
+
     if (is_stopped_) return;
 
+    // Load the encoder until it has a full block
     while (*source_ && !*encoder_) {
       encoder_->push(source_->next_packet());
     }
 
-    if (!*source_) {
+    // Empty encoder and no more data: stop
+    if (!*encoder_) {
       is_stopped_ = true;
-      more_data_ = false;
       return;
     }
 
-    using std::move;
     fountain_packet p = encoder_->next_coded();
     bool is_first = last_pkt.empty();
     last_pkt = build_raw_packet(move(p));
 
-    using std::chrono::seconds;
-    using std::chrono::microseconds;
-    if (is_first) {
-      pkt_timer.expires_from_now(seconds(0));
+    if (is_first) { // First packet: no need to wait
+      pkt_timer.expires_from_now(microseconds(0));
     }
-    else {
+    else { // Set an interarrival time to have the target send rate
       double sr = target_send_rate_;
       decltype(last_sent_time) next_send = last_sent_time +
-	microseconds(static_cast<long>(1e6 / sr * last_pkt.size()));
+	microseconds(static_cast<long>(last_pkt.size() * (1e6 / sr)));
       pkt_timer.expires_at(next_send);
     }
 
-    using namespace std::placeholders;
+    // Schedule the timer
     pkt_timer.async_wait(strand_.wrap(std::bind(&data_server::handle_send_timer,
-						 this, _1)));
+						this, _1)));
   }
 
-  void handle_send_timer(const boost::system::error_code &ec) {
-    if (ec == boost::asio::error::operation_aborted) return;
+  /** Listen asynchronously for incoming ACK packets. */
+  void listen_for_acks() {
+    using namespace std::placeholders;
+
+    if (is_stopped_) return; // Not yet started or has finished
+
+    // Listen
+    socket_.async_receive_from(boost::asio::buffer(last_ack), client_endpoint_,
+			       strand_.wrap(std::bind(&data_server::handle_ack,
+						      this,
+						      _1, _2)));
+  }
+
+  /** Called when a packet is received. */
+  void handle_ack(const boost::system::error_code &ec, std::size_t recv_size) {
+    if (ec == boost::asio::error::operation_aborted) return; // cancelled
     if (ec) throw boost::system::system_error(ec);
 
+    if (recv_size != ack_header_size)
+      throw std::runtime_error("The packet has a wrong size");
+
+    std::size_t ack_blockno_;
+    try {
+      // This is the next _wanted_ block
+      ack_blockno_ = parse_raw_ack_packet(last_ack);
+    }
+    catch (std::runtime_error e) {
+      // should ignore wrong packets?
+      throw e;
+    }
+
+    // Fill the encoder buffer with enough packets
+    circular_counter<std::size_t>
+      current_blockno(Encoder::MAX_BLOCKNO),
+      ack_blockno(Encoder::MAX_BLOCKNO);
+    current_blockno.set(encoder_->blockno());
+    ack_blockno.set(ack_blockno_);
+    std::size_t diff = current_blockno.forward_distance(ack_blockno);
+    if (diff > Encoder::BLOCK_WINDOW || diff == 0) {
+      // Old ACK
+      // Keep listening
+      listen_for_acks();
+      return;
+    }
+    std::size_t required_pkts = diff * encoder_->K();
+    while (*source_ && encoder_->size() < required_pkts)
+      encoder_->push(source_->next_packet());
+
+    // Skip blocks
+    encoder_->next_block(ack_blockno_);
+
+    // Reschedule the next coded packet: must be rebuilt
+    pkt_timer.cancel();
+    schedule_next_pkt();
+    // Keep listening
+    listen_for_acks();
+  }
+
+  /** Called when the packet timer has expired or was cancelled. */
+  void handle_send_timer(const boost::system::error_code &ec) {
     using namespace std::placeholders;
+
+    if (ec == boost::asio::error::operation_aborted) return; // cancelled
+    if (ec) throw boost::system::system_error(ec);
+
+    // Start transmission
+    last_sent_time = std::chrono::steady_clock::now();
     socket_.async_send_to(boost::asio::buffer(last_pkt),
 			  client_endpoint_,
 			  strand_.wrap(std::bind(&data_server::handle_sent,
@@ -246,24 +463,29 @@ private:
 						 _1, _2)));
   }
 
+  /** Called at the end of a transmission. */
   void handle_sent(const boost::system::error_code &ec,
 		   std::size_t sent_size) {
+    if (ec == boost::asio::error::operation_aborted) return; // cancelled
     if (ec) throw boost::system::system_error(ec);
     if (sent_size != last_pkt.size())
       throw std::runtime_error("Did not send all the packet");
-    last_sent_time = std::chrono::steady_clock::now();
 
     schedule_next_pkt();
   }
 
+  /** Called after start(). */
   void handle_started() {
     is_stopped_ = false;
     schedule_next_pkt();
+    listen_for_acks();
   }
 
+  /** Called after stop(). */
   void handle_stopped() {
     is_stopped_ = true;
     pkt_timer.cancel();
+    socket_.cancel();
   }
 };
 

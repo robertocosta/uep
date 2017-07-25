@@ -93,6 +93,10 @@ std::size_t lt_decoder::blockno() const {
   return blockno_counter.last();
 }
 
+circular_counter<std::size_t> lt_decoder::block_number_counter() const {
+  return blockno_counter;
+}
+
 int lt_decoder::block_seed() const {
   return the_block_decoder.seed();
 }

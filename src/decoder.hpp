@@ -70,6 +70,8 @@ public:
   std::size_t K() const;
   /** Return the current block number. */
   std::size_t blockno() const;
+  /** Return a copy of the current block number counter. */
+  circular_counter<std::size_t> block_number_counter() const;
   /** Return the current block seed. */
   int block_seed() const;
   /** Number of unique packets received for the current block. */
