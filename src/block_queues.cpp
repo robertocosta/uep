@@ -24,6 +24,8 @@ bool input_block_queue::has_block() const {
 }
 
 void input_block_queue::pop_block() {
+  if (!has_block())
+    throw std::logic_error("Cannot pop without a full block");
   input_block.clear();
   check_has_block();
 }
@@ -88,7 +90,7 @@ const packet &output_block_queue::front() const {
 }
 
 void output_block_queue::pop() {
-  output_queue.pop();
+  output_queue.pop(); // does throw if empty?
 }
 
 void output_block_queue::clear() {
