@@ -374,6 +374,58 @@ BOOST_FIXTURE_TEST_CASE(decoder_ignore_jump_back, decoder_overflow_fixture) {
   BOOST_CHECK_EQUAL(dec.blockno(), (0xffff+3) & 0xffff);
 }
 
+BOOST_AUTO_TEST_CASE(skip_multiple_blocks) {
+  const size_t L = 10;
+  const size_t K = 100;
+  const double c = 0.1;
+  const double delta = 0.5;
+
+  lt_encoder<std::mt19937> enc(K, c, delta);
+  // lt_decoder dec(K, c, delta);
+  vector<packet> original;
+
+  for (size_t i = 0; i < 30*K; ++i) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push(move(p));
+  }
+
+  BOOST_CHECK_EQUAL(enc.blockno(), 0);
+  BOOST_CHECK_EQUAL(enc.size(), 30*K);
+  enc.next_block(0);
+  BOOST_CHECK_EQUAL(enc.blockno(), 0);
+  BOOST_CHECK_EQUAL(enc.size(), 30*K);
+
+  enc.next_block(0xff00);
+  BOOST_CHECK_EQUAL(enc.blockno(), 0);
+  BOOST_CHECK_EQUAL(enc.size(), 30*K);
+
+  enc.next_block(1);
+  BOOST_CHECK_EQUAL(enc.blockno(), 1);
+  BOOST_CHECK_EQUAL(enc.size(), 29*K);
+
+  enc.next_block(20);
+  BOOST_CHECK_EQUAL(enc.blockno(), 20);
+  BOOST_CHECK_EQUAL(enc.size(), 10*K);
+
+  enc.next_block(0);
+  BOOST_CHECK_EQUAL(enc.blockno(), 20);
+  BOOST_CHECK_EQUAL(enc.size(), 10*K);
+
+  enc.next_block(29);
+  BOOST_CHECK_EQUAL(enc.blockno(), 29);
+  BOOST_CHECK_EQUAL(enc.size(), K);
+  BOOST_CHECK(std::equal(enc.current_block_begin(),
+			 enc.current_block_end(),
+			 original.cbegin() + 29*K));
+
+  BOOST_CHECK_NO_THROW(enc.next_block());
+  BOOST_CHECK_EQUAL(enc.size(), 0);
+  //BOOST_CHECK_THROW(
+  enc.next_block();//, std::logic_error);
+  BOOST_CHECK_THROW(enc.next_block(100), std::logic_error);
+}
+
 // struct stat_fixture {
 //   boost::shared_ptr<default_stat_sink> the_stat_sink;
 

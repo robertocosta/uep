@@ -44,6 +44,10 @@ public:
    *  When the encoder goes past this value it loop back to zero.
    */
   static const std::size_t MAX_BLOCKNO = 0xffff;
+  /** Maximum forward distance for a block number to be considered
+   *  more recent.
+   */
+  static const std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
 
   // Check that the types used for block numbers and sequence numbers
   // are big enough.
@@ -110,12 +114,32 @@ public:
    *  one.
    */
   void next_block() {
-    the_block_encoder.reset();
     the_input_queue.pop_block();
+    the_block_encoder.reset();
     blockno_counter.next();
     seqno_counter.reset();
     //PUT_STAT_COUNTER(loggers.newblock);
     check_has_block();
+  }
+
+  /** Drop all the blocks up to the given block number.
+   *  This method throws an exception if there are not enough queued
+   *  packets to skip.
+   */
+  void next_block(std::size_t blockno_) {
+    decltype(blockno_counter) wanted_blockno(MAX_BLOCKNO);
+    wanted_blockno.set(blockno_);
+    std::size_t dist = blockno_counter.forward_distance(wanted_blockno);
+    if (dist == 0 || dist > BLOCK_WINDOW) return;
+
+    // Drop dist-1 pkts from the queue (this can fail)
+    for (std::size_t i = 0; i < dist-1; ++i) {
+      the_input_queue.pop_block();
+      blockno_counter.next();
+    }
+
+    // Last skip
+    next_block();
   }
 
   /** Return true when the encoder has been passed at least K packets
