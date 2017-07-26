@@ -1,6 +1,7 @@
 #ifndef UEP_MESSAGE_PASSING
 #define UEP_MESSAGE_PASSING
 
+#include <forward_list>
 #include <functional>
 #include <list>
 #include <set>
@@ -36,7 +37,7 @@ private:
   typedef typename graph_t::vertex_descriptor vdesc;
   typedef std::list<vdesc> deglist_t;
   typedef std::set<vdesc, index_comp> decoded_t;
-  typedef std::vector<vdesc> ripple_t;
+  typedef std::forward_list<vdesc> ripple_t;
 public:
   typedef boost::transform_iterator<v2pair_conv,
 				    typename decoded_t::iterator
@@ -308,12 +309,11 @@ void message_passing_context<T>::decode_degree_one() {
   using std::swap;
   using namespace boost;
 
-  ripple.reserve(deglist.size());
   for (auto i = deglist.cbegin(); i != deglist.cend(); ++i) {
     auto adj_inp = *(adjacent_vertices(*i, the_graph).first);
     auto dec_res = decoded.insert(adj_inp);
     if (dec_res.second) {
-      ripple.push_back(adj_inp);
+      ripple.push_front(adj_inp);
       swap(the_graph[*i].symbol, the_graph[adj_inp].symbol);
     }
     remove_edge(*i, adj_inp, the_graph);
