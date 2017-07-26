@@ -175,6 +175,13 @@ public:
     return the_input_queue.block_end();
   }
 
+  /** Return the number of coded packets that were produced for the
+   *  current block.
+   */
+  std::size_t coded_count() const {
+    return the_block_encoder.output_count();
+  }
+
   /** Is true when coded packets can be produced. */
   explicit operator bool() const { return has_block(); }
   /** Is true when there is not a full block available. */

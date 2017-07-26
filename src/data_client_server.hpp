@@ -258,6 +258,7 @@ public:
     target_send_rate_(std::numeric_limits<double>::infinity()),
     is_stopped_(true),
     ack_enabled(true),
+    max_per_block(Encoder::MAX_SEQNO),
     last_ack(ack_header_size),
     pkt_timer(io_service_) {
   }
@@ -312,6 +313,21 @@ public:
   /** Get the current target send rate (bit/s). */
   double target_send_rate() const {
     return target_send_rate_;
+  }
+
+  /** Set the maximum sequence number before skipping to the next
+   *  block.
+   */
+  void max_sequence_number(std::size_t m) {
+    if (m > Encoder::MAX_SEQNO)
+      throw std::overflow_error("Cannot exceed the Encoder's limit");
+    if (m < 1)
+      throw std::underflow_error("Must send at least one packet");
+    max_per_block = m;
+  }
+
+  std::size_t max_sequence_number() const {
+    return max_per_block;
   }
 
   /** Get the UDP endpoint that the server socket is currently bound
@@ -370,6 +386,12 @@ private:
   std::atomic<bool> ack_enabled; /**< Set when the data_server should
 				  *   listen for incoming ACKs.
 				  */
+  std::atomic<std::size_t> max_per_block; /**< Maximum number of
+					   *   packets that can be
+					   *   generated for each
+					   *   block before skipping
+					   *   to the next.
+					   */
   std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
 			       *   by the encoder.
 			       */
@@ -390,8 +412,9 @@ private:
 
     if (is_stopped_) return;
 
-    // Load the encoder until it has a full block
-    while (*source_ && !*encoder_) {
+    // Load the encoder until it has 2 full blocks: allow next_block
+    // to still have a block
+    while (*source_ && (encoder_->size() < 2*encoder_->K())) {
       encoder_->push(source_->next_packet());
     }
 
@@ -399,6 +422,15 @@ private:
     if (!*encoder_) {
       is_stopped_ = true;
       return;
+    }
+
+    // Check if the max number has been reached
+    if (max_per_block <= encoder_->coded_count()) {
+      encoder_->next_block();
+      if (!*encoder_) { // The source did not have 2 blocks
+	is_stopped_ = true;
+	return;
+      }
     }
 
     fountain_packet p = encoder_->next_coded();
