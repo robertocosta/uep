@@ -1,5 +1,5 @@
-#ifndef UEP_MESSAGE_PASSING
-#define UEP_MESSAGE_PASSING
+#ifndef UEP_MP_MESSAGE_PASSING_HPP
+#define UEP_MP_MESSAGE_PASSING_HPP
 
 #include <forward_list>
 #include <functional>
@@ -9,9 +9,20 @@
 #include <vector>
 
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/optional.hpp>
 
 namespace uep {
+namespace mp {
+
+/** Predicate that just converts the input to bool. */
+template <class T>
+struct to_bool {
+  bool operator()(const T &x) const {
+    return static_cast<bool>(x);
+  }
+};
 
 /** Class used to execute the message-passing algorithm.
  * The generic symbol type T must be DefaultConstructible,
@@ -21,7 +32,6 @@ namespace uep {
  */
 template <class T>
 class message_passing_context {
-  struct index_comp;
   struct index_map;
   struct v2pair_conv;
   struct v2sym_conv;
@@ -36,14 +46,18 @@ private:
 				vertex_prop> graph_t;
   typedef typename graph_t::vertex_descriptor vdesc;
   typedef std::list<vdesc> deglist_t;
-  typedef std::set<vdesc, index_comp> decoded_t;
+  typedef std::vector<boost::optional<vdesc>> decoded_t;
   typedef std::forward_list<vdesc> ripple_t;
+
+  typedef boost::filter_iterator<mp::to_bool<typename decoded_t::value_type>,
+				 typename decoded_t::const_iterator
+				 > actually_decoded_iter;
 public:
   typedef boost::transform_iterator<v2pair_conv,
-				    typename decoded_t::iterator
+				    actually_decoded_iter
 				    > decoded_iterator;
   typedef boost::transform_iterator<v2sym_conv,
-				    typename decoded_t::iterator
+				    actually_decoded_iter
 				    > decoded_symbols_iterator;
 
   message_passing_context(const message_passing_context&) = default;
@@ -51,7 +65,7 @@ public:
   message_passing_context &operator=(const message_passing_context&) = default;
   message_passing_context &operator=(message_passing_context&&) = default;
 
-  message_passing_context() : K(0), decoded(index_comp(&the_graph)) {}
+  message_passing_context() : K(0), decoded_count_(0) {}
   /** Construct a context with in_size default-constructed input symbols. */
   explicit message_passing_context(std::size_t in_size);
   /** Construct a context with in_size input_symbols and the given
@@ -102,7 +116,7 @@ public:
   /** Return the number of input symbols that have been correctly
    *  decoded up to the last call to run().
    */
-  std::size_t decoded_count() const { return decoded.size(); }
+  std::size_t decoded_count() const { return decoded_count_; }
   /** Return true when all the input symbols have been decoded. */
   bool has_decoded() const { return decoded_count() == input_size(); }
 
@@ -110,28 +124,28 @@ public:
    *  symbol) pairs.
    */
   decoded_iterator decoded_begin() const {
-    const v2pair_conv c(&the_graph);
-    return decoded_iterator(decoded.cbegin(), c);
+    actually_decoded_iter adi(decoded.cbegin(), decoded.cend());
+    return decoded_iterator(adi, v2pair_conv(&the_graph));
   }
 
   /** Return a constant iterator to the end of the decoded (index,
    *  symbol) pairs.
    */
   decoded_iterator decoded_end() const {
-    const v2pair_conv c(&the_graph);
-    return decoded_iterator(decoded.cend(), c);
+    actually_decoded_iter adi(decoded.cend(), decoded.cend());
+    return decoded_iterator(adi, v2pair_conv(&the_graph));
   }
 
   /** Return a constant iterator to the start of the decoded symbols. */
   decoded_symbols_iterator decoded_symbols_begin() const {
-    const v2sym_conv c(&the_graph);
-    return decoded_symbols_iterator(decoded.cbegin(), c);
+    actually_decoded_iter adi(decoded.cbegin(), decoded.cend());
+    return decoded_symbols_iterator(adi, v2sym_conv(&the_graph));
   }
 
   /** Return a constant iterator to the end of the decoded symbols. */
   decoded_symbols_iterator decoded_symbols_end() const {
-    const v2sym_conv c(&the_graph);
-    return decoded_symbols_iterator(decoded.cend(), c);
+    actually_decoded_iter adi(decoded.cend(), decoded.cend());
+    return decoded_symbols_iterator(adi, v2sym_conv(&the_graph));
   }
 
   /** Reset the message_passing_context to the initial state. */
@@ -140,6 +154,7 @@ public:
     the_graph.clear();
     deglist.clear();
     decoded.clear();
+    decoded_count_ = 0;
     ripple.clear();
   }
 
@@ -148,6 +163,7 @@ private:
   graph_t the_graph;
   deglist_t deglist;
   decoded_t decoded;
+  std::size_t decoded_count_;
   ripple_t ripple;
 
   void add_edge_vdesc(vdesc u, vdesc v);
@@ -183,9 +199,9 @@ struct message_passing_context<T>::v2pair_conv {
   v2pair_conv() : the_graph(nullptr) {}
   explicit v2pair_conv(const graph_t *g) : the_graph(g) {}
 
-  decoded_value_type operator()(vdesc v) const {
-    return decoded_value_type((*the_graph)[v].index,
-			      (*the_graph)[v].symbol);
+  decoded_value_type operator()(const boost::optional<vdesc> &v) const {
+    return decoded_value_type((*the_graph)[*v].index,
+			      (*the_graph)[*v].symbol);
   }
 };
 
@@ -197,23 +213,8 @@ struct message_passing_context<T>::v2sym_conv {
   v2sym_conv() : the_graph(nullptr) {}
   explicit v2sym_conv(const graph_t *g) : the_graph(g) {}
 
-  const T &operator()(vdesc v) const {
-    return (*the_graph)[v].symbol;
-  }
-};
-
-/** Comparator for vertex descriptors. Applies < on the vertices' indices. */
-template <class T>
-struct message_passing_context<T>::index_comp {
-  const graph_t *the_graph;
-
-  index_comp() : the_graph(nullptr) {}
-  explicit index_comp(const graph_t *g) : the_graph(g) {}
-
-  bool operator()(vdesc lhs, vdesc rhs) const {
-    std::size_t lhs_i = (*the_graph)[lhs].index;
-    std::size_t rhs_i = (*the_graph)[rhs].index;
-    return lhs_i < rhs_i;
+  const T &operator()(const boost::optional<vdesc> &v) const {
+    return (*the_graph)[*v].symbol;
   }
 };
 
@@ -244,6 +245,7 @@ template <class T>
 message_passing_context<T>::message_passing_context(std::size_t in_size) :
   message_passing_context() {
   K = in_size;
+  decoded.resize(K);
   for (std::size_t i = 0; i < K; ++i) {
     boost::add_vertex(vertex_prop(i), the_graph);
   }
@@ -274,6 +276,7 @@ message_passing_context<T>::message_passing_context(std::size_t in_size,
   using namespace boost;
 
   K = in_size;
+  decoded.resize(K);
 
   // Init the graph with the edges (also transform (i,j) -> (i, j+K))
   const index_map imap(&K);
@@ -310,9 +313,12 @@ void message_passing_context<T>::decode_degree_one() {
   using namespace boost;
 
   for (auto i = deglist.cbegin(); i != deglist.cend(); ++i) {
-    auto adj_inp = *(adjacent_vertices(*i, the_graph).first);
-    auto dec_res = decoded.insert(adj_inp);
-    if (dec_res.second) {
+    vdesc adj_inp = *(adjacent_vertices(*i, the_graph).first);
+    std::size_t adj_index = the_graph[adj_inp].index;
+    if (!decoded.at(adj_index)) {
+      decoded[adj_index] = adj_inp;
+      ++decoded_count_;
+
       ripple.push_front(adj_inp);
       swap(the_graph[*i].symbol, the_graph[adj_inp].symbol);
     }
@@ -391,12 +397,12 @@ void message_passing_context<T>::remove_from_deglist(vdesc u) {
   deglist.erase(iter);
 }
 
-namespace mp {
+}
 
-/** Allow the use of the shorter name `uep::mp::mp_context`. */
+/** Allow the use of the old name. */
 template <class Symbol>
-using mp_context = typename uep::message_passing_context<Symbol>;
+using message_passing_context = typename mp::message_passing_context<Symbol>;
 
-}}
+}
 
 #endif
