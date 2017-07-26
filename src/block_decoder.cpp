@@ -39,8 +39,7 @@ bool block_decoder::push(fountain_packet &&p) {
     }
   }
 
-  if (!has_decoded() &&
-      (received_pkts.size() >= rowgen.K()/* || do_partial_decoding*/)) {
+  if (!has_decoded()) { // do partial decoding even with < K pkts
     run_message_passing();
   }
 
