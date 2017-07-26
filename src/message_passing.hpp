@@ -391,6 +391,12 @@ void message_passing_context<T>::remove_from_deglist(vdesc u) {
   deglist.erase(iter);
 }
 
-}
+namespace mp {
+
+/** Allow the use of the shorter name `uep::mp::mp_context`. */
+template <class Symbol>
+using mp_context = typename uep::message_passing_context<Symbol>;
+
+}}
 
 #endif
