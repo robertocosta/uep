@@ -16,7 +16,7 @@ void block_decoder::check_correct_block(const fountain_packet &p) {
     rowgen.reset(p.block_seed());
     pktsize = p.size();
   }
-  else if (blockno != p.block_number() ||
+  else if (blockno != static_cast<size_t>(p.block_number()) ||
 	   seed() != (seed_t)p.block_seed()) {
     throw std::runtime_error("All packets must belong to the same block");
   }
@@ -62,7 +62,7 @@ block_decoder::seed_t block_decoder::seed() const {
   return rowgen.seed();
 }
 
-int block_decoder::block_number() const {
+std::size_t block_decoder::block_number() const {
   return blockno;
 }
 
@@ -83,11 +83,13 @@ std::size_t block_decoder::block_size() const {
 }
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
-  return decoded.cbegin();
+  return const_block_iterator(decoded.cbegin(),
+			      pair2second_conv<std::size_t,packet>());
 }
 
 block_decoder::const_block_iterator block_decoder::block_end() const {
-  return decoded.cend();
+  return const_block_iterator(decoded.cend(),
+			      pair2second_conv<std::size_t,packet>());
 }
 
 block_decoder::operator bool() const {
@@ -121,8 +123,8 @@ void block_decoder::run_message_passing() {
 
   // Copy decoded packets
   if (mp_ctx.decoded_count() != 0) {
-    mp_packet_iter mp_sb(mp_ctx.decoded_symbols_begin(), lazy2p_conv());
-    mp_packet_iter mp_se(mp_ctx.decoded_symbols_end(), lazy2p_conv());
+    mp_packet_iter mp_sb(mp_ctx.decoded_begin(), sym2pair_conv());
+    mp_packet_iter mp_se(mp_ctx.decoded_end(), sym2pair_conv());
     decoded.resize(mp_ctx.decoded_count());
     copy(mp_sb, mp_se, decoded.begin());
   }

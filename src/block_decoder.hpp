@@ -29,10 +29,28 @@ struct lazy2p_conv {
   }
 };
 
+/** Converter to evaluate a (index,lazy_xor) pair. */
+struct sym2pair_conv {
+  typedef std::pair<std::size_t,packet> out_t;
+  typedef std::pair<std::size_t,lazy_xor<packet>> in_t;
+
+  out_t operator()(const in_t &p) const {
+    return std::make_pair(p.first, p.second.evaluate());
+  }
+};
+
 /** Converter to build lazy_xors from fountain_packets. */
 struct fp2lazy_conv {
   lazy_xor<packet> operator()(const fountain_packet &p) const {
     return lazy_xor<packet>(&p);
+  }
+};
+
+/** Converter to extract the second element from a pair. */
+template <class T, class U>
+struct pair2second_conv {
+  U operator()(const std::pair<T,U> &p) const {
+    return p.second;
   }
 };
 
@@ -45,14 +63,16 @@ class block_decoder {
   typedef message_passing_context<mp_symbol_t> mp_ctx_t;
   typedef std::set<fountain_packet, seqno_less> received_t;
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
-  typedef std::vector<packet> decoded_t;
+  typedef std::vector<std::pair<std::size_t,packet>> decoded_t;
 
-  typedef boost::transform_iterator<lazy2p_conv,
-				    mp_ctx_t::decoded_symbols_iterator
+  typedef boost::transform_iterator<sym2pair_conv,
+				    mp_ctx_t::decoded_iterator
 				    > mp_packet_iter;
 
 public:
-  typedef decoded_t::const_iterator const_block_iterator;
+  typedef boost::transform_iterator<pair2second_conv<std::size_t,packet>,
+				    decoded_t::const_iterator
+				    > const_block_iterator;
   typedef lt_row_generator::rng_type::result_type seed_t;
 
   explicit block_decoder(const lt_row_generator &rg);
@@ -70,7 +90,7 @@ public:
   /** Return the seed used to decode the current block. */
   seed_t seed() const;
   /** Return the current block's block_number. */
-  int block_number() const;
+  std::size_t block_number() const;
   /** Return true when the entire input block has been decoded. */
   bool has_decoded() const;
   /** Number of input packets that have been successfully decoded. */
@@ -103,7 +123,7 @@ private:
   received_t received_pkts;
   link_cache_t link_cache;
   decoded_t decoded;
-  int blockno;
+  std::size_t blockno;
   std::size_t pktsize;
 
   void check_correct_block(const fountain_packet &p);
