@@ -421,8 +421,7 @@ BOOST_AUTO_TEST_CASE(skip_multiple_blocks) {
 
   BOOST_CHECK_NO_THROW(enc.next_block());
   BOOST_CHECK_EQUAL(enc.size(), 0);
-  //BOOST_CHECK_THROW(
-  enc.next_block();//, std::logic_error);
+  BOOST_CHECK_THROW(enc.next_block(), std::logic_error);
   BOOST_CHECK_THROW(enc.next_block(100), std::logic_error);
 }
 
