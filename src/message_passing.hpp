@@ -13,16 +13,10 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/optional.hpp>
 
+#include "utils.hpp"
+
 namespace uep {
 namespace mp {
-
-/** Predicate that just converts the input to bool. */
-template <class T>
-struct to_bool {
-  bool operator()(const T &x) const {
-    return static_cast<bool>(x);
-  }
-};
 
 /** Class used to execute the message-passing algorithm.
  * The generic symbol type Symbol must be DefaultConstructible,
@@ -57,9 +51,8 @@ private:
   typedef std::forward_list<vdesc> ripple_t;
 
   /** Const iterator that skips over the yet undecoded symbols. */
-  typedef boost::filter_iterator<mp::to_bool<typename decoded_t::value_type>,
-				 typename decoded_t::const_iterator
-				 > actually_decoded_iter;
+  typedef utils::skip_false_iterator<typename decoded_t::const_iterator
+				     > actually_decoded_iter;
 public:
   /** Const iterator that outputs each decoded symbol with its index. */
   typedef boost::transform_iterator<v2pair_conv,
