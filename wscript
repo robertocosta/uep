@@ -162,10 +162,10 @@ def build(ctx):
                 source=["test/test_message_passing.cpp",
                         "src/packets.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="test_client",
+    ctx.program(target="client",
                 source=["src/client.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="test_server",
+    ctx.program(target="server",
                 source=["src/server.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_packet_rw",
