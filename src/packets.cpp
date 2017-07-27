@@ -194,6 +194,14 @@ void packet::xor_data(const packet &other) {
   }
 }
 
+packet::operator bool() const {
+  return !empty();
+}
+
+bool packet::operator!() const {
+  return empty();
+}
+
 bool operator==(const packet &lhs, const packet &rhs) {
   return (lhs.shared_data == rhs.shared_data) ||
     (*lhs.shared_data == *rhs.shared_data);

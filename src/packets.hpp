@@ -116,6 +116,11 @@ public:
   /** Perform a bitwise-XOR between this packet and another packet. */
   void xor_data(const packet &other);
 
+  /** Is true when the packet is non-empty. */
+  explicit operator bool() const;
+  /** Is true when the packet is empty. */
+  bool operator!() const;
+
   friend bool operator==(const packet &lhs, const packet &rhs);
 
 protected:
