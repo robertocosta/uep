@@ -425,6 +425,72 @@ BOOST_AUTO_TEST_CASE(skip_multiple_blocks) {
   BOOST_CHECK_THROW(enc.next_block(100), std::logic_error);
 }
 
+BOOST_AUTO_TEST_CASE(missing_decoded) {
+  const size_t L = 10;
+  const size_t K = 100;
+  const double c = 0.1;
+  const double delta = 0.5;
+
+  lt_encoder<std::mt19937> enc(K, c, delta);
+  lt_decoder dec(K,c,delta);
+  vector<packet> original;
+
+  const std::size_t nblocks = 30;
+  for (size_t i = 0; i < nblocks*K; ++i) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push(move(p));
+  }
+
+  // Skip first block
+  enc.next_block();
+  fountain_packet fp = enc.next_coded();
+  dec.push(fp.shallow_copy());
+  BOOST_CHECK_EQUAL(dec.received_count(), 1);
+  BOOST_CHECK_EQUAL(dec.queue_size(), K);
+
+  // Finish second block
+  while (!dec.has_decoded()) {
+    fp = enc.next_coded();
+    dec.push(move(fp));
+  }
+  BOOST_CHECK_EQUAL(dec.queue_size(), 2*K);
+
+  // Skip to last block
+  enc.next_block(nblocks-1);
+  fp = enc.next_coded();
+  dec.push(fp.shallow_copy());
+  while (!dec.has_decoded()) {
+    fp = enc.next_coded();
+    dec.push(move(fp));
+  }
+  BOOST_CHECK_EQUAL(dec.queue_size(), nblocks*K);
+
+  // Check correctness
+  auto i = original.cbegin();
+  for (size_t l = 0; l < K; ++l) { // block 0
+    packet p = dec.next_decoded();
+    BOOST_CHECK(!p);
+    ++i;
+  }
+  for (size_t l = 0; l < K; ++l) { // block 1
+    packet p = dec.next_decoded();
+    BOOST_CHECK(p == *i);
+    ++i;
+  }
+  for (size_t l = 0; l < (nblocks - 3)*K; ++l) { // blocks 2-28
+    packet p = dec.next_decoded();
+    BOOST_CHECK(!p);
+    ++i;
+  }
+  for (size_t l = 0; l < K; ++l) { // block 29
+    packet p = dec.next_decoded();
+    BOOST_CHECK(p == *i);
+    ++i;
+  }
+  BOOST_CHECK(i == original.cend());
+}
+
 // struct stat_fixture {
 //   boost::shared_ptr<default_stat_sink> the_stat_sink;
 

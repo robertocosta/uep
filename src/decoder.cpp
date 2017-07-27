@@ -43,6 +43,15 @@ void lt_decoder::push(fountain_packet &&p) {
       return;
     }
     else {
+      enqueue_partially_decoded();
+      // If there is a gap in the blocks fill with empty pkts
+      if (dist > 1) {
+	const std::vector<packet> empty_block(K());
+	for (int i = 0; i < dist - 1; ++i) {
+	  the_output_queue.push_shallow(empty_block.cbegin(),
+					empty_block.cend());
+	}
+      }
       // Start to decode the new block
       the_block_decoder.reset();
       has_enqueued = false;
@@ -53,12 +62,9 @@ void lt_decoder::push(fountain_packet &&p) {
   bool uniq = the_block_decoder.push(move(p));
   if (uniq) ++uniq_recv_count;
 
-  // Extract the fully decoded block (just once)
-  if (!has_enqueued && the_block_decoder ) {
-    the_output_queue.push_shallow(the_block_decoder.block_begin(),
-				  the_block_decoder.block_end());
-    has_enqueued = true;
-    tot_dec_count += K();
+  // Extract if fully decoded block (just once)
+  if (the_block_decoder) {
+    enqueue_partially_decoded();
   }
 }
 
@@ -131,6 +137,16 @@ lt_decoder::operator bool() const {
 
 bool lt_decoder::operator!() const {
   return !has_queued_packets();
+}
+
+void lt_decoder::enqueue_partially_decoded() {
+  if (has_enqueued) return;
+
+  the_output_queue.push_shallow(the_block_decoder.partial_begin(),
+				the_block_decoder.partial_end());
+  tot_dec_count += the_block_decoder.decoded_count();
+
+  has_enqueued = true;
 }
 
 }

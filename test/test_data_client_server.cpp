@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(send_with_pkt_limit) {
   ds.setup_source(src_ps); // setup the source  inside the data_server
   //ds.target_send_rate(L*2); // Set a target send rate of 2 pkt/s
   ds.enable_ack(false);
-  ds.max_sequence_number(2);
+  ds.max_sequence_number(90);
   ds.open("127.0.0.1", "9999"); // Setup the data_server socket:
 				// random_port -> 127.0.0.1:9999
 
@@ -258,8 +258,19 @@ BOOST_AUTO_TEST_CASE(send_with_pkt_limit) {
 
   // verify number of packets
   BOOST_CHECK_EQUAL(orig.size(), N); // all pkts were extracted
-  BOOST_CHECK_EQUAL(recv.size(), 0); // blocks were cut short
+  BOOST_CHECK(recv.size() >= N-K); // at least all blocks except the
+				   // last one
 
   BOOST_CHECK_EQUAL(dc.decoder().blockno(), 9); // synced on the right block
-  BOOST_CHECK_EQUAL(dc.decoder().received_count(), 2); // got max amount of pkts
+  BOOST_CHECK_EQUAL(dc.decoder().received_count(), 90); // got max amount of pkts
+
+  // Check correctness
+  auto i = recv.cbegin();
+  auto j = orig.cbegin();
+  while (i != recv.cend()) {
+    BOOST_CHECK(j != orig.cend());
+    if (*i) BOOST_CHECK(*i == *j);
+    ++i;;
+    ++j;
+  }
 }

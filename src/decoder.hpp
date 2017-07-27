@@ -114,6 +114,11 @@ private:
   //   default_logger rows = make_stat_logger("DecoderRowDegree", scalar);
   //   default_logger text;
   // } loggers;
+
+  /** If the current block was not yet enqueued, then do it even if it
+   *  is not fully decoded. The missing packets will be empty.
+   */
+  void enqueue_partially_decoded();
 };
 
 }
