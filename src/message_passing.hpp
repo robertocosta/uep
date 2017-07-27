@@ -25,54 +25,70 @@ struct to_bool {
 };
 
 /** Class used to execute the message-passing algorithm.
- * The generic symbol type T must be DefaultConstructible,
+ * The generic symbol type Symbol must be DefaultConstructible,
  *  CopyAssignable, Swappable and the expression (a ^= b) must be
- *  valid when a,b are objects of type T, either given as output
+ *  valid when a,b are objects of type Symbol, either given as output
  *  symbols or produced by successive invocations of "^=".
  */
-template <class T>
-class message_passing_context {
+template <class Symbol>
+class mp_context {
   struct index_map;
   struct v2pair_conv;
   struct v2sym_conv;
   struct vertex_prop;
 public:
-  typedef T symbol_type;
-  typedef std::pair<std::size_t, const T&> decoded_value_type;
+  /**  The type used to represent the symbols. */
+  typedef Symbol symbol_type;
+   /** Type used to store a decoded input symbol together with its
+    *  index.
+    */
+  typedef std::pair<std::size_t,symbol_type> decoded_value_type;
 private:
   typedef boost::adjacency_list<boost::listS,
 				boost::vecS,
 				boost::undirectedS,
 				vertex_prop> graph_t;
   typedef typename graph_t::vertex_descriptor vdesc;
+  /** Type used to hold the set of output symbols with degree one. */
   typedef std::list<vdesc> deglist_t;
+  /** Type used to hold the (partially) decoded input symbols. */
   typedef std::vector<boost::optional<vdesc>> decoded_t;
+  /** Type used to hold the input symbols in the ripple. */
   typedef std::forward_list<vdesc> ripple_t;
 
+  /** Const iterator that skips over the yet undecoded symbols. */
   typedef boost::filter_iterator<mp::to_bool<typename decoded_t::value_type>,
 				 typename decoded_t::const_iterator
 				 > actually_decoded_iter;
 public:
+  /** Const iterator that outputs each decoded symbol with its index. */
   typedef boost::transform_iterator<v2pair_conv,
 				    actually_decoded_iter
 				    > decoded_iterator;
+  /** Const iterator that outputs each decoded symbol. */
   typedef boost::transform_iterator<v2sym_conv,
 				    actually_decoded_iter
 				    > decoded_symbols_iterator;
+  /** Const iterator that outputs all the input symbols. The undecoded
+   *  symbols are default-constructed.
+   */
+  typedef boost::transform_iterator<v2sym_conv,
+				    typename decoded_t::const_iterator
+				    > input_symbols_iterator;
 
-  message_passing_context(const message_passing_context&) = default;
-  message_passing_context(message_passing_context&&) = default;
-  message_passing_context &operator=(const message_passing_context&) = default;
-  message_passing_context &operator=(message_passing_context&&) = default;
+  mp_context(const mp_context&) = default;
+  mp_context(mp_context&&) = default;
+  mp_context &operator=(const mp_context&) = default;
+  mp_context &operator=(mp_context&&) = default;
 
-  message_passing_context() : K(0), decoded_count_(0) {}
+  mp_context() : K(0), decoded_count_(0) {}
   /** Construct a context with in_size default-constructed input symbols. */
-  explicit message_passing_context(std::size_t in_size);
+  explicit mp_context(std::size_t in_size);
   /** Construct a context with in_size input_symbols and the given
    *  output symbols.
    */
   template <class SymIter>
-  explicit message_passing_context(std::size_t in_size,
+  explicit mp_context(std::size_t in_size,
 				   SymIter first_out, SymIter last_out);
   /** Construct a context with in_size default-constructed input
    *  symbols, output symbols copied from [first_out,last_out) and
@@ -82,7 +98,7 @@ public:
    *  [0,N) and N = last_out - first_out.
    */
   template <class OutSymIter, class EdgeIter>
-  explicit message_passing_context(std::size_t in_size,
+  explicit mp_context(std::size_t in_size,
 				   OutSymIter first_out,
 				   OutSymIter last_out,
 				   EdgeIter first_edge,
@@ -97,7 +113,7 @@ public:
   void run();
 
   // Implement if incremental construction is needed
-  // void add_output_symbol(const T &sym);
+  // void add_output_symbol(const Symbol &sym);
   // void add_input_symbol();
 
   /** Add an edge that links input symbol i to output symbol j.
@@ -148,7 +164,21 @@ public:
     return decoded_symbols_iterator(adi, v2sym_conv(&the_graph));
   }
 
-  /** Reset the message_passing_context to the initial state. */
+  /** Return an iterator to the start of the set of input symbols.
+   *  The symbols are either decoded or default-constructed.
+   */
+  input_symbols_iterator input_symbols_begin() const {
+    return input_symbols_iterator(decoded.cbegin(), v2sym_conv(&the_graph));
+  }
+
+  /** Return an iterator to the end of the set of input symbols.
+   *  The symbols are either decoded or default-constructed.
+   */
+  input_symbols_iterator input_symbols_end() const {
+    return input_symbols_iterator(decoded.cend(), v2sym_conv(&the_graph));
+  }
+
+  /** Reset the mp_context to the initial state. */
   void clear() {
     K = 0;
     the_graph.clear();
@@ -177,9 +207,9 @@ private:
  *  associated symbol and an iterator to the corresponding vertex
  *  descriptor in the degree-one list.
  */
-template <class T>
-struct message_passing_context<T>::vertex_prop {
-  T symbol;
+template <class Symbol>
+struct mp_context<Symbol>::vertex_prop {
+  Symbol symbol;
   std::size_t index;
   //If std::list this is invalidated only on deletion
   typename deglist_t::iterator deglist_iter;
@@ -187,42 +217,48 @@ struct message_passing_context<T>::vertex_prop {
   vertex_prop() = default;
   explicit vertex_prop(std::size_t i) :
     index(i) {}
-  explicit vertex_prop(std::size_t i, const T &s) :
+  explicit vertex_prop(std::size_t i, const Symbol &s) :
     symbol(s), index(i) {}
 };
 
 /** Converter from vertex descriptors to (index, symbol) pairs. */
-template <class T>
-struct message_passing_context<T>::v2pair_conv {
+template <class Symbol>
+struct mp_context<Symbol>::v2pair_conv {
   const graph_t *the_graph;
 
   v2pair_conv() : the_graph(nullptr) {}
   explicit v2pair_conv(const graph_t *g) : the_graph(g) {}
 
   decoded_value_type operator()(const boost::optional<vdesc> &v) const {
-    return decoded_value_type((*the_graph)[*v].index,
-			      (*the_graph)[*v].symbol);
+    if (v)
+      return decoded_value_type((*the_graph)[*v].index,
+				(*the_graph)[*v].symbol);
+    else
+      throw std::runtime_error("Undecoded symbol");
   }
 };
 
 /** Converter from vertex descriptors to symbols. */
-template <class T>
-struct message_passing_context<T>::v2sym_conv {
+template <class Symbol>
+struct mp_context<Symbol>::v2sym_conv {
   const graph_t *the_graph;
 
   v2sym_conv() : the_graph(nullptr) {}
   explicit v2sym_conv(const graph_t *g) : the_graph(g) {}
 
-  const T &operator()(const boost::optional<vdesc> &v) const {
-    return (*the_graph)[*v].symbol;
+  symbol_type operator()(const boost::optional<vdesc> &v) const {
+    if (v)
+      return (*the_graph)[*v].symbol;
+    else
+      return symbol_type();
   }
 };
 
 /** Mapper from (input_index, output_index) pairs to a pair of indices
  *  as stored by the graph class.
  */
-template <class T>
-struct message_passing_context<T>::index_map {
+template <class Symbol>
+struct mp_context<Symbol>::index_map {
   const std::size_t *in_size;
 
   index_map() : in_size(nullptr) {}
@@ -239,11 +275,11 @@ struct message_passing_context<T>::index_map {
   }
 };
 
-//		message_passing_context<T> definitions
+//		mp_context<Symbol> definitions
 
-template <class T>
-message_passing_context<T>::message_passing_context(std::size_t in_size) :
-  message_passing_context() {
+template <class Symbol>
+mp_context<Symbol>::mp_context(std::size_t in_size) :
+  mp_context() {
   K = in_size;
   decoded.resize(K);
   for (std::size_t i = 0; i < K; ++i) {
@@ -251,26 +287,26 @@ message_passing_context<T>::message_passing_context(std::size_t in_size) :
   }
 }
 
-template <class T>
+template <class Symbol>
 template <class SymIter>
-message_passing_context<T>::message_passing_context(std::size_t in_size,
+mp_context<Symbol>::mp_context(std::size_t in_size,
 						    SymIter first_out,
 						    SymIter last_out) :
-  message_passing_context(in_size) {
+  mp_context(in_size) {
   std::size_t i = boost::num_vertices(the_graph);
   while (first_out != last_out) {
     boost::add_vertex(vertex_prop(i++, *first_out++), the_graph);
   }
 }
 
-template <class T>
+template <class Symbol>
 template <class OutSymIter, class EdgeIter>
-message_passing_context<T>::message_passing_context(std::size_t in_size,
+mp_context<Symbol>::mp_context(std::size_t in_size,
 						    OutSymIter first_out,
 						    OutSymIter last_out,
 						    EdgeIter first_edge,
 						    EdgeIter last_edge) :
-  message_passing_context() {
+  mp_context() {
   using namespace std;
   using namespace std::placeholders;
   using namespace boost;
@@ -307,8 +343,8 @@ message_passing_context<T>::message_passing_context(std::size_t in_size,
   }
 }
 
-template <class T>
-void message_passing_context<T>::decode_degree_one() {
+template <class Symbol>
+void mp_context<Symbol>::decode_degree_one() {
   using std::swap;
   using namespace boost;
 
@@ -328,13 +364,13 @@ void message_passing_context<T>::decode_degree_one() {
   deglist.clear();
 }
 
-template <class T>
-void message_passing_context<T>::process_ripple() {
+template <class Symbol>
+void mp_context<Symbol>::process_ripple() {
   using namespace std;
   using namespace boost;
 
   for (auto i = ripple.cbegin(); i != ripple.cend(); ++i) {
-    const T &input_sym = the_graph[*i].symbol;
+    const Symbol &input_sym = the_graph[*i].symbol;
     auto adj_r = adjacent_vertices(*i, the_graph);
     vector<typename graph_t::edge_descriptor> edges_to_delete;
     edges_to_delete.reserve(out_degree(*i, the_graph));
@@ -360,8 +396,8 @@ void message_passing_context<T>::process_ripple() {
   ripple.clear();
 }
 
-template <class T>
-void message_passing_context<T>::run() {
+template <class Symbol>
+void mp_context<Symbol>::run() {
   if (has_decoded()) return;
 
   ripple.clear();
@@ -372,8 +408,8 @@ void message_passing_context<T>::run() {
   }
 }
 
-template <class T>
-void message_passing_context<T>::add_edge_vdesc(vdesc u, vdesc v) {
+template <class Symbol>
+void mp_context<Symbol>::add_edge_vdesc(vdesc u, vdesc v) {
   using namespace std;
   using namespace boost;
 
@@ -384,14 +420,14 @@ void message_passing_context<T>::add_edge_vdesc(vdesc u, vdesc v) {
   else if (deg_before == 1) remove_from_deglist(v);
 }
 
-template <class T>
-void message_passing_context<T>::add_to_deglist(vdesc u) {
+template <class Symbol>
+void mp_context<Symbol>::add_to_deglist(vdesc u) {
   deglist.push_back(u);
   the_graph[u].deglist_iter = --deglist.end();
 }
 
-template <class T>
-void message_passing_context<T>::remove_from_deglist(vdesc u) {
+template <class Symbol>
+void mp_context<Symbol>::remove_from_deglist(vdesc u) {
   auto iter = the_graph[u].deglist_iter;
   the_graph[u].deglist_iter = decltype(iter)();
   deglist.erase(iter);
@@ -401,7 +437,7 @@ void message_passing_context<T>::remove_from_deglist(vdesc u) {
 
 /** Allow the use of the old name. */
 template <class Symbol>
-using message_passing_context = typename mp::message_passing_context<Symbol>;
+using message_passing_context = typename mp::mp_context<Symbol>;
 
 }
 

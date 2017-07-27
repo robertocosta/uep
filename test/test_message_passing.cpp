@@ -112,6 +112,12 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_build, SymSel, sym_selectors, mp_setup<SymSe
   BOOST_CHECK_EQUAL(S::mp->output_size(), S::out.size());
   BOOST_CHECK(!S::mp->has_decoded());
   BOOST_CHECK_EQUAL(S::mp->decoded_count(), 0);
+  for (auto i = S::mp->input_symbols_begin();
+       i != S::mp->input_symbols_end();
+       ++i) {
+    typename S::sym_type sym = *i;
+    BOOST_CHECK(!static_cast<bool>(sym));
+  }
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, SymSel, sym_selectors, mp_setup<SymSel>) {
@@ -120,6 +126,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, SymSel, sym_selectors, mp_setup<Sy
   S::mp->run();
   BOOST_CHECK(S::mp->has_decoded());
   BOOST_CHECK(equal(S::mp->decoded_symbols_begin(), S::mp->decoded_symbols_end(), S::expected.cbegin()));
+  BOOST_CHECK(equal(S::mp->input_symbols_begin(), S::mp->input_symbols_end(), S::expected.cbegin()));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_multiple, SymSel, sym_selectors, mp_setup<SymSel>) {
@@ -149,6 +156,16 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_partial, SymSel, sym_selectors, mp_setup<Sym
   BOOST_CHECK(!S::partial->has_decoded());
   BOOST_CHECK_EQUAL(S::partial->decoded_count(), 1);
   BOOST_CHECK(*(S::partial->decoded_symbols_begin()) == S::expected[1]);
+
+  auto i = S::partial->input_symbols_begin();
+  BOOST_CHECK(!(*i));
+  ++i;
+  BOOST_CHECK(static_cast<bool>(*i));
+  BOOST_CHECK(*i == S::expected[1]);
+  ++i;
+  BOOST_CHECK(!(*i));
+  ++i;
+  BOOST_CHECK(i == S::partial->input_symbols_end());
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_setup<SymSel>) {
