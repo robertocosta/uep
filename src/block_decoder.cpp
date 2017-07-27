@@ -5,9 +5,8 @@ using namespace std;
 namespace uep {
 
 block_decoder::block_decoder(const lt_row_generator &rg) :
-  rowgen(rg) {
+  rowgen(rg), decoded(rg.K()), decoded_count_(0) {
   link_cache.reserve(rg.K());
-  decoded.reserve(rg.K());
 }
 
 void block_decoder::check_correct_block(const fountain_packet &p) {
@@ -55,7 +54,8 @@ void block_decoder::reset() {
   //rowgen.reset();
   received_pkts.clear();
   link_cache.clear();
-  decoded.clear();
+  decoded.assign(block_size(), packet());
+  decoded_count_ = 0;
 }
 
 block_decoder::seed_t block_decoder::seed() const {
@@ -67,11 +67,11 @@ std::size_t block_decoder::block_number() const {
 }
 
 bool block_decoder::has_decoded() const {
-  return decoded.size() == rowgen.K();
+  return decoded_count() == block_size();
 }
 
 std::size_t block_decoder::decoded_count() const {
-  return decoded.size();
+  return decoded_count_;
 }
 
 std::size_t block_decoder::received_count() const {
@@ -84,12 +84,20 @@ std::size_t block_decoder::block_size() const {
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
   return const_block_iterator(decoded.cbegin(),
-			      pair2second_conv<std::size_t,packet>());
+			      decoded.cend());
 }
 
 block_decoder::const_block_iterator block_decoder::block_end() const {
   return const_block_iterator(decoded.cend(),
-			      pair2second_conv<std::size_t,packet>());
+			      decoded.cend());
+}
+
+block_decoder::const_partial_iterator block_decoder::partial_begin() const {
+  return decoded.cbegin();
+}
+
+block_decoder::const_partial_iterator block_decoder::partial_end() const {
+  return decoded.cend();
 }
 
 block_decoder::operator bool() const {
@@ -123,10 +131,10 @@ void block_decoder::run_message_passing() {
 
   // Copy decoded packets
   if (mp_ctx.decoded_count() != 0) {
-    mp_packet_iter mp_sb(mp_ctx.decoded_begin(), sym2pair_conv());
-    mp_packet_iter mp_se(mp_ctx.decoded_end(), sym2pair_conv());
-    decoded.resize(mp_ctx.decoded_count());
+    mp_packet_iter mp_sb(mp_ctx.input_symbols_begin(), lazy2p_conv());
+    mp_packet_iter mp_se(mp_ctx.input_symbols_end(), lazy2p_conv());
     copy(mp_sb, mp_se, decoded.begin());
+    decoded_count_ = mp_ctx.decoded_count();
   }
 }
 

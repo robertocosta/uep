@@ -113,20 +113,24 @@ private:
 
 template <class InputIt>
 void output_block_queue::push(InputIt first, InputIt last) {
-  if (static_cast<std::size_t>(last - first) != K)
-    throw std::logic_error("The block must have length K");
+  std::size_t count = 0;
   for (;first != last; ++first) {
     output_queue.push(*first);
+    ++count;
   }
+  if (count != K)
+    throw std::logic_error("The block must have length K");
 }
 
 template <class InputIt>
 void output_block_queue::push_shallow(InputIt first, InputIt last) {
-  if (static_cast<std::size_t>(last-first) != K)
-    throw std::logic_error("The block must have length K");
+  std::size_t count = 0;
   for (;first != last; ++first) {
     output_queue.push(first->shallow_copy());
+    ++count;
   }
+  if (count != K)
+    throw std::logic_error("The block must have length K");
 }
 
 #endif

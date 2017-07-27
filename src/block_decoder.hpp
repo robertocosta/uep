@@ -12,6 +12,7 @@
 #include "message_passing.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
+#include "utils.hpp"
 
 namespace uep {
 
@@ -25,7 +26,10 @@ struct seqno_less {
 /** Converter to evaluate lazy_xors into packets. */
 struct lazy2p_conv {
   packet operator()(const lazy_xor<packet> &lx) const {
-    return lx.evaluate();
+    if (lx)
+      return lx.evaluate();
+    else
+      return packet();
   }
 };
 
@@ -60,19 +64,20 @@ struct pair2second_conv {
  */
 class block_decoder {
   typedef lazy_xor<packet> mp_symbol_t;
-  typedef message_passing_context<mp_symbol_t> mp_ctx_t;
+  typedef mp::mp_context<mp_symbol_t> mp_ctx_t;
   typedef std::set<fountain_packet, seqno_less> received_t;
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
-  typedef std::vector<std::pair<std::size_t,packet>> decoded_t;
+  typedef std::vector<packet> decoded_t;
 
-  typedef boost::transform_iterator<sym2pair_conv,
-				    mp_ctx_t::decoded_iterator
+  typedef boost::transform_iterator<lazy2p_conv,
+				    mp_ctx_t::input_symbols_iterator
 				    > mp_packet_iter;
 
 public:
-  typedef boost::transform_iterator<pair2second_conv<std::size_t,packet>,
-				    decoded_t::const_iterator
-				    > const_block_iterator;
+  typedef decoded_t::const_iterator const_partial_iterator;
+  typedef utils::skip_false_iterator<decoded_t::const_iterator
+				     > const_block_iterator;
+
   typedef lt_row_generator::rng_type::result_type seed_t;
 
   explicit block_decoder(const lt_row_generator &rg);
@@ -99,6 +104,7 @@ public:
   std::size_t received_count() const;
   /** Block size. */
   std::size_t block_size() const;
+
   /** Return an iterator to the beginning of the decoded packets.
    * The interval [block_begin(), block_end()) always contains the
    * decoded_count() packets that have been decoded.
@@ -109,6 +115,19 @@ public:
    * \sa block_begin()
    */
   const_block_iterator block_end() const;
+
+  /** Return an iterator to the beginning of the partially decoded
+   *  block.
+   *  The partially decoded block has always size block_size() but
+   *  some of the packets may be empty.
+   *  \sa partial_end()
+   */
+  const_partial_iterator partial_begin() const;
+  /** Return an iterator to the end of the partially decoded
+   *  block.
+   *  \sa partial_begin()
+   */
+  const_partial_iterator partial_end() const;
 
   //void do_partial_decoding(bool value);
   //bool do_partial_decoding() const;
@@ -123,6 +142,7 @@ private:
   received_t received_pkts;
   link_cache_t link_cache;
   decoded_t decoded;
+  std::size_t decoded_count_;
   std::size_t blockno;
   std::size_t pktsize;
 
