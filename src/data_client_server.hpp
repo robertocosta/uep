@@ -327,7 +327,9 @@ public:
 
   /** Resolve the destination (client) endpoint and bind the socket. */
   void open(const std::string &dest_host, const std::string &dest_service) {
-    using boost::asio::ip::udp;
+    using namespace boost::asio;
+    using ip::udp;
+
     udp::resolver resolver(io_service_);
     udp::resolver::query query(udp::v4(), dest_host, dest_service);
     auto i = resolver.resolve(query);
@@ -335,7 +337,9 @@ public:
       throw std::runtime_error("No endpoint found");
     }
     client_endpoint_ = *i;
+    udp::endpoint local(ip::address::from_string("0.0.0.0"), 0);
     socket_.open(udp::v4());
+    socket_.bind(local);
   }
 
   /** Schedule the start of a transmission toward the client endpoint. */
