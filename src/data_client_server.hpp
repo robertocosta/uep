@@ -41,7 +41,9 @@ public:
     strand_(io_service_),
     socket_(io_service_),
     recv_buffer(UDP_MAX_PAYLOAD),
-    ack_enabled(true) {
+    ack_enabled(true),
+    exp_count(0),
+    is_stopped_(true) {
   }
 
   /** Replace the decoder object with one built from the given
@@ -74,6 +76,7 @@ public:
   void start_receive(const boost::asio::ip::udp::endpoint &src_ep) {
     using namespace std::placeholders;
     server_endpoint_ = src_ep;
+    is_stopped_ = false;
     socket_.async_receive_from(boost::asio::buffer(recv_buffer),
 			       server_endpoint_,
 			       std::bind(&data_client::handle_received,
@@ -90,9 +93,9 @@ public:
     start_receive(ip::udp::endpoint(a, src_port));
   }
 
-  /** Schedule the closing of the data_client. */
-  void close() {
-    strand_.dispatch(std::bind(&data_client::handle_close, this));
+  /** Schedule the stopping of the data_client. */
+  void stop() {
+    strand_.dispatch(std::bind(&data_client::handle_stop, this));
   }
 
   /** Enable or disable the sending of ACKs. */
@@ -104,6 +107,21 @@ public:
   bool is_ack_enabled() const {
     return ack_enabled;
   }
+
+  /** Set the number of packets to be received before stopping. */
+  void expected_count(std::size_t ec) {
+    exp_count = ec;
+  }
+
+  /** Get the number of packets to be received before stopping. */
+  std::size_t expected_count() const {
+    return exp_count;
+  }
+
+  /** True if the client is not listening for packets. */
+  bool is_stopped() const {
+    return is_stopped_;
+  };
 
   /** Return a const reference to the sink object. */
   const Sink &sink() const {
@@ -155,6 +173,14 @@ private:
   std::atomic<bool> ack_enabled; /**< Set when the data_client should
 				  *   send back ACKs.
 				  */
+  std::atomic<std::size_t> exp_count; /**< The number of packets that
+				       *   should be received before
+				       *   stopping the client. A
+				       *   value of 0 means that the
+				       *   client will never stop to
+				       *   listen.
+				       */
+  bool is_stopped_;
 
   /** Schedule the transmission of an ACK to the server. */
   void schedule_ack(std::size_t blockno) {
@@ -203,12 +229,19 @@ private:
       schedule_ack(bnc.next());
     }
 
-    // Keep listening
-    socket_.async_receive_from(boost::asio::buffer(recv_buffer),
-			       server_endpoint_,
-			       std::bind(&data_client::handle_received,
-					 this,
-					 _1, _2));
+    // Keep listening if not all packets have been decoded or failed
+    if (exp_count == 0 ||
+	(decoder_->total_decoded_count() +
+	 decoder_->total_failed_count()) < exp_count) {
+      socket_.async_receive_from(boost::asio::buffer(recv_buffer),
+				 server_endpoint_,
+				 std::bind(&data_client::handle_received,
+					   this,
+					   _1, _2));
+    }
+    else { // Stop the client
+      stop();
+    }
   }
 
   /** Called when the ACK has been sent. */
@@ -218,10 +251,11 @@ private:
     if (size != ack_buffer.size()) throw std::runtime_error("Was not sent fully");
   }
 
-  /** Called after close(). */
-  void handle_close() {
+  /** Called after stop(). */
+  void handle_stop() {
     socket_.cancel();
     socket_.close();
+    is_stopped_ = true;
   }
 };
 
@@ -345,6 +379,13 @@ public:
   /** Return true when the sending of ACKs is enabled. */
   bool is_ack_enabled() const {
     return ack_enabled;
+  }
+
+  /** True when the data_server is not sending data and not listening
+   *  for ACKs.
+   */
+  bool is_stopped() const {
+    return is_stopped_;
   }
 
   /** Return a const reference to the source object. */
