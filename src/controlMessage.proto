@@ -1,25 +1,28 @@
 package controlMessage;
 
-message ClientInfo {
-	optional string StreamName = 1;
-	optional bool play = 2;
-	optional bool pause = 3;
-	optional bool stop = 4;
-	optional int32 bufferState = 5;
-	optional message linkState {
-		optional int32 throughput = 1;
-		optional int32 delay = 2;
-	}
+message StreamName {
+	required string StreamName = 1;
 }
 
-message ServerInfo {
-	optional int32 UDPport = 1;
-	optional int32 mediaSize = 2;
-	optional bool finished = 3;
-	optional bool fileNotFound = 4;
-	optional message UEP {
-		optional int32 k = 1;
-		optional int32 c = 2;
-		optional int32 delta = 3;
-	}
+message TXParam {
+	required uint64 K = 1;
+	required double c = 2;
+	required double delta = 3;
+	required uint32 RFM = 4;
+	required uint32 RFL = 5;
+	required uint32 EF = 6;
+	required bool ACK = 7;
+	required uint64 fileSize = 8;
+}
+
+message Connect {
+	required uint32 port = 1;
+}
+
+message ConnACK {
+	required uint32 port = 1;
+}
+
+message Play {
+	
 }

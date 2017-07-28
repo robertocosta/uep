@@ -224,23 +224,28 @@ packet operator^(const packet &a, const packet &b) {
   packet c(a);
   return c ^= b;
 }
-
+  
 fountain_packet::fountain_packet(int blockno_, int seqno_, int seed_,
 				 size_type count, char value) :
   packet(count, value),
-  blockno(blockno_), seqno(seqno_), seed(seed_) {}
+  blockno(blockno_), seqno(seqno_), seed(seed_), priorita(0) {}
+  
+fountain_packet::fountain_packet(int blockno_, int seqno_, int seed_,
+				 size_type count, char value, uint8_t p_) :
+  packet(count, value),
+  blockno(blockno_), seqno(seqno_), seed(seed_), priorita(p_) {}
 
 fountain_packet::fountain_packet() :
-  fountain_packet(0,0,0,0,0) {}
+  fountain_packet(0,0,0,0,0,0) {}
 
 fountain_packet::fountain_packet(int blockno_, int seqno_, int seed_) :
-  fountain_packet(blockno_, seqno_, seed_, 0, 0) {}
+  fountain_packet(blockno_, seqno_, seed_, 0, 0, 0) {}
 
 fountain_packet::fountain_packet(size_type count, char value) :
-  fountain_packet(0,0,0,count, value) {}
+  fountain_packet(0,0,0,count, value, 0) {}
 
 fountain_packet::fountain_packet(const packet &p) :
-  packet(p), blockno(0), seqno(0), seed(0) {}
+  packet(p), blockno(0), seqno(0), seed(0), priorita(0) {}
 
 fountain_packet::fountain_packet(packet &&p) :
   packet(move(p)), blockno(0), seqno(0), seed(0) {}
@@ -250,6 +255,7 @@ fountain_packet &fountain_packet::operator=(const packet &other) {
   blockno = 0;
   seqno = 0;
   seed = 0;
+  priorita = 0;
   return *this;
 }
 
@@ -258,7 +264,12 @@ fountain_packet &fountain_packet::operator=(packet &&other) {
   blockno = 0;
   seqno = 0;
   seed = 0;
+  priorita = 0;
   return *this;
+}
+
+uint8_t fountain_packet::getPriority() const {
+  return priorita;
 }
 
 int fountain_packet::block_number() const {
@@ -271,6 +282,10 @@ int fountain_packet::block_seed() const {
 
 int fountain_packet::sequence_number() const {
   return seqno;
+}
+
+void fountain_packet::setPriority(uint8_t p_) {
+	priorita = p_;
 }
 
 void fountain_packet::block_number(int blockno_) {
@@ -290,6 +305,7 @@ fountain_packet fountain_packet::shallow_copy() const {
   copy.blockno = blockno;
   copy.seqno = seqno;
   copy.seed = seed;
+  copy.priorita = priorita;
   return copy;
 }
 
@@ -303,7 +319,8 @@ std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
     "blockno=" << p.block_number() <<
     ", seqno=" << p.sequence_number() <<
     ", seed=" << p.block_seed() <<
-    ", size=" << p.size() <<
+    ", priority=" << p.getPriority() <<
+	", size=" << p.size() <<
     ")";
   return out;
 }
@@ -312,6 +329,7 @@ bool operator==(const fountain_packet &lhs, const fountain_packet &rhs ) {
   return lhs.block_number() == rhs.block_number() &&
     lhs.sequence_number() == rhs.sequence_number() &&
     lhs.block_seed() == rhs.block_seed() &&
+	lhs.getPriority() == rhs.getPriority() &&
     static_cast<const packet &>(lhs) == static_cast<const packet &>(rhs);
 }
 

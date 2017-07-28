@@ -154,10 +154,13 @@ packet operator^(const packet &a, const packet &b);
 class fountain_packet : public packet {
 public:
   fountain_packet();
+
   explicit fountain_packet(int blockno_, int seqno_, int seed_);
   explicit fountain_packet(size_type count, char value);
   explicit fountain_packet(int blockno_, int seqno_, int seed_,
-			   size_type count, char value);
+			size_type count, char value);
+  explicit fountain_packet(int blockno_, int seqno_, int seed_,
+			   size_type count, char value, uint8_t priority);
   /** Construct a fountain_packet with a copy of a packet's data. */
   explicit fountain_packet(const packet &p);
   /** Construct a fountain_packet moving a packet's data. */
@@ -170,6 +173,8 @@ public:
   fountain_packet &operator=(const fountain_packet &other) = default;
   fountain_packet &operator=(fountain_packet &&other) = default;
 
+  /** Get the priority */
+  uint8_t getPriority() const;
   /** Get the block number. */
   int block_number() const;
   /** Get the seed used to generate this packet's block. */
@@ -177,6 +182,8 @@ public:
   /** Get the sequence number within the block. */
   int sequence_number() const;
 
+  /** Set the priority */
+  void setPriority(uint8_t p);
   /** Set the block number. */
   void block_number(int blockno_);
   /** Set the seed used to generate this packet's block. */
@@ -193,6 +200,7 @@ private:
   int blockno;
   int seqno;
   int seed;
+  uint8_t priorita;
 };
 
 /** In-place bitwise-XOR between the data held by two packets.
