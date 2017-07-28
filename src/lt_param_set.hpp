@@ -21,6 +21,16 @@ struct robust_lt_parameter_set {
   double delta;
 };
 
+/** Parameter set used to add redoundancy
+	Repeat factors: one for each priority
+	Expanding factor: applied to the whole sequence
+	*/
+struct lt_uep_parameter_set {
+	uint8_t RFM;	/* repeat factor for the most important part */
+	uint8_t RFL;  /* repeat factor for the less important part */
+	uint8_t EF;	/* expanding factor */
+};
+
 }
 
 #endif

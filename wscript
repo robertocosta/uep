@@ -162,9 +162,6 @@ def build(ctx):
                 source=["test/test_message_passing.cpp",
                         "src/packets.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="client",
-                source=["src/client.cpp"],
-                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_packet_rw",
                 source=["test/test_packet_rw.cpp",
                         "src/packets.cpp",
@@ -189,6 +186,11 @@ def build(ctx):
                 "src/block_queues.cpp"],
         use=['SYSTEM_LIBS', 'BOOST_LIBS'],
         target='demo_ds')
+    ctx(features='cxx cxxprogram',
+        source='src/client.cpp src/controlMessage.proto',
+        use=['SYSTEM_LIBS', 'BOOST_LIBS'],
+        target='client'
+        )
     ctx(features='cxx cxxprogram',
         source='src/server.cpp src/controlMessage.proto',
         use=['SYSTEM_LIBS', 'BOOST_LIBS'],
