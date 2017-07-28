@@ -79,7 +79,8 @@ public:
     the_input_queue(rg.K()),
     the_block_encoder(rg),
     seqno_counter(MAX_SEQNO),
-    blockno_counter(MAX_BLOCKNO) {
+    blockno_counter(MAX_BLOCKNO),
+    tot_coded_count(0) {
     blockno_counter.set(0);
   }
 
@@ -114,6 +115,7 @@ public:
    *  one.
    */
   void next_block() {
+    tot_coded_count += coded_count();
     the_input_queue.pop_block();
     the_block_encoder.reset();
     blockno_counter.next();
@@ -182,6 +184,11 @@ public:
     return the_block_encoder.output_count();
   }
 
+  /** Return the total number of coded packets that were produced. */
+  std::size_t total_coded_count() const {
+    return tot_coded_count;
+  }
+
   /** Is true when coded packets can be produced. */
   explicit operator bool() const { return has_block(); }
   /** Is true when there is not a full block available. */
@@ -193,6 +200,9 @@ private:
   seed_generator_type the_seed_gen;
   counter<std::size_t> seqno_counter;
   circular_counter<std::size_t> blockno_counter;
+  std::size_t tot_coded_count; /**< Count the total number of coded
+				*   packets.
+				*/
 
 
   // struct loggers_t {
@@ -203,6 +213,9 @@ private:
   //   default_logger text;
   // } loggers;
 
+  /** If the block_encoder is empty and the queue has a full block,
+   *  load the block_decoder. Also generate a new block seed.
+   */
   void check_has_block() {
     if (the_input_queue && !the_block_encoder) {
       the_block_encoder.set_block_shallow(the_input_queue.block_begin(),

@@ -265,12 +265,23 @@ BOOST_AUTO_TEST_CASE(send_with_pkt_limit) {
   BOOST_CHECK_EQUAL(dc.decoder().received_count(), 90); // got max amount of pkts
 
   // Check correctness
+  std::size_t count_ok = 0;
+  std::size_t count_fail = 0;
   auto i = recv.cbegin();
   auto j = orig.cbegin();
   while (i != recv.cend()) {
     BOOST_CHECK(j != orig.cend());
-    if (*i) BOOST_CHECK(*i == *j);
+    if (*i) {
+      BOOST_CHECK(*i == *j);
+      ++count_ok;
+    }
+    else {
+      ++count_fail;
+    }
     ++i;;
     ++j;
   }
+
+  BOOST_CHECK_EQUAL(count_fail, dc.decoder().total_failed_count());
+  BOOST_CHECK_EQUAL(count_ok, dc.decoder().total_decoded_count());
 }

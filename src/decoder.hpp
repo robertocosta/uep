@@ -84,8 +84,16 @@ public:
   bool has_queued_packets() const;
   /** Return the total number of unique received packets. */
   std::size_t total_received_count() const;
-  /** Return the total number of decoded packets. */
+  /** Return the total number of packets that were decoded and passed
+   *  to the queue. This excludes the packets decoded in the current
+   *  block.
+   */
   std::size_t total_decoded_count() const;
+  /** Return the total number of failed packets that were passed to
+   *  the queue. This does not count the undecoded packets in the
+   *  current block.
+   */
+  std::size_t total_failed_count() const;
 
   /** True if there are decoded packets still in the queue. */
   explicit operator bool() const;
@@ -102,6 +110,9 @@ private:
   std::size_t uniq_recv_count; /**< Total number of unique received
 				  packets. */
   std::size_t tot_dec_count; /**< Total number of decoded packets. */
+  std::size_t tot_failed_count; /**< Total number of packets that were
+				 *   not decoded.
+				 */
 
   // struct loggers_t {
   //   default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);
