@@ -93,6 +93,20 @@ public:
     start_receive(ip::udp::endpoint(a, src_port));
   }
 
+  /** Listen asynchronously for packets coming from a given remote
+   *  (source) IP address and port.
+   */
+  void start_receive(const std::string &src_addr, const std::string &src_port) {
+    using boost::asio::ip::udp;
+    udp::resolver resolver(io_service_);
+    udp::resolver::query query(udp::v4(), src_addr, src_port);
+    auto i = resolver.resolve(query);
+    if (i == udp::resolver::iterator()) {
+      throw std::runtime_error("No endpoint found");
+    }
+    start_receive(*i);
+  }
+
   /** Schedule the stopping of the data_client. */
   void stop() {
     strand_.dispatch(std::bind(&data_client::handle_stop, this));
@@ -461,7 +475,7 @@ private:
 
     // Empty encoder and no more data: stop
     if (!*encoder_) {
-      is_stopped_ = true;
+      stop();
       return;
     }
 
@@ -469,7 +483,7 @@ private:
     if (max_per_block <= encoder_->coded_count()) {
       encoder_->next_block();
       if (!*encoder_) { // The source did not have 2 blocks
-	is_stopped_ = true;
+	stop();
 	return;
       }
     }
