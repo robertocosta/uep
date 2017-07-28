@@ -47,7 +47,7 @@ void lt_decoder::push(fountain_packet &&p) {
       // If there is a gap in the blocks fill with empty pkts
       if (dist > 1) {
 	const std::vector<packet> empty_block(K());
-	for (int i = 0; i < dist - 1; ++i) {
+	for (std::size_t i = 0; i < dist - 1; ++i) {
 	  the_output_queue.push_shallow(empty_block.cbegin(),
 					empty_block.cend());
 	}
