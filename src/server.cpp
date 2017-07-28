@@ -11,7 +11,7 @@
 	DataServer.start
 	*/	
 
-	#include <ctime>
+#include <ctime>
 #include <iostream>
 #include <string>
 #include <boost/bind.hpp>
@@ -19,6 +19,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/asio.hpp>
 #include "controlMessage.pb.h"
+#include <boost/array.hpp>
 
 using boost::asio::ip::tcp;
 int port_num = 12312;
@@ -68,12 +69,56 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		// We are using boost::asio::async_write(), 
 		// rather than ip::tcp::socket::async_write_some(), 
 		// to ensure that the entire block of data is sent.
-
+		void firstHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
+			
+		}
 		void start() {
-			// The data to be sent is stored in the class member m_message 
+			// We use a boost::array to hold the received data. 
+			boost::array<char, 128> buf;
+			boost::system::error_code error;
+
+			// The boost::asio::buffer() function automatically determines 
+			// the size of the array to help prevent buffer overruns.
+			socket_.async_read_some(boost::asio::buffer(buf), std::bind(&tcp_connection::firstHandler,this,std::placeholders::_1, std::placeholders::_2));
+			
+			// When the server closes the connection, 
+			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 
+			// which is how we know to exit the loop.
+			if (error == boost::asio::error::eof)
+				std::cout.write("error",5); // Connection closed cleanly by peer.
+			else if (error)
+				throw boost::system::system_error(error); // Some other error.
+			std::cout << buf.data() << std::endl;
+			
+		// The data to be sent is stored in the class member m_message 
 			// as we need to keep the data valid 
 			// until the asynchronous operation is complete.
-			m_message = make_daytime_string();
+			
+			controlMessage::TXParam second;
+			second.set_k(5);
+			second.set_c(0.1);
+			second.set_delta(0.5);
+			second.set_rfm(2);
+			second.set_rfl(1);
+			second.set_ef(2);
+			second.set_ack(true);
+			second.set_filesize(10240);
+			
+			std::stringstream st;
+			std::ostream* output = &st;
+			std::string s;
+			if (second.SerializeToOstream(output)) {
+				s = st.str();
+				try {
+					s = s.substr(2,s.length()-2);
+				} catch (const std::out_of_range& e) {
+					std::cout << "Il messaggio deve essere di lunghezza maggiore di 1\n";
+				}
+				//std::cout << s << std::endl;
+			}
+			//std::cout << output << std::endl;
+
+			m_message = s;
 
 			// When initiating the asynchronous operation, 
 			// and if using boost::bind(), 
@@ -89,6 +134,9 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				boost::bind(&tcp_connection::handle_write, shared_from_this(),
 					boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
+						
+			
+
 		}
 
 	private:
@@ -99,22 +147,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		// handle_write() is responsible for any further actions 
 		// for this client connection.
 		void handle_write(const boost::system::error_code& /*error*/,size_t /*bytes_transferred*/) {
-/*			// We use a boost::array to hold the received data. 
-			boost::array<char, 128> buf;
-			boost::system::error_code error;
 
-			// The boost::asio::buffer() function automatically determines 
-			// the size of the array to help prevent buffer overruns.
-			size_t len = socket.read_some(boost::asio::buffer(buf), error);
-
-			// When the server closes the connection, 
-			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 
-			// which is how we know to exit the loop.
-			if (error == boost::asio::error::eof)
-				break; // Connection closed cleanly by peer.
-			else if (error)
-				throw boost::system::system_error(error); // Some other error.
-*/
 		}
 
 		tcp::socket socket_;
