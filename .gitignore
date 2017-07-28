@@ -1,20 +1,21 @@
-/.lock-waf_*
-/.waf-1.9.7-*/
-/.waf3-1.9.7-*/
 # /aclocal.m4
 # /autom4te.cache/
 # /build-aux/
-/build/
 # /config.h
 # /config.h.in
 # /config.log
 # /config.status
 # /configure
-/doc/doxygen_sqlite3.db
-/doc/html
 # /m4/
 # /stamp-h1
 # Makefile
 # Makefile.in
 # \.deps/
 # \.dirstamp
+*.pyc
+/.lock-waf_*
+/.waf-*/
+/.waf3-*/
+/build/
+/doc/doxygen_sqlite3.db
+/doc/html
