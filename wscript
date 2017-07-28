@@ -170,7 +170,25 @@ def build(ctx):
                         "src/packets.cpp",
                         "src/packets_rw.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-
+    ctx(features='cxx cxxprogram',
+        source=['src/demo_dc.cpp',
+                "src/packets.cpp",
+                "src/packets_rw.cpp",
+                "src/rng.cpp",
+                "src/decoder.cpp",
+                "src/block_decoder.cpp",
+                "src/block_queues.cpp"],
+        use=['SYSTEM_LIBS', 'BOOST_LIBS'],
+        target='demo_dc')
+    ctx(features='cxx cxxprogram',
+        source=['src/demo_ds.cpp',
+                "src/packets.cpp",
+                "src/packets_rw.cpp",
+                "src/rng.cpp",
+                "src/block_encoder.cpp",
+                "src/block_queues.cpp"],
+        use=['SYSTEM_LIBS', 'BOOST_LIBS'],
+        target='demo_ds')
     ctx(features='cxx cxxprogram',
         source='src/server.cpp src/controlMessage.proto',
         use=['SYSTEM_LIBS', 'BOOST_LIBS'],
