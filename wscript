@@ -59,7 +59,7 @@ def configure(ctx):
     #                'avutil',
     #                'swresample']
 
-    ctx.load('compiler_cxx python')
+    ctx.load('compiler_cxx python protoc')
     ctx.check_python_version((2,7))
     # ctx.check_cxx(lib=ffmpeg_libs,
     #               cxxflags=common_cxxflags,
@@ -165,14 +165,17 @@ def build(ctx):
     ctx.program(target="client",
                 source=["src/client.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
-    ctx.program(target="server",
-                source=["src/server.cpp"],
-                use=['SYSTEM_LIBS', 'BOOST_LIBS'])
     ctx.program(target="test_packet_rw",
                 source=["test/test_packet_rw.cpp",
                         "src/packets.cpp",
                         "src/packets_rw.cpp"],
                 use=['SYSTEM_LIBS', 'BOOST_LIBS'])
+
+    ctx(features='cxx cxxprogram',
+        source='src/server.cpp src/controlMessage.proto',
+        use=['SYSTEM_LIBS', 'BOOST_LIBS'],
+        target='server'
+        )
 
         # ctx.program(source="src/rng.cpp src/test_rng.cpp",
         #             target="test_rng",
