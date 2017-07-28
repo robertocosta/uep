@@ -491,6 +491,66 @@ BOOST_AUTO_TEST_CASE(missing_decoded) {
   BOOST_CHECK(i == original.cend());
 }
 
+BOOST_AUTO_TEST_CASE(check_decoder_counters) {
+  const size_t L = 10;
+  const size_t K = 100;
+  const double c = 0.1;
+  const double delta = 0.5;
+
+  lt_encoder<std::mt19937> enc(K, c, delta);
+  lt_decoder dec(K,c,delta);
+  vector<packet> original;
+
+  // Push 4 blocks to the encoder
+  const std::size_t nblocks = 4;
+  for (size_t i = 0; i < nblocks*K; ++i) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push(move(p));
+  }
+
+  // Initial state
+  BOOST_CHECK_EQUAL(dec.total_received_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+
+  // Current block does not increment counters
+  for (size_t i = 0; i < K-1; ++i)
+    dec.push(enc.next_coded());
+  BOOST_CHECK_EQUAL(dec.received_count(), K-1);
+  BOOST_CHECK(dec.decoded_count() > 0);
+  BOOST_CHECK_EQUAL(dec.total_received_count(), K-1);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+
+  // Finish first block
+  while (!dec.has_decoded())
+    dec.push(enc.next_coded());
+  enc.next_block();
+  BOOST_CHECK_EQUAL(dec.decoded_count(), K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), K);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+
+  // Skip two blocks
+  enc.next_block(3);
+  dec.push(enc.next_coded());
+  while (!dec.has_decoded())
+    dec.push(enc.next_coded());
+  enc.next_block();
+
+  // Check counters
+  BOOST_CHECK_EQUAL(dec.total_received_count(), enc.total_coded_count());
+  BOOST_CHECK_EQUAL(dec.decoded_count(), K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 2*K); // the current
+						     // block is
+						     // enqueued when
+						     // decoded
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), (nblocks-2)*K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count() +
+		    dec.total_failed_count(),
+		    nblocks * K);
+}
+
 // struct stat_fixture {
 //   boost::shared_ptr<default_stat_sink> the_stat_sink;
 

@@ -25,7 +25,8 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
   blockno_counter(MAX_BLOCKNO),
   has_enqueued(false),
   uniq_recv_count(0),
-  tot_dec_count(0) {
+  tot_dec_count(0),
+  tot_failed_count(0) {
   blockno_counter.set(0);
 }
 
@@ -47,10 +48,12 @@ void lt_decoder::push(fountain_packet &&p) {
       // If there is a gap in the blocks fill with empty pkts
       if (dist > 1) {
 	const std::vector<packet> empty_block(K());
-	for (int i = 0; i < dist - 1; ++i) {
+	for (std::size_t i = 0; i < dist - 1; ++i) {
 	  the_output_queue.push_shallow(empty_block.cbegin(),
 					empty_block.cend());
+
 	}
+	tot_failed_count += K() * (dist - 1);
       }
       // Start to decode the new block
       the_block_decoder.reset();
@@ -131,6 +134,10 @@ std::size_t lt_decoder::total_decoded_count() const {
   return tot_dec_count;
 }
 
+std::size_t lt_decoder::total_failed_count() const {
+  return tot_failed_count;
+}
+
 lt_decoder::operator bool() const {
   return has_queued_packets();
 }
@@ -145,6 +152,7 @@ void lt_decoder::enqueue_partially_decoded() {
   the_output_queue.push_shallow(the_block_decoder.partial_begin(),
 				the_block_decoder.partial_end());
   tot_dec_count += the_block_decoder.decoded_count();
+  tot_failed_count += K() - the_block_decoder.decoded_count();
 
   has_enqueued = true;
 }
