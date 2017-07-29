@@ -40,7 +40,7 @@ def options(ctx):
                    action="store_true", default=False)
 
 def configure(ctx):
-    common_cxxflags = ['-Wall', '-std=c++11', '-ggdb', '-O0', '-pg']
+    common_cxxflags = ['-Wall', '-ggdb', '-O0', '-pg']
     common_linkflags = ['-pg']
     boost_defines = []
     if not ctx.options.static:
