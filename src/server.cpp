@@ -1,16 +1,3 @@
-
-	/* Rispondi con ACK a client
-		e trasmette i parametri del decoder
-		e i parametri della connessione
-			1. se usare o meno gli ACK
-			2. Dimensione del file
-	Si mette in attesa del messaggio CONNECT(porta) dal client
-	Ricevuto il quale crea l'encoder 
-	E manda un ack al client con la porta usata dall'encoder (udp)
-	Si mette in attesa del messaggio PLAY
-	DataServer.start
-	*/	
-
 #include <ctime>
 #include <iostream>
 #include <string>
@@ -23,37 +10,31 @@
 
 using boost::asio::ip::tcp;
 int port_num = 12312;
-
-std::string make_daytime_string() {
-	std:: time_t now = std::time(0);
-	return std::ctime(&now);
-}
-
-	/*	
-		1: client to server: streamName
-		2: server to client: TXParam
-			2.1 decoder parameters
-				2.1.1 K	size_t (unsigned long)
-				2.1.2 c (double)
-				2.1.3 delta (double)
-				2.1.4 RFM (uint8_t)
-				2.1.5 RFL (uint8_t)
-				2.1.6 EF (uint8_t)
-			2.2 ACK enabled
-			2.3 File size
-		3: client to server: Connect
-			3.1 udp port where to send data
-		4: server to client: ConnACK
-			4.1 udp port where to receive ack
-		5: client to server: Play
-	*/
-	//std::vector<item> v;
+/*	
+	1: client to server: streamName
+	2: server to client: TXParam
+		2.1 decoder parameters
+			2.1.1 K	size_t (unsigned long)
+			2.1.2 c (double)
+			2.1.3 delta (double)
+			2.1.4 RFM (uint8_t)
+			2.1.5 RFL (uint8_t)
+			2.1.6 EF (uint8_t)
+		2.2 ACK enabled
+		2.3 File size
+	3: client to server: Connect
+		3.1 udp port where to send data
+		When the server receives it the encoder must be created
+	4: server to client: ConnACK
+		4.1 udp port where to receive ack
+	5: client to server: Play
+		DataServer.start
+*/
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
-  // Using shared_ptr and enable_shared_from_this 
-  // because we want to keep the tcp_connection object alive 
-  // as long as there is an operation that refers to it.
-	
+	// Using shared_ptr and enable_shared_from_this 
+	// because we want to keep the tcp_connection object alive 
+	// as long as there is an operation that refers to it.
 	public:
 		typedef boost::shared_ptr<tcp_connection> pointer;
 
@@ -74,47 +55,32 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// as we need to keep the data valid 
 			// until the asynchronous operation is complete.
 			std::cout << buf.data() << std::endl;
-			controlMessage::TXParam second;
-			second.set_k(5);
-			second.set_c(0.1);
-			second.set_delta(0.5);
-			second.set_rfm(2);
-			second.set_rfl(1);
-			second.set_ef(2);
-			second.set_ack(true);
-			second.set_filesize(10240);
+			controlMessage::TXParam secondMessage;
+			secondMessage.set_k(5);
+			secondMessage.set_c(0.1);
+			secondMessage.set_delta(0.5);
+			secondMessage.set_rfm(2);
+			secondMessage.set_rfl(1);
+			secondMessage.set_ef(2);
+			secondMessage.set_ack(true);
+			secondMessage.set_filesize(10240);
 			
-			std::stringstream st;
-			std::ostream* output = &st;
 			std::string s;
-			if (second.SerializeToOstream(output)) {
-				s = st.str();
-				try {
-					s = s.substr(2,s.length()-2);
-				} catch (const std::out_of_range& e) {
-					std::cout << "Il messaggio deve essere di lunghezza maggiore di 1\n";
-				}
-				//std::cout << s << std::endl;
+			if (secondMessage.SerializeToString(&s)) {
+				std::cout << "parametri serializzati:\n****"<<s<<"****\n";
 			}
-			//std::cout << output << std::endl;
-
-			m_message = s;
-
-			// When initiating the asynchronous operation, 
-			// and if using boost::bind(), 
-			// we must specify only the arguments 
-			// that match the handler's parameter list. 
-			// In this code, both of the argument placeholders 
-			// (boost::asio::placeholders::error 
-			// and boost::asio::placeholders::bytes_transferred) 
-			// could potentially have been removed, 
-			// since they are not being used in handle_write().
-
-			boost::asio::async_write(socket_, boost::asio::buffer(st.str()),
-				boost::bind(&tcp_connection::handle_write, shared_from_this(),
-					boost::asio::placeholders::error,
-						boost::asio::placeholders::bytes_transferred));
-						
+			/*
+			controlMessage::TXParam secondMessageDecoded;
+			if (secondMessageDecoded.ParseFromString(s)) {
+				std::cout << "il secondo messaggio dal server è stato letto\n";
+				std::cout << secondMessage.k() << std::endl;
+			}
+			*/
+			boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
+				&tcp_connection::handle_write,
+				shared_from_this(),
+				std::placeholders::_1,
+				std::placeholders::_2));
 		}
 		void start() {
 			// We use a boost::array to hold the received data. 
@@ -123,7 +89,9 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 
 			// The boost::asio::buffer() function automatically determines 
 			// the size of the array to help prevent buffer overruns.
-			socket_.async_read_some(boost::asio::buffer(buf), std::bind(&tcp_connection::firstHandler,this,std::placeholders::_1, std::placeholders::_2));
+			socket_.async_read_some(boost::asio::buffer(buf), 
+				std::bind(&tcp_connection::firstHandler,shared_from_this(),
+					std::placeholders::_1, std::placeholders::_2));
 				
 			// When the server closes the connection, 
 			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 

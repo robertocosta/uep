@@ -1,38 +1,30 @@
-//
-// client.cpp
-// ~~~~~~~~~~
-//
-// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include "controlMessage.pb.h"
 
+
 using boost::asio::ip::tcp;
 std::string port_num = "12312";
 std::string nomePrimoStream = "primo stream";
+
+
 int main(int argc, char* argv[]) {
-	controlMessage::StreamName first;
-	first.set_streamname("primo stream");
-	std::stringstream st;
-	std::ostream* output = &st;
-	std::string s;
-	if (first.SerializeToOstream(output)) {
-		s = st.str();
-		try {
-			s = s.substr(2,s.length()-2);
-		} catch (const std::out_of_range& e) {
-			std::cout << "Il messaggio deve essere di lunghezza maggiore di 1\n";
-		}
-		//std::cout << s << std::endl;
-	}
-	
 	try {
+		controlMessage::StreamName firstMessage;
+		firstMessage.set_streamname("primo stream");
+		std::stringstream st;
+		std::ostream* output = &st;
+		std::string s;
+		if (firstMessage.SerializeToOstream(output)) {
+			s = st.str();
+			try {
+				s = s.substr(2,s.length()-2);
+			} catch (const std::out_of_range& e) {
+				std::cout << "Il messaggio deve essere di lunghezza maggiore di 1\n";
+			}
+			//std::cout << s << std::endl;
+		}
 		if (argc != 2) {
 			std::cerr << "Usage: client <host>" << std::endl;
 			return 1;
@@ -46,22 +38,37 @@ int main(int argc, char* argv[]) {
 
 		tcp::socket socket(io_service);
 		boost::asio::connect(socket, endpoint_iterator);
-
+		
+		boost::array<char, 128> buf;
+		boost::system::error_code error;
+		
+		
 		for (;;)
 		{
-			socket.write_some(boost::asio::buffer(s));
-			
-			boost::array<char, 128> buf;
-			boost::system::error_code error;
+			std::size_t written = socket.write_some(boost::asio::buffer(s));
+			std::cout << "Sent " << written << " bytes" << std::endl;
 
 			size_t len = socket.read_some(boost::asio::buffer(buf), error);
-
+			//output = buf.data();
+			
 			if (error == boost::asio::error::eof)
 				break; // Connection closed cleanly by peer.
 			else if (error)
 				throw boost::system::system_error(error); // Some other error.
-
-			std::cout.write(buf.data(), len);
+			
+			std::cout << "Messaggio ricevuto:\n**** "<<buf.data()<<" ****\n";
+			//std::cout.write(buf.data(), len);
+			controlMessage::TXParam secondMessage;
+			std::cout << "\nasd\n";
+			
+			boost::asio::const_buffers_1 fixedBuf(&buf, len);
+			const unsigned char* p1 = boost::asio::buffer_cast<const unsigned char*>(fixedBuf);
+			// std::streambuf::setg()
+			if (secondMessage.ParseFromString(p1) {
+				std::cout << "il secondo messaggio dal server è stato letto\n";
+				std::cout << secondMessage.k() << std::endl;
+			}
+			std::cout << "\nasd\n";
 		}
 	} catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;
