@@ -70,30 +70,10 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		// rather than ip::tcp::socket::async_write_some(), 
 		// to ensure that the entire block of data is sent.
 		void firstHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
-			
-		}
-		void start() {
-			// We use a boost::array to hold the received data. 
-			boost::array<char, 128> buf;
-			boost::system::error_code error;
-
-			// The boost::asio::buffer() function automatically determines 
-			// the size of the array to help prevent buffer overruns.
-			socket_.async_read_some(boost::asio::buffer(buf), std::bind(&tcp_connection::firstHandler,this,std::placeholders::_1, std::placeholders::_2));
-			
-			// When the server closes the connection, 
-			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 
-			// which is how we know to exit the loop.
-			if (error == boost::asio::error::eof)
-				std::cout.write("error",5); // Connection closed cleanly by peer.
-			else if (error)
-				throw boost::system::system_error(error); // Some other error.
-			std::cout << buf.data() << std::endl;
-			
-		// The data to be sent is stored in the class member m_message 
+			// The data to be sent is stored in the class member m_message 
 			// as we need to keep the data valid 
 			// until the asynchronous operation is complete.
-			
+			std::cout << buf.data() << std::endl;
 			controlMessage::TXParam second;
 			second.set_k(5);
 			second.set_c(0.1);
@@ -130,16 +110,37 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// could potentially have been removed, 
 			// since they are not being used in handle_write().
 
-			boost::asio::async_write(socket_, boost::asio::buffer(m_message),
+			boost::asio::async_write(socket_, boost::asio::buffer(st.str()),
 				boost::bind(&tcp_connection::handle_write, shared_from_this(),
 					boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
 						
+		}
+		void start() {
+			// We use a boost::array to hold the received data. 
+			
+			boost::system::error_code error;
+
+			// The boost::asio::buffer() function automatically determines 
+			// the size of the array to help prevent buffer overruns.
+			socket_.async_read_some(boost::asio::buffer(buf), std::bind(&tcp_connection::firstHandler,this,std::placeholders::_1, std::placeholders::_2));
+				
+			// When the server closes the connection, 
+			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 
+			// which is how we know to exit the loop.
+			if (error == boost::asio::error::eof)
+				std::cout.write("error",5); // Connection closed cleanly by peer.
+			else if (error)
+				throw boost::system::system_error(error); // Some other error.
+			std::cout << buf.data() << std::endl;
+			
+		
 			
 
 		}
 
 	private:
+		boost::array<char, 128> buf;
 		tcp_connection(boost::asio::io_service& io_service): socket_(io_service) {
 			
 		}
