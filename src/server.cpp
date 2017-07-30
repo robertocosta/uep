@@ -8,8 +8,26 @@
 #include "controlMessage.pb.h"
 #include <boost/array.hpp>
 
+#include "encoder.hpp"
+
+#include <ostream>
+#include <boost/iostreams/device/file.hpp>
+#include <fstream>
+#include <boost/iostreams/stream.hpp>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 using boost::asio::ip::tcp;
 int port_num = 12312;
+/* PARAMETERS CHOICE */
+int k = 5; 
+double c = 0.1;
+double delta = 0.01;
+int rfm = 3;
+int rfl = 1;
+int ef = 2;
+
 /*	
 	1: client to server: streamName
 	2: server to client: TXParam
@@ -53,21 +71,58 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				s = firstMessage.streamname();
 			}
 			std::cout << "Stream name received from client: \"" << s << "\"\n";
-			std::cout << "Creation of encoder...\n";
 
-			//data_server (boost::asio::io_service &io)
-			//void 	setup_encoder (const encoder_parameter_set &ps)
-			//void 	setup_source (const source_parameter_set &ps)
+			/* GENERATION OF FILE */
+			int fileLength = 10240;
+			int MIp = 2; // most important part, # of bytes
+			boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf(s+".txt");
+			std::ostream outStr(&streamBuf);
+			for (int ii = 0; ii<fileLength; ii++) {
+				// 8-bit word generation
+				boost::random::uniform_int_distribution<> dist(0, 255);
+				outStr << (char) dist(gen);
+			}
+			outStr << std::endl;
+			
+			/* UEP */
+			std::ifstream ifs(s+".txt", std::ios::binary);
+			char buf1[k];
+			//int newBlockLength = ef*(MIp*rfm + (k-MIp)*rfl);
+			for (int ii=0; ii<fileLength; ii+=k) {
+				ifs.read(buf1, sizeof(buf1) / sizeof(*buf1));
+				
+				boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf2(s+"-2.txt");
+				std::ostream outStr2(&streamBuf2);
+				// Most important part
+				for (int jj = 0; jj<rfm; jj++) {
+					for (int kk=0; kk<MIp; kk++)
+						outStr2 << buf1[ii+kk];
+				}
+				// Less important part
+				for (int jj = 0; jj<rfl; jj++) {
+					for (int kk=MIp; kk<k; kk++)
+						outStr2 << buf1[ii+kk];
+				}
+				outStr2 << std::endl;
+				//string s = buf1[0];
+			}
+			
+
+			/* CREATION OF ENCODER */
+			std::cout << "Creation of encoder...\n";
+			// uep::lt_encoder<std::mt19937> enc(k, c, delta);
+			// lt_encoder (std::size_t K, double c, double delta)
+			// source file repetition RFM, RFL, EM
 
 			controlMessage::TXParam secondMessage;
-			secondMessage.set_k(5);
-			secondMessage.set_c(0.1);
-			secondMessage.set_delta(0.01);
-			secondMessage.set_rfm(2);
-			secondMessage.set_rfl(1);
-			secondMessage.set_ef(2);
+			secondMessage.set_k(k);
+			secondMessage.set_c(c);
+			secondMessage.set_delta(delta);
+			secondMessage.set_rfm(rfm);
+			secondMessage.set_rfl(rfl);
+			secondMessage.set_ef(ef);
 			secondMessage.set_ack(true);
-			secondMessage.set_filesize(10240);
+			secondMessage.set_filesize(fileLength);
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
@@ -82,9 +137,11 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 					std::placeholders::_2));
 				// waiting for Connection request, then secondHandler
 				boost::system::error_code error;
-				socket_.async_read_some(boost::asio::buffer(buf), 
-					std::bind(&tcp_connection::secondHandler,shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2));
+				socket_.async_read_some(boost::asio::buffer(buf), std::bind(
+					&tcp_connection::secondHandler,
+					shared_from_this(),
+					std::placeholders::_1, 
+					std::placeholders::_2));
 				if (error == boost::asio::error::eof)
 					std::cout.write("error",5); // Connection closed cleanly by peer.
 				else if (error)
@@ -102,10 +159,13 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				port = connectMessage.port();
 			}
 			std::cout << "Connect req. received from client on port \"" << port << "\"\n";
-			std::cout << "Creation of encoder...\n";
+			std::cout << "Creation of data server...\n";
 			
-			//void 	open (const std::string &dest_host, const std::string &dest_service)
-			
+			// data_server (boost::asio::io_service &io)
+			// void 	setup_encoder (const encoder_parameter_set &ps)
+			// void 	setup_source (const source_parameter_set &ps)
+			// void 	open (const std::string &dest_host, const std::string &dest_service)
+
 			uint32_t udpPort = 1445; // =(udp port from new encoder())
 			controlMessage::ConnACK connACKMessage;
 			connACKMessage.set_port(udpPort);
@@ -118,9 +178,11 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				std::cout << "Connection ACK sent...\n";
 				// waiting for play command
 				boost::system::error_code error;
-				socket_.async_read_some(boost::asio::buffer(buf), 
-					std::bind(&tcp_connection::thirdHandler,shared_from_this(),
-						std::placeholders::_1, std::placeholders::_2));
+				socket_.async_read_some(boost::asio::buffer(buf), std::bind(
+					&tcp_connection::thirdHandler,
+					shared_from_this(),
+					std::placeholders::_1,
+					std::placeholders::_2));
 			}
 		}
 
@@ -130,20 +192,13 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			std::cout << "PLAY.\n";
 		}
 
-		void start() {
-			// We use a boost::array to hold the received data. 
-			
+		void start() {	
 			boost::system::error_code error;
+			socket_.async_read_some(boost::asio::buffer(buf), std::bind(
+				&tcp_connection::firstHandler,
+				shared_from_this(),
+				std::placeholders::_1, std::placeholders::_2));
 
-			// The boost::asio::buffer() function automatically determines 
-			// the size of the array to help prevent buffer overruns.
-			socket_.async_read_some(boost::asio::buffer(buf), 
-				std::bind(&tcp_connection::firstHandler,shared_from_this(),
-					std::placeholders::_1, std::placeholders::_2));
-				
-			// When the server closes the connection, 
-			// the ip::tcp::socket::read_some() function will exit with the boost::asio::error::eof error, 
-			// which is how we know to exit the loop.
 			if (error == boost::asio::error::eof)
 				std::cout.write("error",5); // Connection closed cleanly by peer.
 			else if (error)
@@ -166,6 +221,8 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		void handle_write(const boost::system::error_code& /*error*/,size_t /*bytes_transferred*/) {
 
 		}
+
+		boost::random::mt19937 gen;
 
 		tcp::socket socket_;
 		std::string m_message;
