@@ -15,13 +15,16 @@
 #include <fstream>
 #include <boost/iostreams/stream.hpp>
 
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
 using boost::asio::ip::tcp;
 int port_num = 12312;
 /* PARAMETERS CHOICE */
-int k = 5; 
+int k = 8; 
 double c = 0.1;
 double delta = 0.01;
 int rfm = 3;
@@ -74,46 +77,63 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 
 			/* GENERATION OF FILE */
 			int fileLength = 10240;
-			int MIp = 2; // most important part, # of bytes
+			int MIp = 3; // most important part, # of bytes
 			boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf(s+".txt");
 			std::ostream outStr(&streamBuf);
+			/*
+			std::string chars(
+					"abcdefghijklmnopqrstuvwxyz"
+					"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+					"1234567890");
+			boost::random::mt19937 rng;
+			boost::random::uniform_int_distribution<> index_dist(0, chars.size() - 1);
+			*/
 			for (int ii = 0; ii<fileLength; ii++) {
 				// 8-bit word generation
+				//outStr << chars[index_dist(rng)];
 				boost::random::uniform_int_distribution<> dist(0, 255);
 				outStr << (char) dist(gen);
 			}
-			outStr << std::endl;
+			//outStr << std::endl;
 			
 			/* UEP */
-			std::ifstream ifs(s+".txt", std::ios::binary);
-			char buf1[k];
-			//int newBlockLength = ef*(MIp*rfm + (k-MIp)*rfl);
-			for (int ii=0; ii<fileLength; ii+=k) {
-				ifs.read(buf1, sizeof(buf1) / sizeof(*buf1));
-				
-				boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf2(s+"-2.txt");
-				std::ostream outStr2(&streamBuf2);
-				// Most important part
-				for (int jj = 0; jj<rfm; jj++) {
-					for (int kk=0; kk<MIp; kk++)
-						outStr2 << buf1[ii+kk];
-				}
-				// Less important part
-				for (int jj = 0; jj<rfl; jj++) {
-					for (int kk=MIp; kk<k; kk++)
-						outStr2 << buf1[ii+kk];
-				}
-				outStr2 << std::endl;
-				//string s = buf1[0];
-			}
-			
+			std::streampos size;
+			char * memblock;
+			char * firstPart;
+			char * secondPart;
+			std::ifstream file (s+".txt", std::ios::in|std::ios::binary|std::ios::ate);
+			std::ofstream newFile (s+"-uep.txt");
+			if (newFile.is_open()) {
+				if (file.is_open()) {
+					size = file.tellg();
+					memblock = new char [k];
+					firstPart = new char[MIp];
+					secondPart = new char[k-MIp];
+					for (uint32_t ind = 0; ind+k < size; ind = ind + k) {
+						file.seekg (ind, std::ios::beg);
+						file.read (memblock, k);
+						strncpy(firstPart, memblock, MIp);
+						strncpy(secondPart, memblock+MIp, k-MIp);
+						for (int jj=0; jj<ef; jj++) {
+							for (int ii=0; ii<rfm; ii++)
+								newFile.write(firstPart,MIp);
+							for (int ii=0; ii<rfl; ii++)
+								newFile.write(secondPart,k-MIp);
+						}
+					}
+					file.close();
+					newFile.close();
+					delete[] memblock;
+					delete[] firstPart;
+					delete[] secondPart;
+				} else std::cout << "Unable to open file in reading mode";
+			} else std::cout << "Unable to open file in writing mode";
 
 			/* CREATION OF ENCODER */
 			std::cout << "Creation of encoder...\n";
-			// uep::lt_encoder<std::mt19937> enc(k, c, delta);
-			// lt_encoder (std::size_t K, double c, double delta)
-			// source file repetition RFM, RFL, EM
-
+			uep::lt_encoder<std::mt19937> enc(k, c, delta);
+			
+			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
 			secondMessage.set_k(k);
 			secondMessage.set_c(c);
@@ -160,13 +180,13 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			}
 			std::cout << "Connect req. received from client on port \"" << port << "\"\n";
 			std::cout << "Creation of data server...\n";
-			
+			//ds(io);
 			// data_server (boost::asio::io_service &io)
 			// void 	setup_encoder (const encoder_parameter_set &ps)
 			// void 	setup_source (const source_parameter_set &ps)
 			// void 	open (const std::string &dest_host, const std::string &dest_service)
 
-			uint32_t udpPort = 1445; // =(udp port from new encoder())
+			uint32_t udpPort = 1445; // =(udp port for ACK from new data_server())
 			controlMessage::ConnACK connACKMessage;
 			connACKMessage.set_port(udpPort);
 			if (connACKMessage.SerializeToString(&s)) {
@@ -204,28 +224,24 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			else if (error)
 				throw boost::system::system_error(error); // Some other error.
 			//std::cout << buf.data() << std::endl;
-			
-		
-			
 
 		}
 
 	private:
 		boost::array<char, 128> buf;
+		//uep::lt_encoder<std::mt19937> enc;
+		//uep::net::data_server<lt_encoder<std::mt19937>,random_packet_source> ds;
 		tcp_connection(boost::asio::io_service& io_service): socket_(io_service) {
 			
 		}
-		
 		// handle_write() is responsible for any further actions 
 		// for this client connection.
 		void handle_write(const boost::system::error_code& /*error*/,size_t /*bytes_transferred*/) {
 
 		}
-
 		boost::random::mt19937 gen;
-
+		boost::asio::io_service io;
 		tcp::socket socket_;
-		std::string m_message;
 };
 
 class tcp_server {
