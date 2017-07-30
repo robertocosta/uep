@@ -11,20 +11,6 @@ std::string nomePrimoStream = "primo stream";
 
 int main(int argc, char* argv[]) {
 	try {
-		controlMessage::StreamName firstMessage;
-		firstMessage.set_streamname("primo stream");
-		std::stringstream st;
-		std::ostream* output = &st;
-		std::string s;
-		if (firstMessage.SerializeToOstream(output)) {
-			s = st.str();
-			try {
-				s = s.substr(2,s.length()-2);
-			} catch (const std::out_of_range& e) {
-				std::cout << "Il messaggio deve essere di lunghezza maggiore di 1\n";
-			}
-			//std::cout << s << std::endl;
-		}
 		if (argc != 2) {
 			std::cerr << "Usage: client <host>" << std::endl;
 			return 1;
@@ -43,32 +29,80 @@ int main(int argc, char* argv[]) {
 		boost::system::error_code error;
 		
 		
-		for (;;)
+		for (int ii=0;ii<1;ii++)
 		{
-			std::size_t written = socket.write_some(boost::asio::buffer(s));
-			std::cout << "Sent " << written << " bytes" << std::endl;
+			std::size_t written;
+			controlMessage::StreamName firstMessage;
+			firstMessage.set_streamname(nomePrimoStream);
+			std::stringstream st;
+			std::ostream* output = &st;
+			std::string s;
+			if (firstMessage.SerializeToOstream(output)) {
+				s = st.str();
+				written = socket.write_some(boost::asio::buffer(s));
+				std::cout << "Sent " << written << " bytes with stream name: \""<<nomePrimoStream<<"\"\n";
+			}
+			
 
 			size_t len = socket.read_some(boost::asio::buffer(buf), error);
-			//output = buf.data();
+			s = std::string(buf.data(), len);
 			
 			if (error == boost::asio::error::eof)
 				break; // Connection closed cleanly by peer.
 			else if (error)
 				throw boost::system::system_error(error); // Some other error.
 			
-			std::cout << "Messaggio ricevuto:\n**** "<<buf.data()<<" ****\n";
 			//std::cout.write(buf.data(), len);
 			controlMessage::TXParam secondMessage;
-			std::cout << "\nasd\n";
 			
-			boost::asio::const_buffers_1 fixedBuf(&buf, len);
-			const unsigned char* p1 = boost::asio::buffer_cast<const unsigned char*>(fixedBuf);
 			// std::streambuf::setg()
-			if (secondMessage.ParseFromString(p1) {
-				std::cout << "il secondo messaggio dal server è stato letto\n";
-				std::cout << secondMessage.k() << std::endl;
+			if (secondMessage.ParseFromString(s)) {
+				std::cout << "Message received from server:\n";
+				std::cout << "K="<<secondMessage.k()<<"; ";
+				std::cout << "c="<<secondMessage.c()<<"; ";
+				std::cout << "Delta="<<secondMessage.delta()<<"; ";
+				std::cout << "RFM="<<secondMessage.rfm()<<"; ";
+				std::cout << "RFL="<<secondMessage.rfl()<<"; ";
+				std::cout << "EF="<<secondMessage.ef()<<"; ";
+				std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
+				std::cout << "fileSize="<<secondMessage.filesize()<<"\n";
+				std::cout << "Creation of decoder...\n";
+				int udpPort = 1444; // = new decoder(...)
+				controlMessage::Connect connectMessage;
+				connectMessage.set_port(udpPort);
+				if (connectMessage.SerializeToOstream(output)) {
+					s = st.str();
+					written = socket.write_some(boost::asio::buffer(s));
+					std::cout << "Connecting now...\n";
+					// waiting for ConnACK
+					len = socket.read_some(boost::asio::buffer(buf), error);
+					s = std::string(buf.data(), len);
+					
+					if (error == boost::asio::error::eof)
+						break; // Connection closed cleanly by peer.
+					else if (error)
+						throw boost::system::system_error(error); // Some other error.
+					
+					//std::cout.write(buf.data(), len);
+					controlMessage::ConnACK connACKMessage;
+					
+					// std::streambuf::setg()
+					if (connACKMessage.ParseFromString(s)) {
+						std::cout << "Connection ACK message received from server:\n";
+						std::cout << "udp port="<<connACKMessage.port()<<"\n";
+						// setting destination port for decoder's ACK
+						std::cout << "Sending PLAY command\n";
+						controlMessage::Play playMessage;
+						if (playMessage.SerializeToOstream(output)) {
+							s = st.str();
+							written = socket.write_some(boost::asio::buffer(s));
+							std::cout << "PLAY command sent.\n";
+						}
+					}
+				}
+				
 			}
-			std::cout << "\nasd\n";
+			
 		}
 	} catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;

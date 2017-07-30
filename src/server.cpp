@@ -32,9 +32,9 @@ int port_num = 12312;
 */
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
-	// Using shared_ptr and enable_shared_from_this 
-	// because we want to keep the tcp_connection object alive 
-	// as long as there is an operation that refers to it.
+	/* 	Using shared_ptr and enable_shared_from_this 
+		because we want to keep the tcp_connection object alive 
+		as long as there is an operation that refers to it.*/
 	public:
 		typedef boost::shared_ptr<tcp_connection> pointer;
 
@@ -46,42 +46,90 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			return socket_;
 		}
 
-		// Call boost::asio::async_write() to serve the data to the client. 
-		// We are using boost::asio::async_write(), 
-		// rather than ip::tcp::socket::async_write_some(), 
-		// to ensure that the entire block of data is sent.
 		void firstHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
-			// The data to be sent is stored in the class member m_message 
-			// as we need to keep the data valid 
-			// until the asynchronous operation is complete.
-			std::cout << buf.data() << std::endl;
+			std::string s = std::string(buf.data(), bytes_transferred);
+			controlMessage::StreamName firstMessage;
+			if (firstMessage.ParseFromString(s)) {
+				s = firstMessage.streamname();
+			}
+			std::cout << "Stream name received from client: \"" << s << "\"\n";
+			std::cout << "Creation of encoder...\n";
+
+			//data_server (boost::asio::io_service &io)
+			//void 	setup_encoder (const encoder_parameter_set &ps)
+			//void 	setup_source (const source_parameter_set &ps)
+
 			controlMessage::TXParam secondMessage;
 			secondMessage.set_k(5);
 			secondMessage.set_c(0.1);
-			secondMessage.set_delta(0.5);
+			secondMessage.set_delta(0.01);
 			secondMessage.set_rfm(2);
 			secondMessage.set_rfl(1);
 			secondMessage.set_ef(2);
 			secondMessage.set_ack(true);
 			secondMessage.set_filesize(10240);
-			
-			std::string s;
+
 			if (secondMessage.SerializeToString(&s)) {
-				std::cout << "parametri serializzati:\n****"<<s<<"****\n";
-			}
-			/*
-			controlMessage::TXParam secondMessageDecoded;
-			if (secondMessageDecoded.ParseFromString(s)) {
-				std::cout << "il secondo messaggio dal server è stato letto\n";
-				std::cout << secondMessage.k() << std::endl;
-			}
-			*/
-			boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
-				&tcp_connection::handle_write,
-				shared_from_this(),
-				std::placeholders::_1,
-				std::placeholders::_2));
+				std::cout << "Sending encoder's parameters to client...\n";
+				/*	Call boost::asio::async_write() to serve the data to the client. 
+					We are using boost::asio::async_write(), 
+					rather than ip::tcp::socket::async_write_some(), 
+					to ensure that the entire block of data is sent.*/
+				boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
+					&tcp_connection::handle_write,
+					shared_from_this(),
+					std::placeholders::_1,
+					std::placeholders::_2));
+				// waiting for Connection request, then secondHandler
+				boost::system::error_code error;
+				socket_.async_read_some(boost::asio::buffer(buf), 
+					std::bind(&tcp_connection::secondHandler,shared_from_this(),
+						std::placeholders::_1, std::placeholders::_2));
+				if (error == boost::asio::error::eof)
+					std::cout.write("error",5); // Connection closed cleanly by peer.
+				else if (error)
+					throw boost::system::system_error(error); // Some other error.
+			}			
 		}
+
+		void secondHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
+			//	data received stored in string s
+			std::string s = std::string(buf.data(), bytes_transferred);
+			//	converting received data to udp port number of the client
+			controlMessage::Connect connectMessage;
+			uint32_t port;
+			if (connectMessage.ParseFromString(s)) {
+				port = connectMessage.port();
+			}
+			std::cout << "Connect req. received from client on port \"" << port << "\"\n";
+			std::cout << "Creation of encoder...\n";
+			
+			//void 	open (const std::string &dest_host, const std::string &dest_service)
+			
+			uint32_t udpPort = 1445; // =(udp port from new encoder())
+			controlMessage::ConnACK connACKMessage;
+			connACKMessage.set_port(udpPort);
+			if (connACKMessage.SerializeToString(&s)) {
+				boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
+					&tcp_connection::handle_write,
+					shared_from_this(),
+					std::placeholders::_1,
+					std::placeholders::_2));
+				std::cout << "Connection ACK sent...\n";
+				// waiting for play command
+				boost::system::error_code error;
+				socket_.async_read_some(boost::asio::buffer(buf), 
+					std::bind(&tcp_connection::thirdHandler,shared_from_this(),
+						std::placeholders::_1, std::placeholders::_2));
+			}
+		}
+
+		void thirdHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
+			std::string s = std::string(buf.data(), bytes_transferred);
+			// s should be empty
+			std::cout << "PLAY.\n";
+		}
+
 		void start() {
 			// We use a boost::array to hold the received data. 
 			
@@ -100,7 +148,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				std::cout.write("error",5); // Connection closed cleanly by peer.
 			else if (error)
 				throw boost::system::system_error(error); // Some other error.
-			std::cout << buf.data() << std::endl;
+			//std::cout << buf.data() << std::endl;
 			
 		
 			
@@ -126,7 +174,8 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 class tcp_server {
 	public:
 		// Constructor: initialises an acceptor to listen on TCP port port_num.
-		tcp_server(boost::asio::io_service& io_service): acceptor_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
+		tcp_server(boost::asio::io_service& io_service): 
+			acceptor_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
 			// start_accept() creates a socket and 
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection.
