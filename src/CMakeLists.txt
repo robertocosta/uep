@@ -49,11 +49,14 @@ target_link_libraries(demo_dc
 add_executable(server server.cpp)
 target_link_libraries(server
   controlMessage.pb
+  block_encoder
+  block_queues
   ${Boost_LIBRARIES}
 )
 
 add_executable(client client.cpp)
 target_link_libraries(client
   controlMessage.pb
+  decoder
   ${Boost_LIBRARIES}
 )
