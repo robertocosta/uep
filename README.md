@@ -1,24 +1,26 @@
 # Unequal error protection
 
 ## Dependencies
-* GCC >= 4.9.2
-* Python >= 3.4.2 with development headers
-* Boost test library >= 1.55
+* GCC >= 6.3
+* CMake >= 3.2
+* Boost libraries >= 1.62
+* Protobuf library and compiler
 
-On Debian Jessie the required packages can be installed by running
-`sudo apt-get install build-essential python3-dev libboost-all-dev`
+On Debian Stretch the required packages can be installed by running
+`sudo apt-get install build-essential cmake libboost-all-dev
+protobuf-compiler libprotobuf-dev libpthread-stubs0-dev`
 
 ## Build
-This project uses the [waf](https://waf.io/) build system.
-To compile the project run, in the main directory
-* `./waf configure`
-* `./waf build`
+This project uses the [CMake](https://cmake.org/) build system.  To
+compile the project inside a subdirectory named `build` run, in the
+project's main directory
+* `mkdir build && cd build`
+* `cmake ..`
+* `make`
 
-The compiled binaries will be in the `build` directory.
-
-To avoid having to call the build script from the project's main
-directory you can copy `utils/waf` to `~/bin/waf`. Then the build
-script can be called from any subdirectory of the project as `waf`.
+The compiled binaries will be in the `build/src` and `build/test`
+subdirectories.
 
 ## Test
-The automated unit tests can be run with `./waf test`.
+The automated unit tests can be run with `make test` from the `build`
+directory.

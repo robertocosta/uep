@@ -9,11 +9,12 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
+      - cmake
       - g++-6
-      - libstdc++-6-dev
-      - libpthread-stubs0-dev
-      - protobuf-compiler
       - libprotobuf-dev
+      - libpthread-stubs0-dev
+      - libstdc++-6-dev
+      - protobuf-compiler
 
 # cache:
 #   directories:
@@ -28,6 +29,16 @@ before_install:
   - travis_wait 20 sudo ./b2 toolset=gcc-6 link=shared threading=multi runtime-link=shared -d0 install
   - popd
 
-before_script: export CC=gcc-6 && export CXX=g++-6 && ./waf configure
+before_script:
+  - export CC=gcc-6 && export CXX=g++-6
+  - mkdir build
+  - pushd build
+  - cmake ..
+  - popd
 
-script: export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib" && ./waf test
+script:
+  - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
+  - pushd build
+  - make
+  - make test
+  - popd
