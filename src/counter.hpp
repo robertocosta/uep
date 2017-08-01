@@ -13,10 +13,15 @@ class counter {
 public:
   typedef IntType value_type;
 
+  /** Construct a counter with the maximum value of the underlying
+   *  integer type.
+   */
+  counter() : counter(std::numeric_limits<value_type>::max()) {}
+
   /** Initialize the counter before 0 and set the max_value. */
-  explicit counter(IntType max_value) : max_seqno(max_value),
-					next_seqno(0),
-					has_overflown(false) {
+  explicit counter(value_type max_value) : max_seqno(max_value),
+					   next_seqno(0),
+					   has_overflown(false) {
     if (max_seqno <= 0) throw std::invalid_argument("The max cannot be <= 0");
   }
 
@@ -24,7 +29,7 @@ public:
    *  return value. A call to next() will return value + 1 (or
    *  overflow).
    */
-  void set(IntType value) {
+  void set(value_type value) {
     if (value < 0 || value > max_seqno)
       throw std::invalid_argument("The value must be between 0 and max_value");
     next_seqno = value;
@@ -32,18 +37,24 @@ public:
     next();
   }
 
+  /** Set the value of the counter. \see set(value_type). */
+  counter &operator=(value_type value) {
+    set(value);
+    return *this;
+  }
+
   /** Return the current value of the counter, i.e. the last value
    *  output by next(). If the counter has yet to output 0, throws a
    *  std::underflow_error.
    */
-  IntType last() const {
+  value_type last() const {
     if (next_seqno == 0) throw std::underflow_error("No last value");
     if (has_overflown) return max_seqno;
     return next_seqno-1;
   }
 
   /** Return the maximum value. */
-  IntType max() const {
+  value_type max() const {
     return max_seqno;
   }
 
@@ -51,15 +62,28 @@ public:
    *  value. If the counter has reached the maximum value, throws
    *  std::overflow_error.
    */
-  IntType next() {
+  value_type next() {
     if (has_overflown)
       throw std::overflow_error("Seqno overflow");
-    IntType n = next_seqno;
+    value_type n = next_seqno;
     if (n == max_seqno)
       has_overflown = true;
     else
       ++next_seqno;
     return n;
+  }
+
+  /** Prefix increment operator. */
+  counter &operator++() {
+    next();
+    return *this;
+  }
+
+  /** Postfix increment operator. */
+  counter &operator++(int) {
+    counter tmp(*this);
+    next();
+    return tmp;
   }
 
   /** Reset the counter to the initial state. */
@@ -68,41 +92,40 @@ public:
     has_overflown = false;
   }
 
-  // counter &operator++() {
-  //   next();
-  //   return *this;
-  // }
+  /** Compare two counters for equality. They compare equal if they
+   *  are currently set to the same value, irrespective of their
+   *  maximum values.
+   */
+  bool operator==(const counter &rhs) {
+    if (!has_overflown && !rhs.has_overflown)
+      return next_seqno == rhs.next_seqno;
+    else if (has_overflown && rhs.has_overflown)
+      return max_seqno == rhs.max_seqno;
+    else if (has_overflown)
+      return (rhs.max_seqno >= max_seqno) &&
+	(rhs.next_seqno != 0) &&
+	rhs.last() == max_seqno;
+    else
+      return (max_seqno >= rhs.max_seqno) &&
+	(next_seqno != 0) &&
+	last() == rhs.max_seqno;
+  }
 
-  // counter operator++(int) {
-  //   return next();
-  // }
+  /** Compare two counter for inequality. \see operator= */
+  bool operator!=(const counter &rhs) {
+    return !(*this == rhs);
+  }
 
-  // explicit operator IntType() const {
-  //   return last();
-  // }
-
-  // bool operator==(const counter &rhs) {
-  //   if (!has_overflown && !rhs.has_overflown)
-  //     return next_seqno == rhs.next_seqno;
-  //   else if (has_overflown && rhs.has_overflown)
-  //     return max_value == rhs.max_value;
-  //   else if (has_overflown)
-  //     return (rhs.max_seqno >= max_seqno) &&
-  //	(rhs.next_seqno != 0) &&
-  //	rhs.last() == max_seqno;
-  //   else
-  //     return (max_seqno >= rhs.max_seqno) &&
-  //	(next_seqno != 0) &&
-  //	last() == rhs.max_seqno;
-  // }
-
-  // bool operator!=(const counter &rhs) {
-  //   return !(*this == rhs);
-  // }
+  /** True when the counter has overflown. That is, it is not possible
+   *  to call next().
+   */
+  bool overflow() const {
+    return has_overflown;
+  }
 
 private:
-  const IntType max_seqno;
-  IntType next_seqno;
+  value_type max_seqno;
+  value_type next_seqno;
   bool has_overflown;
 };
 
@@ -114,90 +137,164 @@ class circular_counter {
 public:
   typedef IntType value_type;
 
-  /** Initialize the counter before 0 and set the maximum value. */
-  explicit circular_counter(IntType max_value) : max_seqno(max_value),
-						 next_seqno(0),
-						 looped_once(false) {
-    if (max_seqno <= 0) throw std::invalid_argument("The max cannot be <= 0");
+  /** Initialize a circular counter with the max value given by the
+   *  underlying type.
+   */
+  circular_counter() :
+    circular_counter(std::numeric_limits<value_type>::max()) {
   }
 
-  circular_counter &operator=(const circular_counter &other) {
-    if (other.max_seqno != max_seqno)
-      throw std::runtime_error("The max values must be the same");
-    next_seqno = other.next_seqno;
-    looped_once = other.looped_once;
-    return *this;
+  /** Construct a circular counter with the given max value and
+   *  max_value/2 as the window size.
+   */
+  explicit circular_counter(value_type max_value) :
+    circular_counter(max_value, max_value/2) {
+  }
+
+  /** Construct a counter with the given maximum value and comparison
+   *  window size, with 0 as initial_value.
+   */
+  explicit circular_counter(value_type max_value, value_type winsize) :
+    max_val(max_value),
+    window_size(winsize),
+    curr_val(0) {
+    if (max_val <= 0) throw std::invalid_argument("The max cannot be <= 0");
+    if (window_size <= 0) throw std::invalid_argument("The winsize cannot be <= 0");
   }
 
   /** Set the current value of the counter. */
-  void set(IntType value) {
-    if (value < 0 || value > max_seqno)
+  void set(value_type value) {
+    if (value < 0 || value > max_val)
       throw std::invalid_argument("The value must be between 0 and max_value");
-    next_seqno = value;
-    looped_once = false;
-    next();
+    curr_val = value;
   }
 
-  /** Return the current value of the counter, i.e. the last output of
-   *  next(). If next() was never called throw std::underflow_error.
-   */
-  IntType last() const {
-    if (next_seqno == 0) {
-      if (looped_once)
-	return max_seqno;
-      else
-	throw std::underflow_error("No last value");
-    }
-    else return next_seqno-1;
+  /** Set the value. \see set(value_type). */
+  circular_counter &operator=(value_type value) {
+    set(value);
+    return *this;
+  }
+
+  /** Return the current value of the counter (use value() instead). */
+  value_type last() const {
+    return curr_val;
+  }
+
+  /** Return the current value of the counter. */
+  value_type value() const {
+    return curr_val;
   }
 
   /** Return the maximum value. */
-  IntType max() const {
-    return max_seqno;
+  value_type max() const {
+    return max_val;
+  }
+
+  /** Return the window used when comparing counters. */
+  value_type comparison_window() const {
+    return window_size;
   }
 
   /** Increment the counter and return the incremented value.  After
    *  the counter reaches the maximum value it restarts from 0.
    */
-  IntType next() {
-    IntType n = next_seqno;
-    if (n == max_seqno) {
-      looped_once = true;
-      next_seqno = 0;
+  value_type next() {
+    if (curr_val == max_val) {
+      curr_val = 0;
     }
-    else
-      ++next_seqno;
-    return n;
+    else {
+      ++curr_val;
+    }
+    return curr_val;
+  }
+
+  /** Prefix increment operator. */
+  circular_counter &operator++() {
+    next();
+    return *this;
+  }
+
+  /** Postfix increment operator. */
+  circular_counter &operator++(int) {
+    circular_counter tmp(*this);
+    next();
+    return tmp;
+  }
+
+  /** Increment the counter `n` times and return the incremnted
+   *  value. \sa next()
+   */
+  value_type next(value_type n) {
+    // TODO
   }
 
   /** Reset the counter to the initial state. */
   void reset() {
-    next_seqno = 0;
-    looped_once = false;
+    curr_val = 0;
   }
 
   /** Compute the distance between this counter and the other counter.
    *  The forward distance is the number of calls to next() required
    *  to obtain the same value of other.
    */
-  IntType forward_distance(const circular_counter &other) {
+  value_type forward_distance(const circular_counter &other) const {
     if (other.max() != max())
       throw std::invalid_argument("Must use the same range");
-    if (!looped_once && next_seqno == 0)
-      return !other.looped_once && (other.next_seqno == 0);
 
-    IntType ol = other.last();
-    IntType l = last();
-    if (ol >= l)
-      return ol - l;
+    value_type ov = other.curr_val;
+    value_type v = curr_val;;
+    if (ov >= v)
+      return ov - v;
     else
-      return max() - l + ol + 1;
+      return max() - v + ov + 1;
+  }
+
+  /** Compute the backward distance. This is the number of times
+   *  `other` has to to be incremented to reach the value of this
+   *  counter.
+   */
+  value_type backward_distance(const circular_counter &other) const {
+    return other.forward_distance(*this);
+  }
+
+  /** True if this counter comes before the other counter within the
+   *  comparison window.
+   */
+  bool is_before(const circular_counter &other) const {
+    if (comparison_window() != other.comparison_window())
+      throw std::invalid_argument("Cannot compare with different winsizes");
+
+    value_type d = forward_distance(other);
+    return d > 0 && d <= comparison_window();
+  }
+
+  /** True if this counter comes after the other counter within the
+   *  comparison window.
+   */
+  bool is_after(const circular_counter &other) const {
+    if (comparison_window() != other.comparison_window())
+      throw std::invalid_argument("Cannot compare with different winsizes");
+
+    value_type d = backward_distance(other);
+    return d > 0 && d <= comparison_window();
+  }
+
+  /** True when the two counters have the same range and the same
+   *  value.
+   */
+  bool operator==(const circular_counter &other) const {
+    return forward_distance(other) == 0;
+  }
+
+  /** True when the two counters are different. */
+  bool operator!=(const circular_counter &other) const {
+    return !operator==(other);
   }
 
 private:
-  const IntType max_seqno;
-  IntType next_seqno;
-  bool looped_once;
+  value_type max_val;
+  value_type window_size;
+  value_type curr_val;
 };
 
 }

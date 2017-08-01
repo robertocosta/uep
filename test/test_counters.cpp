@@ -73,8 +73,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(circular_full_range, T, int_types) {
   T max = 0xffff;
   circular_counter<T> c(max);
   BOOST_CHECK_EQUAL(c.max(), max);
-  BOOST_CHECK_THROW(c.last(), underflow_error);
-  for(T i = 0; i < max; i++) {
+  BOOST_CHECK_EQUAL(c.last(), 0);
+  BOOST_CHECK_EQUAL(c.value(), 0);
+  for(T i = 1; i < max; i++) {
     T j = c.next();
     BOOST_CHECK_EQUAL(i, j);
     T l = c.last();
@@ -93,8 +94,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(circular_many_loops, T, int_types) {
   circular_counter<T> c(max);
   for (T j = 0; j < 100; ++j) {
     for(T i = 0; i <= max; ++i) {
-      BOOST_CHECK_EQUAL(i, c.next());
       BOOST_CHECK_EQUAL(i, c.last());
+      if (i < max)
+	BOOST_CHECK_EQUAL(i+1, c.next());
+      else
+	BOOST_CHECK_EQUAL(0, c.next());
     }
   }
 }
@@ -145,7 +149,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(circular_distance, T, int_types) {
   circular_counter<T> c2(max);
   circular_counter<T> c3(max-1);
   BOOST_CHECK_THROW(c3.forward_distance(c1), invalid_argument);
-  
+
   c1.set(0xfff0);
   c2.set(0xffff);
   T d12 = c1.forward_distance(c2);
@@ -166,4 +170,55 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(circular_distance, T, int_types) {
   d21 = c2.forward_distance(c1);
   BOOST_CHECK_EQUAL(d12, 0);
   BOOST_CHECK_EQUAL(d21, 0);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(equality, T, int_types) {
+  T max = 0xffff;
+  counter<T> c1(max), c2(max), c3(0xff);
+  BOOST_CHECK(c1 == c2);
+  BOOST_CHECK(c2 == c3);
+  BOOST_CHECK(c1 == c3);
+
+  c1 = 0xff; c3 = 0xff;
+  BOOST_CHECK(c2 != c1);
+  BOOST_CHECK(c2 != c3);
+  BOOST_CHECK(c1 == c3);
+
+  BOOST_CHECK(c3.overflow());
+  ++c1;
+  BOOST_CHECK(c1 != c3);
+  BOOST_CHECK(c3 != c1);
+
+  c1 = max;
+  BOOST_CHECK(c1.overflow());
+  BOOST_CHECK(c1 != c3);
+  BOOST_CHECK(c3 != c1);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(circular_comparison, T, int_types) {
+  T max = 0xffff;
+  T win = 0xff;
+  circular_counter<T> c1(max,win), c2(max,win);
+  BOOST_CHECK(c1 == c2);
+  BOOST_CHECK(!c1.is_after(c2));
+  BOOST_CHECK(!c1.is_before(c2));
+
+  c1 = 0xff;
+  BOOST_CHECK(c1 != c2);
+  BOOST_CHECK(c1.is_after(c2));
+  BOOST_CHECK(c2.is_before(c1));
+
+  ++c1;
+  BOOST_CHECK(!c1.is_after(c2));
+  BOOST_CHECK(!c1.is_before(c2));
+
+  c2 = 0x100;
+  BOOST_CHECK(c1 == c2);
+  BOOST_CHECK(!c1.is_after(c2));
+  BOOST_CHECK(!c1.is_before(c2));
+
+  c1 = max;
+  c2 = 0;
+  BOOST_CHECK(c2.is_after(c1));
+  BOOST_CHECK(c1.is_before(c2));
 }
