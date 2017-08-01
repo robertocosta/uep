@@ -222,3 +222,39 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(circular_comparison, T, int_types) {
   BOOST_CHECK(c2.is_after(c1));
   BOOST_CHECK(c1.is_before(c2));
 }
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(multiple_increment, T, int_types) {
+  T max = 0xffff;
+  T win = 100;
+  circular_counter<T> c1(max, win);
+  auto c2 = c1;
+
+  c1.next(0);
+  BOOST_CHECK(c1 == c2);
+
+  c1.next(1);
+  c2.next();
+  BOOST_CHECK(c1 == c2);
+
+  BOOST_CHECK_THROW(c1.next(win+1), std::invalid_argument);
+
+  c1 = 0xfff0;
+  c2 = 0xffff;
+  c1.next(15);
+  BOOST_CHECK(c1 == c2);
+
+  c1 = 0xfff0;
+  c2 = 0;
+  c1.next(16);
+  BOOST_CHECK(c1 == c2);
+
+  c1 = 0xfff0;
+  c2 = 16;
+  c1.next(32);
+  BOOST_CHECK(c1 == c2);
+
+  c1 = 0xffff;
+  c2 = 10;
+  c1.next(11);
+  BOOST_CHECK(c1 == c2);
+}

@@ -222,10 +222,20 @@ public:
   }
 
   /** Increment the counter `n` times and return the incremnted
-   *  value. \sa next()
+   *  value. The increment count `n` can not bring the counter outside
+   *  of the comparison window. \sa next()
    */
   value_type next(value_type n) {
-    // TODO
+    if (n > window_size)
+      throw std::invalid_argument("Would fall out of the comparison window");
+
+    if (max_val - curr_val >= n) {
+      curr_val += n;
+    }
+    else {
+      curr_val = n - (max_val - curr_val + 1);
+    }
+    return curr_val;
   }
 
   /** Reset the counter to the initial state. */
