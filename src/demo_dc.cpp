@@ -18,7 +18,7 @@ struct data_parameter_set {
 
 struct cout_pkt_sink {
   struct parameter_set {};
-  
+
   explicit cout_pkt_sink(const parameter_set&) {}
 
   std::vector<packet> received;
@@ -31,7 +31,7 @@ struct cout_pkt_sink {
 
   void push(packet &&p) {
     using std::move;
-    if (p) 
+    if (p)
       std::cout << p.data() << std::endl;
     else
       std::cout << "... Failed ..." << std::endl;
@@ -52,7 +52,7 @@ const data_parameter_set data_par{true,
 
 int main(int argc, char **argv) {
   boost::asio::io_service io;
-  
+
   data_client<lt_decoder,cout_pkt_sink> dc(io);
   dc.setup_decoder(lt_par);
   dc.setup_sink(cout_pkt_sink::parameter_set());
