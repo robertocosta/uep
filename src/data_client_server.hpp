@@ -83,7 +83,7 @@ public:
 			       server_endpoint_,
 			       std::bind(&data_client::handle_received,
 					 this,
-					 _1, _2));
+					 std::placeholders::_1, std::placeholders::_2));
     auto t = timeout_.load();
     if (t.count() > 0) {
       timeout_timer.expires_from_now(t);
