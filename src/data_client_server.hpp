@@ -120,7 +120,12 @@ public:
   void stop() {
     strand_.dispatch(std::bind(&data_client::handle_stop, this));
   }
-
+  /** Get the UDP endpoint that the server socket is currently bound
+   *  to.
+   */
+  boost::asio::ip::udp::endpoint client_endpoint() const {
+    return socket_.local_endpoint();
+  }
   /** Enable or disable the sending of ACKs. */
   void enable_ack(bool b) {
     ack_enabled = b;
