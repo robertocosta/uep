@@ -57,7 +57,7 @@ struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	}
 	std::string streamName;
 	bool ack = true;
-	int sendRate = 10240;
+	double sendRate = 10240;
 	size_t fileSize = 20480;
 	int tcp_port_num = 12312;
 	/* PARAMETERS CHOICE */ 
@@ -229,6 +229,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			if (connectMessage.ParseFromString(s)) {
 				port = connectMessage.port();
 			}
+			else throw std::runtime_error("No port");
 			std::cout << "Connect req. received from client on port " << port << "\n";
 			// Opening UDP connection
 			char portStr[10];
@@ -269,6 +270,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// s should be empty
 			std::cout << "PLAY.\n";
 			ds_p->start();
+			std::cout << "Called start" << std::endl;
 		}
 
 		void start() {	
@@ -322,6 +324,7 @@ class tcp_server {
 			// creates a socket
 			tcp_connection::pointer new_connection =
 			tcp_connection::create(acceptor_.get_io_service());
+			active_conns.push_front(new_connection);
 
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection. 
@@ -341,6 +344,8 @@ class tcp_server {
 		}
 
 		tcp::acceptor acceptor_;
+
+  std::list<boost::shared_ptr<tcp_connection>> active_conns;
 };
 
 int main() {
