@@ -5,7 +5,7 @@ enable_testing()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-find_package(Boost 1.62 REQUIRED COMPONENTS
+find_package(Boost 1.58 REQUIRED COMPONENTS
   date_time
   filesystem
   log
