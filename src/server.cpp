@@ -20,14 +20,32 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "data_client_server.hpp"
+/*	
+	1: client to server: streamName
+	2: server to client: TXParam
+		2.1 decoder parameters
+			2.1.1 K	size_t (unsigned long)
+			2.1.2 c (double)
+			2.1.3 delta (double)
+			2.1.4 RFM (uint8_t)
+			2.1.5 RFL (uint8_t)
+			2.1.6 EF (uint8_t)
+		2.2 ACK enabled
+		2.3 File size
+	3: client to server: Connect
+		3.1 udp port where to send data
+		When the server receives it the encoder must be created
+	4: server to client: ConnACK
+		4.1 udp port where to receive ack
+	5: client to server: Play
+		DataServer.start
+*/
 
 using boost::asio::ip::tcp;
-
-
 using namespace uep;
 using namespace uep::net;
 
-
+// DEFAULT PARAMETER SET
 struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	all_params() {
 		K = 8;
@@ -41,13 +59,13 @@ struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	bool ack = true;
 	int sendRate = 10240;
 	size_t fileSize = 20480;
-	int port_num = 12312;
+	int tcp_port_num = 12312;
 	/* PARAMETERS CHOICE */ 
 	int Ls = 64;
 };
-
 all_params ps;
 
+// PACKET SOURCE
 struct packet_source {
 	typedef all_params parameter_set;
 	int Ls;
@@ -74,7 +92,6 @@ struct packet_source {
 		streamName = ps.streamName;
 		/* RANDOM GENERATION OF FILE */
 		int fileSize = max_count; // file size = fileSize * Ls;
-		boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf(streamName+".txt");
 		std::ofstream newFile (streamName+".txt");
 		if (newFile.is_open()) { 
 			for (int ii = 0; ii<fileSize; ii++) {
@@ -83,14 +100,7 @@ struct packet_source {
 			}
 		}
 		newFile.close();
-		/*
-		std::ostream outStr(&streamBuf);
-		for (int ii = 0; ii<fileSize; ii++) {
-			// 8-bit word generation
-			boost::random::uniform_int_distribution<> dist(0, 255);
-			outStr << (char) dist(gen);
-		}
-		//outStr.close();*/
+
 		file = std::ifstream(streamName+".txt", std::ios::in|std::ios::binary|std::ios::ate);
 		if (!file.is_open()) throw std::runtime_error("Failed opening file");
 		else max_count = file.tellg();
@@ -98,7 +108,6 @@ struct packet_source {
 
 	packet next_packet() {
 		if (currInd >= max_count) throw std::runtime_error("Max packet count");
-		//else currInd = currInd + Ls;
 		if (efReal<ef) {
 			if (rfmReal<rfm) rfmReal++;
 			else {
@@ -123,13 +132,13 @@ struct packet_source {
 		file.seekg (currInd, std::ios::beg);
 		char * memblock;
 		memblock = new char [Ls];
-		file.read (memblock, currInd);
+		file.read (memblock, Ls);
 		packet p;
 		p.resize(Ls);
-		//p.assign(memblock, Ls+memblock);
-		for (int i=0; i < Ls; i++) {
+		p.assign(memblock, Ls+memblock);
+		/*for (int i=0; i < Ls; i++) {
 			p[i] = memblock[i];
-		}	
+		}*/	
 		return p;
 	}
 
@@ -141,27 +150,6 @@ struct packet_source {
 	
 	boost::random::mt19937 gen;
 };
-
-/*	
-	1: client to server: streamName
-	2: server to client: TXParam
-		2.1 decoder parameters
-			2.1.1 K	size_t (unsigned long)
-			2.1.2 c (double)
-			2.1.3 delta (double)
-			2.1.4 RFM (uint8_t)
-			2.1.5 RFL (uint8_t)
-			2.1.6 EF (uint8_t)
-		2.2 ACK enabled
-		2.3 File size
-	3: client to server: Connect
-		3.1 udp port where to send data
-		When the server receives it the encoder must be created
-	4: server to client: ConnACK
-		4.1 udp port where to receive ack
-	5: client to server: Play
-		DataServer.start
-*/
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 	/* 	Using shared_ptr and enable_shared_from_this 
@@ -191,7 +179,6 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			std::cout << "Creation of encoder...\n";
 			ds_type *ds = new ds_type(io);
 			ds_p.reset(ds);
-			//lt_encoder<std::mt19937>::parameter_set enc_ps{};
 			ds->setup_encoder(ps); // setup the encoder inside the data_server
 			ds->setup_source(ps); // setup the source  inside the data_server
 			ds->target_send_rate(ps.sendRate); // Set a target send rate of 10240 byte/s = 10 pkt/s
@@ -242,14 +229,22 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			if (connectMessage.ParseFromString(s)) {
 				port = connectMessage.port();
 			}
-			std::cout << "Connect req. received from client on port \"" << port << "\"\n";
-			std::cout << "Creation of data server...\n";
+			std::cout << "Connect req. received from client on port " << port << "\n";
 			// Opening UDP connection
 			char portStr[10];
 			sprintf(portStr, "%u", port);
-			ds_p->open("127.0.0.1", portStr);
-			
-			uint32_t udpPort = 1445; // =(udp port for ACK from new data_server())
+			/*
+			asio::ip::address remote_ad = socket_.remote_endpoint().address();
+			std::string s = remote_ad.to_string();
+			*/
+			// GET REMOTE ADDRESS FROM TCP CONNECTION
+			std::string remAddr = socket_.remote_endpoint().address().to_string();
+			std::cout << "Binding of data server on: "<<remAddr<<":"<<port<<"\n";
+			ds_p->open(remAddr, portStr);
+			//boost::asio::ip::udp::endpoint udpEndpoint = ds_p->server_endpoint();
+			uint32_t udpPort = ds_p->server_endpoint().port(); // =(udp port for ACK to server)
+			std::cout << "UDP port for ACKs: "<< udpPort << std::endl;
+			std::cout << "Sending to client..." << std::endl;
 			controlMessage::ConnACK connACKMessage;
 			connACKMessage.set_port(udpPort);
 			if (connACKMessage.SerializeToString(&s)) {
@@ -273,6 +268,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			std::string s = std::string(buf.data(), bytes_transferred);
 			// s should be empty
 			std::cout << "PLAY.\n";
+			ds_p->start();
 		}
 
 		void start() {	
@@ -312,9 +308,9 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 
 class tcp_server {
 	public:
-		// Constructor: initialises an acceptor to listen on TCP port port_num.
+		// Constructor: initialises an acceptor to listen on TCP port tcp_port_num.
 		tcp_server(boost::asio::io_service& io_service): 
-			acceptor_(io_service, tcp::endpoint(tcp::v4(), ps.port_num)) {
+			acceptor_(io_service, tcp::endpoint(tcp::v4(), ps.tcp_port_num)) {
 			// start_accept() creates a socket and 
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection.

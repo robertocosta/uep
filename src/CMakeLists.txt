@@ -51,6 +51,7 @@ target_link_libraries(server
   controlMessage.pb
   block_encoder
   block_queues
+  packets_rw
   ${Boost_LIBRARIES}
 )
 
@@ -58,5 +59,6 @@ add_executable(client client.cpp)
 target_link_libraries(client
   controlMessage.pb
   decoder
+  packets_rw
   ${Boost_LIBRARIES}
 )
