@@ -14,6 +14,7 @@ struct data_parameter_set {
   std::size_t expected_pkt_count;
   double target_send_rate;
   std::size_t max_sequence_number;
+  double timeout;
 };
 
 struct msg_pkt_src {
@@ -67,7 +68,7 @@ const data_parameter_set data_par{true,
 
 int main(int argc, char **argv) {
   boost::asio::io_service io;
-  
+
   data_server<lt_encoder<>,msg_pkt_src> ds(io);
   ds.setup_encoder(lt_par);
   ds.setup_source(src_ps);
@@ -94,7 +95,7 @@ int main(int argc, char **argv) {
   std::cerr << "Press enter";
   char c;
   std::cin.read(&c, 1);
-    
+
   std::cerr << "Start sending" << std::endl;
   ds.start();
 
