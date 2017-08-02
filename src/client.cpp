@@ -65,13 +65,11 @@ int main(int argc, char* argv[]) {
 			return 1;
 		}
 
-		boost::asio::io_service io_service;
-
-		tcp::resolver resolver(io_service);
+		tcp::resolver resolver(io);
 		tcp::resolver::query query(argv[1], ps.tcp_port_num);
 		tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
 
-		tcp::socket socket(io_service);
+		tcp::socket socket(io);
 		boost::asio::connect(socket, endpoint_iterator);
 		
 		boost::array<char, 128> buf;
@@ -131,6 +129,7 @@ int main(int argc, char* argv[]) {
 				dc->setup_sink(ps); 
 				dc->enable_ack(ps.ack);
 				dc->bind(portStr);
+				std::cout << "Bound to " << dc->client_endpoint() << std::endl;
 				
 				controlMessage::Connect connectMessage;
 				connectMessage.set_port(ps.udp_port_num);
@@ -174,6 +173,9 @@ int main(int argc, char* argv[]) {
 			}
 			
 		}
+		std::cout << "Run" << std::endl;
+		io.run();
+		std::cout << "Done" << std::endl;
 	} catch (std::exception& e) {
 		std::cerr << e.what() << std::endl;
 	}
