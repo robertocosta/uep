@@ -19,3 +19,13 @@
 /build/
 /doc/doxygen_sqlite3.db
 /doc/html
+/CMakeFiles/
+/CMakeC*
+*.cmake
+Makefile
+/*/CMakeFiles/
+/src/*.a
+/src/*.pb.h
+/src/*.pb.cc
+/lib/
+/bin/
