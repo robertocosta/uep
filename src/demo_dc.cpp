@@ -13,6 +13,7 @@ struct data_parameter_set {
   std::size_t expected_pkt_count;
   double target_send_rate;
   std::size_t max_sequence_number;
+  double timeout;
 };
 
 struct cout_pkt_sink {
@@ -41,9 +42,13 @@ struct cout_pkt_sink {
   bool operator!() const { return false; }
 };
 
-const std::size_t nblocks = 30, K = 10;
-const robust_lt_parameter_set lt_par{K, 0.1, 0.5};
-const data_parameter_set data_par{true,nblocks*K,100,K+K/2};
+const std::size_t nblocks = 10, K = 10000;
+const robust_lt_parameter_set lt_par{K, 0.01, 0.5};
+const data_parameter_set data_par{true,
+    nblocks*K,
+    0,
+    (size_t)(1.2*K),
+    60};
 
 int main(int argc, char **argv) {
   boost::asio::io_service io;
@@ -51,8 +56,9 @@ int main(int argc, char **argv) {
   data_client<lt_decoder,cout_pkt_sink> dc(io);
   dc.setup_decoder(lt_par);
   dc.setup_sink(cout_pkt_sink::parameter_set());
-  //dc.enable_ack(data_par.enable_ack);
+  dc.enable_ack(data_par.enable_ack);
   dc.expected_count(data_par.expected_pkt_count);
+  dc.timeout(data_par.timeout);
 
   std::string port;
   std::string srv_ip;

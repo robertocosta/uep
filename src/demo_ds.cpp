@@ -55,11 +55,15 @@ struct msg_pkt_src {
   bool operator!() const { return !static_cast<bool>(*this); }
 };
 
-const std::size_t nblocks = 30, K = 10;
-const robust_lt_parameter_set lt_par{K, 0.1, 0.5};
-const data_parameter_set data_par{true,nblocks*K,100,K+K/2};
-
-const msg_pkt_src::parameter_set src_ps{"Hello!",nblocks*K};
+const std::size_t nblocks = 10, K = 10000;
+const msg_pkt_src::parameter_set src_ps{"Test fixed-size packet",
+    nblocks*K};
+const robust_lt_parameter_set lt_par{K, 0.01, 0.5};
+const data_parameter_set data_par{true,
+    nblocks*K,
+    1000,
+    (size_t)(1.2*K),
+    60};
 
 int main(int argc, char **argv) {
   boost::asio::io_service io;
@@ -89,7 +93,7 @@ int main(int argc, char **argv) {
   std::cerr << "Will send from " << srv_endp << std::endl;
   std::cerr << "Press enter";
   char c;
-  std::cin >> c;
+  std::cin.read(&c, 1);
     
   std::cerr << "Start sending" << std::endl;
   ds.start();
