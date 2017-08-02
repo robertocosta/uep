@@ -91,12 +91,22 @@ struct packet_source {
 		efReal = 0;
 		streamName = ps.streamName;
 		/* RANDOM GENERATION OF FILE */
+		bool textFile = true;
 		int fileSize = max_count; // file size = fileSize * Ls;
 		std::ofstream newFile (streamName+".txt");
+		//std::cout << streamName << ".txt\n";
 		if (newFile.is_open()) { 
 			for (int ii = 0; ii<fileSize; ii++) {
-				boost::random::uniform_int_distribution<> dist(0, 255);
-				newFile << ((char) dist(gen));
+				if (!textFile) {
+					boost::random::uniform_int_distribution<> dist(0, 255);
+					newFile << ((char) dist(gen));
+				} else {
+					boost::random::uniform_int_distribution<> dist(65, 90);
+					int randN = dist(gen);
+					newFile << ((char) randN);
+				}
+					
+				
 			}
 		}
 		newFile.close();
@@ -240,7 +250,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			*/
 			// GET REMOTE ADDRESS FROM TCP CONNECTION
 			std::string remAddr = socket_.remote_endpoint().address().to_string();
-			std::cout << "Binding of data server on: "<<remAddr<<":"<<port<<"\n";
+			std::cout << "Binding of data server to "<<remAddr<<":"<<port<<"\n";
 			ds_p->open(remAddr, portStr);
 			//boost::asio::ip::udp::endpoint udpEndpoint = ds_p->server_endpoint();
 			uint32_t udpPort = ds_p->server_endpoint().port(); // =(udp port for ACK to server)
@@ -323,7 +333,7 @@ class tcp_server {
 		void start_accept() {
 			// creates a socket
 			tcp_connection::pointer new_connection =
-			tcp_connection::create(acceptor_.get_io_service());
+				tcp_connection::create(acceptor_.get_io_service());
 			active_conns.push_front(new_connection);
 
 			// initiates an asynchronous accept operation 
@@ -345,7 +355,7 @@ class tcp_server {
 
 		tcp::acceptor acceptor_;
 
-  std::list<boost::shared_ptr<tcp_connection>> active_conns;
+	std::list<boost::shared_ptr<tcp_connection>> active_conns;
 };
 
 int main() {
