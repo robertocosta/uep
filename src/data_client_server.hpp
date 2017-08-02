@@ -87,7 +87,9 @@ public:
     auto t = timeout_.load();
     if (t.count() > 0) {
       timeout_timer.expires_from_now(t);
-      timeout_timer.async_wait(std::bind(&data_client::handle_timeout, this, _1));
+      timeout_timer.async_wait(std::bind(&data_client::handle_timeout,
+					 this,
+					 std::placeholders::_1));
     }
   }
 
@@ -262,7 +264,9 @@ private:
     auto t = timeout_.load();
     if (t.count() > 0) {
       timeout_timer.expires_from_now(t);
-      timeout_timer.async_wait(std::bind(&data_client::handle_timeout, this, _1));
+      timeout_timer.async_wait(std::bind(&data_client::handle_timeout,
+					 this,
+					 std::placeholders::_1));
     }
 
     decoder_->push(move(p));
