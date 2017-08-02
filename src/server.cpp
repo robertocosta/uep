@@ -280,11 +280,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// s should be empty
 			std::cout << "PLAY.\n";
 			ds_p->start();
-<<<<<<< HEAD
-			std::cout << "Stream started.\n";
-=======
 			std::cout << "Called start" << std::endl;
->>>>>>> 939ccd1bcef5eaef7abfe7b6e245d6a9d9646f15
 		}
 
 		void start() {	
@@ -337,12 +333,8 @@ class tcp_server {
 		void start_accept() {
 			// creates a socket
 			tcp_connection::pointer new_connection =
-<<<<<<< HEAD
 				tcp_connection::create(acceptor_.get_io_service());
-=======
-			tcp_connection::create(acceptor_.get_io_service());
 			active_conns.push_front(new_connection);
->>>>>>> 939ccd1bcef5eaef7abfe7b6e245d6a9d9646f15
 
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection. 
@@ -363,7 +355,7 @@ class tcp_server {
 
 		tcp::acceptor acceptor_;
 
-  std::list<boost::shared_ptr<tcp_connection>> active_conns;
+	std::list<boost::shared_ptr<tcp_connection>> active_conns;
 };
 
 int main() {
