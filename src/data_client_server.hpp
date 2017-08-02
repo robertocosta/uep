@@ -236,7 +236,7 @@ private:
 			  server_endpoint_,
 			  strand_.wrap(std::bind(&data_client::handle_sent_ack,
 						 this,
-						 _1, _2)));
+						 std::placeholders::_1, std::placeholders::_2)));
   }
 
   /** Called when a new packet is received. */
@@ -286,7 +286,7 @@ private:
 				 server_endpoint_,
 				 std::bind(&data_client::handle_received,
 					   this,
-					   _1, _2));
+					   std::placeholders::_1, std::placeholders::_2));
     }
     else { // Stop the client
       stop();
@@ -568,7 +568,7 @@ private:
 
     // Schedule the timer
     pkt_timer.async_wait(strand_.wrap(std::bind(&data_server::handle_send_timer,
-						this, _1)));
+						this, std::placeholders::_1)));
   }
 
   /** Listen asynchronously for incoming ACK packets. */
@@ -582,7 +582,7 @@ private:
     socket_.async_receive_from(boost::asio::buffer(last_ack), client_endpoint_,
 			       strand_.wrap(std::bind(&data_server::handle_ack,
 						      this,
-						      _1, _2)));
+						      std::placeholders::_1, std::placeholders::_2)));
   }
 
   /** Called when a packet is received. */
@@ -643,7 +643,7 @@ private:
 			  client_endpoint_,
 			  strand_.wrap(std::bind(&data_server::handle_sent,
 						 this,
-						 _1, _2)));
+						 std::placeholders::_1, std::placeholders::_2)));
   }
 
   /** Called at the end of a transmission. */

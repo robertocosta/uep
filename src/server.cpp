@@ -1,13 +1,12 @@
 #include <ctime>
 #include <iostream>
 #include <string>
-#include <boost/bind.hpp>
+//#include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/asio.hpp>
 #include "controlMessage.pb.h"
 #include <boost/array.hpp>
-
 #include "encoder.hpp"
 
 #include <ostream>
@@ -20,16 +19,128 @@
 
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include "data_client_server.hpp"
 
 using boost::asio::ip::tcp;
-int port_num = 12312;
-/* PARAMETERS CHOICE */
-int k = 8; 
-double c = 0.1;
-double delta = 0.01;
-int rfm = 3;
-int rfl = 1;
-int ef = 2;
+
+
+using namespace uep;
+using namespace uep::net;
+
+
+struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
+	all_params() {
+		K = 8;
+		c = 0.1;
+		delta = 0.01;
+		RFM = 3;
+		RFL = 1;
+		EF = 2;
+	}
+	std::string streamName;
+	bool ack = true;
+	int sendRate = 10240;
+	size_t fileSize = 20480;
+	int port_num = 12312;
+	/* PARAMETERS CHOICE */ 
+	int Ls = 64;
+};
+
+all_params ps;
+
+struct packet_source {
+	typedef all_params parameter_set;
+	int Ls;
+	int rfm;
+	int rfl;
+	int ef;
+	size_t max_count;
+	size_t currInd;
+	int rfmReal;
+	int rflReal;
+	int efReal;
+	std::string streamName;
+	std::ifstream file;
+	explicit packet_source(const parameter_set &ps) {
+		Ls = ps.Ls;
+		rfm = ps.RFM;
+		rfl = ps.RFL;
+		ef = ps.EF;
+		max_count = ps.fileSize;
+		currInd = 0;
+		rfmReal = 0;
+		rflReal = 0;
+		efReal = 0;
+		streamName = ps.streamName;
+		/* RANDOM GENERATION OF FILE */
+		int fileSize = max_count; // file size = fileSize * Ls;
+		boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf(streamName+".txt");
+		std::ofstream newFile (streamName+".txt");
+		if (newFile.is_open()) { 
+			for (int ii = 0; ii<fileSize; ii++) {
+				boost::random::uniform_int_distribution<> dist(0, 255);
+				newFile << ((char) dist(gen));
+			}
+		}
+		newFile.close();
+		/*
+		std::ostream outStr(&streamBuf);
+		for (int ii = 0; ii<fileSize; ii++) {
+			// 8-bit word generation
+			boost::random::uniform_int_distribution<> dist(0, 255);
+			outStr << (char) dist(gen);
+		}
+		//outStr.close();*/
+		file = std::ifstream(streamName+".txt", std::ios::in|std::ios::binary|std::ios::ate);
+		if (!file.is_open()) throw std::runtime_error("Failed opening file");
+		else max_count = file.tellg();
+	}
+
+	packet next_packet() {
+		if (currInd >= max_count) throw std::runtime_error("Max packet count");
+		//else currInd = currInd + Ls;
+		if (efReal<ef) {
+			if (rfmReal<rfm) rfmReal++;
+			else {
+				if (rfmReal==rfm) {
+					rfmReal++;
+					currInd += Ls;
+				} 
+				if (rflReal<rfl) rflReal++;
+				else {
+					rfmReal = 0;
+					rflReal = 0;
+					efReal++;
+					currInd -= Ls;
+				}
+			}	
+		} else {
+			currInd += 2*Ls;
+			rfmReal = 0;
+			rflReal = 0;
+			efReal = 0;
+		}
+		file.seekg (currInd, std::ios::beg);
+		char * memblock;
+		memblock = new char [Ls];
+		file.read (memblock, currInd);
+		packet p;
+		p.resize(Ls);
+		//p.assign(memblock, Ls+memblock);
+		for (int i=0; i < Ls; i++) {
+			p[i] = memblock[i];
+		}	
+		return p;
+	}
+
+	explicit operator bool() const {
+		return currInd < max_count;
+	}
+
+	bool operator!() const { return !static_cast<bool>(*this); }
+	
+	boost::random::mt19937 gen;
+};
 
 /*	
 	1: client to server: streamName
@@ -58,7 +169,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		as long as there is an operation that refers to it.*/
 	public:
 		typedef boost::shared_ptr<tcp_connection> pointer;
-
+		typedef uep::net::data_server<lt_encoder<std::mt19937>,packet_source> ds_type;
 		static pointer create(boost::asio::io_service& io_service) {
 			return pointer(new tcp_connection(io_service));
 		}
@@ -74,75 +185,28 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				s = firstMessage.streamname();
 			}
 			std::cout << "Stream name received from client: \"" << s << "\"\n";
-
-			/* GENERATION OF FILE */
-			int fileLength = 10240;
-			int MIp = 3; // most important part, # of bytes
-			boost::iostreams::stream_buffer<boost::iostreams::file_sink> streamBuf(s+".txt");
-			std::ostream outStr(&streamBuf);
-			/*
-			std::string chars(
-					"abcdefghijklmnopqrstuvwxyz"
-					"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-					"1234567890");
-			boost::random::mt19937 rng;
-			boost::random::uniform_int_distribution<> index_dist(0, chars.size() - 1);
-			*/
-			for (int ii = 0; ii<fileLength; ii++) {
-				// 8-bit word generation
-				//outStr << chars[index_dist(rng)];
-				boost::random::uniform_int_distribution<> dist(0, 255);
-				outStr << (char) dist(gen);
-			}
-			//outStr << std::endl;
+			ps.streamName = s;
 			
-			/* UEP */
-			std::streampos size;
-			char * memblock;
-			char * firstPart;
-			char * secondPart;
-			std::ifstream file (s+".txt", std::ios::in|std::ios::binary|std::ios::ate);
-			std::ofstream newFile (s+"-uep.txt");
-			if (newFile.is_open()) {
-				if (file.is_open()) {
-					size = file.tellg();
-					memblock = new char [k];
-					firstPart = new char[MIp];
-					secondPart = new char[k-MIp];
-					for (uint32_t ind = 0; ind+k < size; ind = ind + k) {
-						file.seekg (ind, std::ios::beg);
-						file.read (memblock, k);
-						strncpy(firstPart, memblock, MIp);
-						strncpy(secondPart, memblock+MIp, k-MIp);
-						for (int jj=0; jj<ef; jj++) {
-							for (int ii=0; ii<rfm; ii++)
-								newFile.write(firstPart,MIp);
-							for (int ii=0; ii<rfl; ii++)
-								newFile.write(secondPart,k-MIp);
-						}
-					}
-					file.close();
-					newFile.close();
-					delete[] memblock;
-					delete[] firstPart;
-					delete[] secondPart;
-				} else std::cout << "Unable to open file in reading mode";
-			} else std::cout << "Unable to open file in writing mode";
-
-			/* CREATION OF ENCODER */
+			/* CREATION OF DATA SERVER */
 			std::cout << "Creation of encoder...\n";
-			uep::lt_encoder<std::mt19937> enc(k, c, delta);
+			ds_type *ds = new ds_type(io);
+			ds_p.reset(ds);
+			//lt_encoder<std::mt19937>::parameter_set enc_ps{};
+			ds->setup_encoder(ps); // setup the encoder inside the data_server
+			ds->setup_source(ps); // setup the source  inside the data_server
+			ds->target_send_rate(ps.sendRate); // Set a target send rate of 10240 byte/s = 10 pkt/s
+			ds->enable_ack(ps.ack);
 			
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
-			secondMessage.set_k(k);
-			secondMessage.set_c(c);
-			secondMessage.set_delta(delta);
-			secondMessage.set_rfm(rfm);
-			secondMessage.set_rfl(rfl);
-			secondMessage.set_ef(ef);
-			secondMessage.set_ack(true);
-			secondMessage.set_filesize(fileLength);
+			secondMessage.set_k(ps.K);
+			secondMessage.set_c(ps.c);
+			secondMessage.set_delta(ps.delta);
+			secondMessage.set_rfm(ps.RFM);
+			secondMessage.set_rfl(ps.RFL);
+			secondMessage.set_ef(ps.EF);
+			secondMessage.set_ack(ps.ack);
+			secondMessage.set_filesize(ps.fileSize);
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
@@ -180,12 +244,11 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			}
 			std::cout << "Connect req. received from client on port \"" << port << "\"\n";
 			std::cout << "Creation of data server...\n";
-			//ds(io);
-			// data_server (boost::asio::io_service &io)
-			// void 	setup_encoder (const encoder_parameter_set &ps)
-			// void 	setup_source (const source_parameter_set &ps)
-			// void 	open (const std::string &dest_host, const std::string &dest_service)
-
+			// Opening UDP connection
+			char portStr[10];
+			sprintf(portStr, "%u", port);
+			ds_p->open("127.0.0.1", portStr);
+			
 			uint32_t udpPort = 1445; // =(udp port for ACK from new data_server())
 			controlMessage::ConnACK connACKMessage;
 			connACKMessage.set_port(udpPort);
@@ -228,10 +291,15 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		}
 
 	private:
-		boost::array<char, 128> buf;
+		boost::array<char,128> buf;
+		std::unique_ptr<ds_type> ds_p;
+		tcp::socket socket_;
+		boost::asio::io_service& io;
+		
 		//uep::lt_encoder<std::mt19937> enc;
 		//uep::net::data_server<lt_encoder<std::mt19937>,random_packet_source> ds;
-		tcp_connection(boost::asio::io_service& io_service): socket_(io_service) {
+		//boost::asio::io_service io;
+		tcp_connection(boost::asio::io_service& io_service): socket_(io_service), io(io_service) {
 			
 		}
 		// handle_write() is responsible for any further actions 
@@ -239,16 +307,14 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		void handle_write(const boost::system::error_code& /*error*/,size_t /*bytes_transferred*/) {
 
 		}
-		boost::random::mt19937 gen;
-		boost::asio::io_service io;
-		tcp::socket socket_;
+
 };
 
 class tcp_server {
 	public:
 		// Constructor: initialises an acceptor to listen on TCP port port_num.
 		tcp_server(boost::asio::io_service& io_service): 
-			acceptor_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
+			acceptor_(io_service, tcp::endpoint(tcp::v4(), ps.port_num)) {
 			// start_accept() creates a socket and 
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection.
@@ -264,8 +330,7 @@ class tcp_server {
 			// initiates an asynchronous accept operation 
 			// to wait for a new connection. 
 			acceptor_.async_accept(new_connection->socket(),
-				boost::bind(&tcp_server::handle_accept, this, new_connection,
-					boost::asio::placeholders::error));
+				std::bind(&tcp_server::handle_accept, this, new_connection,std::placeholders::_1));
 		}
 
 		// handle_accept() is called when the asynchronous accept operation 
