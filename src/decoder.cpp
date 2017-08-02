@@ -22,7 +22,7 @@ lt_decoder::lt_decoder(const degree_distribution &distr) :
 lt_decoder::lt_decoder(const lt_row_generator &rg) :
   the_block_decoder(rg),
   the_output_queue(rg.K()),
-  blockno_counter(MAX_BLOCKNO),
+  blockno_counter(MAX_BLOCKNO, BLOCK_WINDOW),
   has_enqueued(false),
   uniq_recv_count(0),
   tot_dec_count(0),
@@ -32,33 +32,14 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
 
 void lt_decoder::push(fountain_packet &&p) {
   if (blockno_counter.last() != static_cast<size_t>(p.block_number())) {
-    // Check if more recent
-    decltype(blockno_counter) recv_blockno(MAX_BLOCKNO);
+    auto recv_blockno(blockno_counter);
     recv_blockno.set(p.block_number());
-    size_t dist = blockno_counter.forward_distance(recv_blockno);
-
-    if (dist > BLOCK_WINDOW) {
-      // This is an old block
-      // PUT_STAT_COUNTER(loggers.old_dropped);
-      // BOOST_LOG_SEV(loggers.text, info) << "Drop packet for an old block: " << p;
-      return;
+    if (recv_blockno.is_after(blockno_counter)) {
+      flush_small_blockno(p.block_number());
     }
     else {
-      enqueue_partially_decoded();
-      // If there is a gap in the blocks fill with empty pkts
-      if (dist > 1) {
-	const std::vector<packet> empty_block(K());
-	for (std::size_t i = 0; i < dist - 1; ++i) {
-	  the_output_queue.push_shallow(empty_block.cbegin(),
-					empty_block.cend());
-
-	}
-	tot_failed_count += K() * (dist - 1);
-      }
-      // Start to decode the new block
-      the_block_decoder.reset();
-      has_enqueued = false;
-      blockno_counter = recv_blockno;
+      // This is not a new block number: do nothing
+      return;
     }
   }
 
@@ -88,6 +69,62 @@ lt_decoder::const_block_iterator lt_decoder::decoded_begin() const {
 
 lt_decoder::const_block_iterator lt_decoder::decoded_end() const {
   return the_block_decoder.block_end();
+}
+
+void lt_decoder::flush() {
+  auto bnc_copy(blockno_counter);
+  flush_small_blockno(bnc_copy.next());
+}
+
+void lt_decoder::flush_n_blocks(std::size_t n) {
+  auto bnc_new(blockno_counter);
+  std::size_t win = blockno_counter.comparison_window();
+  while (n > win) {
+    bnc_new.next(win);
+    flush_small_blockno(bnc_new.value());
+    n -= win;
+  }
+  bnc_new.next(n);
+  flush_small_blockno(bnc_new.value());
+}
+
+void lt_decoder::flush(std::size_t blockno_) {
+  // This still cannot flush more than MAX_BLOCKNO blocks
+  auto target_bn(blockno_counter);
+  target_bn = blockno_;
+  size_t dist = blockno_counter.forward_distance(target_bn);
+  size_t win =  blockno_counter.comparison_window();
+
+  size_t times = dist / win;
+  auto bnc_copy(blockno_counter);
+  for (size_t i = 0; i < times; ++i) {
+    bnc_copy.next(win);
+    flush_small_blockno(bnc_copy.value());
+  }
+  flush_small_blockno(blockno_);
+}
+
+void lt_decoder::flush_small_blockno(std::size_t blockno_) {
+  auto recv_blockno(blockno_counter);
+  recv_blockno.set(blockno_);
+
+  enqueue_partially_decoded();
+  size_t dist = blockno_counter.forward_distance(recv_blockno);
+  // Push dist-1 empty blocks
+  if (dist > 1) {
+    const std::vector<packet> empty_block(K());
+    for (size_t i = 0; i < dist - 1; ++i) {
+      the_output_queue.push_shallow(empty_block.cbegin(),
+				    empty_block.cend());
+
+    }
+    tot_failed_count += K() * (dist - 1);
+  }
+
+  // Start to decode the new block
+  the_block_decoder.reset();
+  has_enqueued = false;
+  blockno_counter = recv_blockno;
 }
 
 bool lt_decoder::has_decoded() const {

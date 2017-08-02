@@ -551,6 +551,128 @@ BOOST_AUTO_TEST_CASE(check_decoder_counters) {
 		    nblocks * K);
 }
 
+BOOST_AUTO_TEST_CASE(check_decoder_flush) {
+  const size_t L = 10;
+  const size_t K = 10;
+  const double c = 0.1;
+  const double delta = 0.5;
+
+  lt_encoder<std::mt19937> enc(K, c, delta);
+  lt_decoder dec(K,c,delta);
+  vector<packet> original;
+
+  // Push blocks to the encoder
+  const std::size_t nblocks = 70000;
+  for (size_t i = 0; i < nblocks*K; ++i) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push(move(p));
+  }
+
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 0);
+
+  // Skip one block
+  dec.flush();
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 1);
+
+  // Skip to block 50
+  dec.flush(50);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 50*K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 50);
+
+  // Decode block 50
+  enc.next_block(50);
+  while (!dec.has_decoded())
+    dec.push(enc.next_coded());
+
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 50*K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), K);
+  BOOST_CHECK_EQUAL(dec.blockno(), 50);
+
+  // Partial block 51
+  enc.next_block();
+  dec.push(enc.next_coded());
+  while (dec.decoded_count() < K/3)
+    dec.push(enc.next_coded());
+  size_t partial = dec.decoded_count();
+
+  // Skip to block 50 again (+ 2^16 blocks)
+  dec.flush(50);
+
+  // failed 0--49, partially failed 51, skip 52--2^16, skip 0--49
+  size_t failed_pkts = 51*K -partial + (static_cast<size_t>(pow(2,16))-2)*K;
+  size_t good_pkts = K + partial;
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), failed_pkts);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), good_pkts);
+  BOOST_CHECK_EQUAL(dec.blockno(), 50);
+}
+
+BOOST_AUTO_TEST_CASE(check_decoder_flush_n) {
+  const size_t L = 10;
+  const size_t K = 10;
+  const double c = 0.1;
+  const double delta = 0.5;
+
+  lt_encoder<std::mt19937> enc(K, c, delta);
+  lt_decoder dec(K,c,delta);
+  vector<packet> original;
+
+  // Push blocks to the encoder
+  const std::size_t nblocks = 70000;
+  for (size_t i = 0; i < nblocks*K; ++i) {
+    packet p = random_pkt(L);
+    original.push_back(p);
+    enc.push(move(p));
+  }
+
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 0);
+
+  // Skip one block
+  dec.flush();
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 1);
+
+  // Skip to block 50
+  dec.flush(50);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 50*K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
+  BOOST_CHECK_EQUAL(dec.blockno(), 50);
+
+  // Decode block 50
+  enc.next_block(50);
+  while (!dec.has_decoded())
+    dec.push(enc.next_coded());
+
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 50*K);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), K);
+  BOOST_CHECK_EQUAL(dec.blockno(), 50);
+
+  // Partial block 51
+  enc.next_block();
+  dec.push(enc.next_coded());
+  while (dec.decoded_count() < K/3)
+    dec.push(enc.next_coded());
+  size_t partial = dec.decoded_count();
+  dec.flush();
+
+  // Skip to end
+  dec.flush_n_blocks(nblocks - 52);
+
+  size_t failed_pkts = nblocks*K - K - partial;
+  size_t good_pkts = K + partial;
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), failed_pkts);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), good_pkts);
+  BOOST_CHECK_EQUAL(dec.blockno(), nblocks % static_cast<size_t>(pow(2,16)));
+}
+
 // struct stat_fixture {
 //   boost::shared_ptr<default_stat_sink> the_stat_sink;
 

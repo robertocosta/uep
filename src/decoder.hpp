@@ -64,6 +64,22 @@ public:
    */
   const_block_iterator decoded_end() const;
 
+  /** Push the current incomplete block to the queue and wait for the
+   *  next block.
+   */
+  void flush();
+
+  /** Push the current incomplete block to the queue, assume all
+   *  blocks are failed up to the given one and wait for packets
+   *  belonging to the given block.
+   */
+  void flush(std::size_t blockno_);
+
+  /** Push the current incomplete block and `n-1` additional empty
+   *  blocks to the queue
+   */
+  void flush_n_blocks(std::size_t n);
+
   /** Return true if the current block has been decoded. */
   bool has_decoded() const;
   /** Return the block size. */
@@ -130,6 +146,12 @@ private:
    *  is not fully decoded. The missing packets will be empty.
    */
   void enqueue_partially_decoded();
+
+  /** Used to push incomplete or empty blocks to the queue. This
+   *  requires the target blockno to be within the comparison
+   *  window. \sa flush
+   */
+  void flush_small_blockno(std::size_t blockno_);
 };
 
 }
