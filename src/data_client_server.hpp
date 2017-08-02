@@ -43,7 +43,9 @@ public:
     recv_buffer(UDP_MAX_PAYLOAD),
     ack_enabled(true),
     exp_count(0),
-    is_stopped_(true) {
+    is_stopped_(true),
+    timeout_timer(io),
+    timeout_(std::chrono::microseconds::zero()) {
   }
 
   /** Replace the decoder object with one built from the given
@@ -82,6 +84,11 @@ public:
 			       std::bind(&data_client::handle_received,
 					 this,
 					 _1, _2));
+    auto t = timeout_.load();
+    if (t.count() > 0) {
+      timeout_timer.expires_from_now(t);
+      timeout_timer.async_wait(std::bind(&data_client::handle_timeout, this, _1));
+    }
   }
 
   /** Listen asynchronously for packets coming from a given remote
@@ -137,6 +144,20 @@ public:
     return is_stopped_;
   };
 
+  /** Set the timeout interval in seconds. A value of 0 disables the
+   *  timeout.
+   */
+  void timeout(double t) {
+    timeout_ = std::chrono::microseconds(static_cast<long>(t * 1e6));
+  }
+
+  /** Get the current timeout value in seconds. */
+  double timeout() const {
+    using namespace std::chrono;
+    typedef duration<double> double_seconds;
+    return duration_cast<double_seconds>(timeout_.load()).count();
+  }
+
   /** Return a const reference to the sink object. */
   const Sink &sink() const {
     return *sink_;
@@ -184,17 +205,25 @@ private:
 				 *   the async transmission.
 				 */
 
-  std::atomic<bool> ack_enabled; /**< Set when the data_client should
-				  *   send back ACKs.
-				  */
-  std::atomic<std::size_t> exp_count; /**< The number of packets that
-				       *   should be received before
-				       *   stopping the client. A
-				       *   value of 0 means that the
-				       *   client will never stop to
-				       *   listen.
-				       */
-  bool is_stopped_;
+  std::atomic_bool ack_enabled; /**< Set when the data_client should
+				 *   send back ACKs.
+				 */
+  std::atomic_size_t exp_count; /**< The number of packets that should
+				 *   be received before stopping the
+				 *   client. A value of 0 means that
+				 *   the client will never stop to
+				 *   listen.
+				 */
+  std::atomic_bool is_stopped_;
+  boost::asio::steady_timer timeout_timer; /**< Timer used to stop the
+					   *   reception after some
+					   *   time if packets are not
+					   *   received.
+					   */
+  /** Duration of an interval without packets after which the client
+   *  stops. If this is 0 the timeout is disabled.
+   */
+  std::atomic<std::chrono::steady_clock::duration> timeout_;
 
   /** Schedule the transmission of an ACK to the server. */
   void schedule_ack(std::size_t blockno) {
@@ -229,7 +258,13 @@ private:
       throw e;
     }
 
-    //std::size_t current_blockno = p.block_number();
+    // Reset the timeout
+    auto t = timeout_.load();
+    if (t.count() > 0) {
+      timeout_timer.expires_from_now(t);
+      timeout_timer.async_wait(std::bind(&data_client::handle_timeout, this, _1));
+    }
+
     decoder_->push(move(p));
 
     // Extract eventual decoded packets
@@ -265,8 +300,34 @@ private:
     if (size != ack_buffer.size()) throw std::runtime_error("Was not sent fully");
   }
 
+  /** Called when the timeout timer expires or is cancelled. */
+  void handle_timeout(const boost::system::error_code& ec) {
+    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
+    if (ec) throw boost::system::system_error(ec);
+
+    // Assume all successive packets failed
+    if (exp_count > 0) {
+      std::size_t total_queued = decoder_->total_decoded_count() +
+	decoder_->total_failed_count();
+      std::size_t blocks_queued = total_queued / decoder_->K();
+      // Flush also the current block (already queued but still synced on it)
+      if (decoder_->has_decoded()) --blocks_queued;
+      std::size_t nblocks = std::ceil(static_cast<double>(exp_count) /
+				      decoder_->K());
+      decoder_->flush_n_blocks(nblocks - blocks_queued);
+
+      // Extract eventual decoded packets
+      while (*decoder_ && *sink_) {
+	sink_->push(decoder_->next_decoded());
+      }
+    }
+
+    stop();
+  }
+
   /** Called after stop(). */
   void handle_stop() {
+    timeout_timer.cancel();
     socket_.cancel();
     socket_.close();
     is_stopped_ = true;
@@ -439,18 +500,17 @@ private:
 					  *   bit/s.
 					  */
 
-  bool is_stopped_; /**< Set when the data_server should not send
-		     *	 packets.
-		     */
-  std::atomic<bool> ack_enabled; /**< Set when the data_server should
-				  *   listen for incoming ACKs.
-				  */
-  std::atomic<std::size_t> max_per_block; /**< Maximum number of
-					   *   packets that can be
-					   *   generated for each
-					   *   block before skipping
-					   *   to the next.
-					   */
+  std::atomic_bool is_stopped_; /**< Set when the data_server should
+				 *	 not send packets.
+				 */
+  std::atomic_bool ack_enabled; /**< Set when the data_server should
+				 *   listen for incoming ACKs.
+				 */
+  std::atomic_size_t max_per_block; /**< Maximum number of packets
+				     *   that can be generated for
+				     *   each block before skipping to
+				     *   the next.
+				     */
   std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
 			       *   by the encoder.
 			       */
