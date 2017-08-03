@@ -10,6 +10,7 @@ target_link_libraries(test_data_client_server
   decoder
   block_encoder
   packets_rw
+  log
 )
 add_test(test_data_client_server test_data_client_server)
 
