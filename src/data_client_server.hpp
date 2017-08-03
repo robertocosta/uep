@@ -11,6 +11,7 @@
 #include <boost/asio/steady_timer.hpp>
 
 #include "counter.hpp"
+#include "log.hpp"
 #include "packets_rw.hpp"
 
 namespace uep {
@@ -37,6 +38,8 @@ public:
    *  bind the socket yet.
    */
   explicit data_client(boost::asio::io_service &io) :
+    basic_lg(boost::log::keywords::channel = log::basic),
+    perf_lg(boost::log::keywords::channel = log::performance),
     io_service_(io),
     strand_(io_service_),
     socket_(io_service_),
@@ -52,6 +55,7 @@ public:
    *  parameters.
    */
   void setup_decoder(const decoder_parameter_set &ps) {
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the decoder";
     decoder_.reset(new Decoder(ps));
   }
 
@@ -59,17 +63,21 @@ public:
    *  parameters.
    */
   void setup_sink(const sink_parameter_set &ps) {
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the sink";
     sink_.reset(new Sink(ps));
   }
 
   /** Bind the socket to the given port. */
   void bind(const std::string &service) {
     using boost::asio::ip::udp;
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Binding the client UDP port";
     udp::resolver resolver(io_service_);
     udp::resolver::query listen_q(service);
     listen_endpoint_ = *resolver.resolve(listen_q);
     socket_.open(udp::v4());
     socket_.bind(listen_endpoint_);
+    BOOST_LOG_SEV(basic_lg, log::info) << "Client bound to UDP: "
+				       << socket_.local_endpoint();
   }
 
   /** Listen asynchronously for packets coming from a given remote
@@ -78,6 +86,9 @@ public:
   void start_receive(const boost::asio::ip::udp::endpoint &src_ep) {
     using namespace std::placeholders;
     server_endpoint_ = src_ep;
+    BOOST_LOG_SEV(basic_lg, log::info) << "Start receiving UDP data pkts from: "
+				       << server_endpoint_;
+    BOOST_LOG(perf_lg) << "data_client::start_receive";
     is_stopped_ = false;
     socket_.async_receive_from(boost::asio::buffer(recv_buffer),
 			       server_endpoint_,
@@ -113,11 +124,12 @@ public:
     if (i == udp::resolver::iterator()) {
       throw std::runtime_error("No endpoint found");
     }
-    start_receive(*i);
+    start_receive(*i); // pick the first found
   }
 
   /** Schedule the stopping of the data_client. */
   void stop() {
+    BOOST_LOG_SEV(basic_lg, log::info) << "Stopping the UDP client";
     strand_.dispatch(std::bind(&data_client::handle_stop, this));
   }
   /** Get the UDP endpoint that the server socket is currently bound
@@ -176,6 +188,8 @@ public:
   }
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   std::unique_ptr<Decoder> decoder_; /**< Use a pointer to allow
 				      *   default-construction.
 				      */
@@ -340,6 +354,8 @@ private:
     socket_.cancel();
     socket_.close();
     is_stopped_ = true;
+    BOOST_LOG(perf_lg) << "data_client::stopped";
+    BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
   }
 };
 
@@ -370,6 +386,8 @@ public:
    *  bind the socket yet.
    */
   explicit data_server(boost::asio::io_service &io) :
+    basic_lg(boost::log::keywords::channel = log::basic),
+    perf_lg(boost::log::keywords::channel = log::performance),
     io_service_(io),
     strand_(io_service_),
     socket_(io_service_),
@@ -487,6 +505,8 @@ public:
   }
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   std::unique_ptr<Encoder> encoder_; /**< The encoder. Use a pointer
 				      *	  to allow for
 				      *	  default-construction.
