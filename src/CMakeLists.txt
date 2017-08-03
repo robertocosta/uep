@@ -3,6 +3,7 @@ set(cpp_files
   block_encoder
   block_queues
   decoder
+  log
   packets
   packets_rw
   rng
@@ -31,12 +32,16 @@ target_link_libraries(decoder
   block_queues
   ${Boost_LIBRARIES}
 )
+target_link_libraries(log
+  ${Boost_LIBRARIES}
+)
 
 add_executable(demo_ds demo_ds.cpp)
 target_link_libraries(demo_ds
   block_encoder
   block_queues
   packets_rw
+  log
   ${Boost_LIBRARIES}
 )
 
@@ -44,6 +49,7 @@ add_executable(demo_dc demo_dc.cpp)
 target_link_libraries(demo_dc
   decoder
   packets_rw
+  log
 )
 
 add_executable(server server.cpp)
