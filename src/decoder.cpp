@@ -235,7 +235,9 @@ void lt_decoder::enqueue_partially_decoded() {
 
   BOOST_LOG(perf_lg) << "lt_decoder::enqueue_partially_decoded"
 		     << " decoded_pkts="
-		     << the_block_decoder.decoded_count();
+		     << the_block_decoder.decoded_count()
+		     << " avg_mp_time="
+		     << the_block_decoder.average_message_passing_time();
   if (the_block_decoder.has_decoded())
     BOOST_LOG_SEV(basic_lg, log::debug) <<
       "Decoder enqueued fully decoded block";

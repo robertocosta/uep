@@ -1,5 +1,7 @@
 #include "block_decoder.hpp"
 
+#include <chrono>
+
 using namespace std;
 
 namespace uep {
@@ -58,6 +60,7 @@ void block_decoder::reset() {
   link_cache.clear();
   decoded.assign(block_size(), packet());
   decoded_count_ = 0;
+  avg_mp.reset();
 }
 
 block_decoder::seed_t block_decoder::seed() const {
@@ -102,6 +105,10 @@ block_decoder::const_partial_iterator block_decoder::partial_end() const {
   return decoded.cend();
 }
 
+double block_decoder::average_message_passing_time() const {
+  return avg_mp.value();
+}
+
 block_decoder::operator bool() const {
   return has_decoded();
 }
@@ -111,6 +118,10 @@ bool block_decoder::operator!() const {
 }
 
 void block_decoder::run_message_passing() {
+  using namespace std::chrono;
+
+  auto tic = high_resolution_clock::now();
+
   // Setup the context
   typedef boost::transform_iterator<fp2lazy_conv,
 				    received_t::const_iterator
@@ -139,6 +150,11 @@ void block_decoder::run_message_passing() {
     decoded_count_ = mp_ctx.decoded_count();
   }
 
+  auto mp_tdiff =
+    duration_cast<duration<double>>(high_resolution_clock::now() - tic);
+  BOOST_LOG(perf_lg) << "block_decoder::run_message_passing mp_time="
+		     << mp_tdiff.count();
+  avg_mp.add_sample(mp_tdiff.count());
   BOOST_LOG(perf_lg) << "block_decoder::run_message_passing decoded_pkts="
 		     << mp_ctx.decoded_count()
 		     << " received_pkts="

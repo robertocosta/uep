@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "counter.hpp"
 #include "lazy_xor.hpp"
 #include "log.hpp"
 #include "message_passing.hpp"
@@ -130,8 +131,10 @@ public:
    */
   const_partial_iterator partial_end() const;
 
-  //void do_partial_decoding(bool value);
-  //bool do_partial_decoding() const;
+  /** Return the average time to run message passing measured since
+   *  the last reset.
+   */
+  double average_message_passing_time() const;
 
   /** Return true when the decoder has decoded a full block. */
   explicit operator bool() const;
@@ -148,6 +151,10 @@ private:
   std::size_t decoded_count_;
   std::size_t blockno;
   std::size_t pktsize;
+
+  stat::average_counter avg_mp; /**< Average time to run the message
+				 *   passing algorithm.
+				 */
 
   void check_correct_block(const fountain_packet &p);
   void run_message_passing();
