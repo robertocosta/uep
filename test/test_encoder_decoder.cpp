@@ -3,7 +3,6 @@
 
 #include "decoder.hpp"
 #include "encoder.hpp"
-#include "log.hpp"
 
 #include <climits>
 #include <map>
@@ -11,12 +10,6 @@
 
 using namespace std;
 using namespace uep;
-
-// namespace expr = boost::log::expressions;
-// namespace keywords = boost::log::keywords;
-// namespace logging = boost::log;
-// namespace sinks = boost::log::sinks;
-// namespace src = boost::log::sources;
 
 packet random_pkt(int size) {
   static std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g;
@@ -27,33 +20,6 @@ packet random_pkt(int size) {
   }
   return p;
 }
-
-// void histogram_print_csv(const std::map<int, int> &h, const std::string &fname) {
-//   using namespace std;
-//   ofstream ofs(fname, ios_base::trunc);
-//   ofs << "required_packets, histo_count" << endl;
-//   for (auto i = h.cbegin(); i != h.cend(); ++i) {
-//     int x = i->first;
-//     int y = i->second;
-//     ofs << x << ", " << y << endl;
-//   }
-//   ofs.close();
-// }
-
-struct global_fixture {
-  boost::shared_ptr<default_cerr_sink> the_cerr_sink;
-
-  global_fixture() {
-    the_cerr_sink = make_cerr_sink(warning);
-    boost::log::core::get()->add_sink(the_cerr_sink);
-  }
-
-  ~global_fixture() {
-    boost::log::core::get()->remove_sink(the_cerr_sink);
-  }
-};
-
-BOOST_GLOBAL_FIXTURE(global_fixture);
 
 BOOST_AUTO_TEST_CASE(check_encoder_counters) {
   const size_t L = 10;
@@ -672,18 +638,3 @@ BOOST_AUTO_TEST_CASE(check_decoder_flush_n) {
   BOOST_CHECK_EQUAL(dec.total_decoded_count(), good_pkts);
   BOOST_CHECK_EQUAL(dec.blockno(), nblocks % static_cast<size_t>(pow(2,16)));
 }
-
-// struct stat_fixture {
-//   boost::shared_ptr<default_stat_sink> the_stat_sink;
-
-//   stat_fixture() {
-//     boost::shared_ptr<std::ofstream>
-//       ofs(new std::ofstream("stat_log.json", std::ios_base::trunc));
-//     the_stat_sink = make_stat_sink(ofs);
-//     boost::log::core::get()->add_sink(the_stat_sink);
-//   }
-
-//   ~stat_fixture() {
-//     boost::log::core::get()->remove_sink(the_stat_sink);
-//   }
-// };
