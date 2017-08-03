@@ -354,7 +354,13 @@ private:
     socket_.cancel();
     socket_.close();
     is_stopped_ = true;
-    BOOST_LOG(perf_lg) << "data_client::stopped";
+    BOOST_LOG(perf_lg) << "data_client::stopped"
+		       << " received_pkts="
+		       << decoder_->total_received_count()
+		       << " decoded_pkts="
+		       << decoder_->total_decoded_count()
+		       << " failed_pkts="
+		       << decoder_->total_failed_count();
     BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
   }
 };
@@ -403,6 +409,7 @@ public:
    *  parameter set.
    */
   void setup_encoder(const encoder_parameter_set &ps) {
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the encoder";
     encoder_.reset(new Encoder(ps));
   }
 
@@ -410,6 +417,7 @@ public:
    *  parameter set.
    */
   void setup_source(const source_parameter_set &ps) {
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the source";
     source_.reset(new Source(ps));
   }
 
@@ -418,6 +426,7 @@ public:
     using namespace boost::asio;
     using ip::udp;
 
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Opening the server UDP port";
     udp::resolver resolver(io_service_);
     udp::resolver::query query(udp::v4(), dest_host, dest_service);
     auto i = resolver.resolve(query);
@@ -425,18 +434,25 @@ public:
       throw std::runtime_error("No endpoint found");
     }
     client_endpoint_ = *i;
+    BOOST_LOG_SEV(basic_lg, log::info) << "Server will send data to: "
+				       << client_endpoint_;
+    // Send from any address and pick a free port
     udp::endpoint local(ip::address::from_string("0.0.0.0"), 0);
     socket_.open(udp::v4());
     socket_.bind(local);
+    BOOST_LOG_SEV(basic_lg, log::info) << "Server UDP port bound to: "
+				       << socket_.local_endpoint();
   }
 
   /** Schedule the start of a transmission toward the client endpoint. */
   void start() {
+    BOOST_LOG_SEV(basic_lg, log::info) << "UDP server is starting";
     strand_.dispatch(std::bind(&data_server::handle_started, this));
   }
 
   /** Schedule the stop of the current transmission. */
   void stop() {
+    BOOST_LOG_SEV(basic_lg, log::info) << "UDP server is stopping";
     strand_.dispatch(std::bind(&data_server::handle_stopped, this));
   }
 
@@ -698,6 +714,9 @@ private:
     is_stopped_ = true;
     pkt_timer.cancel();
     socket_.cancel();
+    BOOST_LOG(perf_lg) << "data_server::stopped sent_pkts="
+		       << encoder_->total_coded_count();
+    BOOST_LOG_SEV(basic_lg, log::debug) << "UDP server is stopped";
   }
 };
 
