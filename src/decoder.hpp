@@ -117,6 +117,8 @@ public:
   bool operator!() const;
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   block_decoder the_block_decoder;
   output_block_queue the_output_queue;
   circular_counter<std::size_t> blockno_counter;

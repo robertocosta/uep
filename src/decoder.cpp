@@ -20,6 +20,8 @@ lt_decoder::lt_decoder(const degree_distribution &distr) :
 }
 
 lt_decoder::lt_decoder(const lt_row_generator &rg) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
   the_block_decoder(rg),
   the_output_queue(rg.K()),
   blockno_counter(MAX_BLOCKNO, BLOCK_WINDOW),
@@ -31,13 +33,24 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
 }
 
 void lt_decoder::push(fountain_packet &&p) {
-  if (blockno_counter.last() != static_cast<size_t>(p.block_number())) {
+  std::size_t pbn = static_cast<size_t>(p.block_number());
+  std::size_t psn = static_cast<size_t>(p.sequence_number());
+
+  if (blockno_counter.last() != pbn) {
     auto recv_blockno(blockno_counter);
-    recv_blockno.set(p.block_number());
+    recv_blockno.set(pbn);
     if (recv_blockno.is_after(blockno_counter)) {
-      flush_small_blockno(p.block_number());
+      BOOST_LOG(perf_lg) << "lt_decoder::push new_block blockno="
+			 << pbn
+			 << " seqno="
+			 << psn;
+      flush_small_blockno(pbn);
     }
     else {
+      BOOST_LOG(perf_lg) << "lt_decoder::push old_pkt blockno="
+			 << pbn
+			 << " seqno="
+			 << psn;
       // This is not a new block number: do nothing
       return;
     }
@@ -45,6 +58,10 @@ void lt_decoder::push(fountain_packet &&p) {
 
   bool uniq = the_block_decoder.push(move(p));
   if (uniq) ++uniq_recv_count;
+  else BOOST_LOG(perf_lg) << "lt_decoder::push duplicate_pkt blockno="
+			  << pbn
+			  << " seqno="
+			  << psn;
 
   // Extract if fully decoded block (just once)
   if (the_block_decoder) {
@@ -107,9 +124,17 @@ void lt_decoder::flush(std::size_t blockno_) {
 void lt_decoder::flush_small_blockno(std::size_t blockno_) {
   auto recv_blockno(blockno_counter);
   recv_blockno.set(blockno_);
+  size_t dist = blockno_counter.forward_distance(recv_blockno);
+
+  if (dist > 1 || !has_decoded())
+    BOOST_LOG_SEV(basic_lg, log::info) << "Decoder is skipping to block "
+				       << blockno_;
+  else
+    BOOST_LOG_SEV(basic_lg, log::debug) << "Decoder is moving to next block "
+					<< blockno_;
 
   enqueue_partially_decoded();
-  size_t dist = blockno_counter.forward_distance(recv_blockno);
+
   // Push dist-1 empty blocks
   if (dist > 1) {
     const std::vector<packet> empty_block(K());
@@ -192,6 +217,16 @@ void lt_decoder::enqueue_partially_decoded() {
   tot_failed_count += K() - the_block_decoder.decoded_count();
 
   has_enqueued = true;
+
+  BOOST_LOG(perf_lg) << "lt_decoder::enqueue_partially_decoded"
+		     << " decoded_pkts="
+		     << the_block_decoder.decoded_count();
+  if (the_block_decoder.has_decoded())
+    BOOST_LOG_SEV(basic_lg, log::debug) <<
+      "Decoder enqueued fully decoded block";
+  else
+    BOOST_LOG_SEV(basic_lg, log::debug) <<
+      "Decoder enqueued partially decoded block";
 }
 
 }
