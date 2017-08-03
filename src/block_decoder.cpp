@@ -5,6 +5,8 @@ using namespace std;
 namespace uep {
 
 block_decoder::block_decoder(const lt_row_generator &rg) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
   rowgen(rg), decoded(rg.K()), decoded_count_(0) {
   link_cache.reserve(rg.K());
 }
@@ -136,6 +138,11 @@ void block_decoder::run_message_passing() {
     copy(mp_sb, mp_se, decoded.begin());
     decoded_count_ = mp_ctx.decoded_count();
   }
+
+  BOOST_LOG(perf_lg) << "block_decoder::run_message_passing decoded_pkts="
+		     << mp_ctx.decoded_count()
+		     << " received_pkts="
+		     << received_pkts.size();
 }
 
 }

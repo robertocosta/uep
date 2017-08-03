@@ -26,6 +26,7 @@ target_link_libraries(block_encoder rng packets)
 target_link_libraries(block_decoder
   rng
   packets
+  log
 )
 target_link_libraries(decoder
   block_decoder

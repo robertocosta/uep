@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "lazy_xor.hpp"
+#include "log.hpp"
 #include "message_passing.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
@@ -138,6 +139,8 @@ public:
   bool operator!() const;
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   lt_row_generator rowgen;
   received_t received_pkts;
   link_cache_t link_cache;
