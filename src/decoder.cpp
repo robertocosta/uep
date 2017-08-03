@@ -1,6 +1,7 @@
 #include "decoder.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <utility>
 
@@ -33,6 +34,10 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
 }
 
 void lt_decoder::push(fountain_packet &&p) {
+  using namespace std::chrono;
+
+  auto tic = high_resolution_clock::now();
+
   std::size_t pbn = static_cast<size_t>(p.block_number());
   std::size_t psn = static_cast<size_t>(p.sequence_number());
 
@@ -67,6 +72,12 @@ void lt_decoder::push(fountain_packet &&p) {
   if (the_block_decoder) {
     enqueue_partially_decoded();
   }
+
+  auto push_tdiff =
+    duration_cast<duration<double>>(high_resolution_clock::now() - tic);
+  BOOST_LOG(perf_lg) << "lt_decoder::push push_time="
+		     << push_tdiff.count();
+  avg_push_t.add_sample(push_tdiff.count());
 }
 
 void lt_decoder::push(const fountain_packet &p) {
@@ -198,6 +209,10 @@ std::size_t lt_decoder::total_decoded_count() const {
 
 std::size_t lt_decoder::total_failed_count() const {
   return tot_failed_count;
+}
+
+double lt_decoder::average_push_time() const {
+  return avg_push_t.value();
 }
 
 lt_decoder::operator bool() const {

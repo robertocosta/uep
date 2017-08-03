@@ -111,6 +111,9 @@ public:
    */
   std::size_t total_failed_count() const;
 
+  /** Return the average measured time to push a packet in seconds. */
+  double average_push_time() const;
+
   /** True if there are decoded packets still in the queue. */
   explicit operator bool() const;
   /** True if all the decoded packets have been extracted. */
@@ -131,6 +134,9 @@ private:
   std::size_t tot_failed_count; /**< Total number of packets that were
 				 *   not decoded.
 				 */
+  stat::average_counter avg_push_t; /**< Average time spent processing
+				     *	 an incoming packet.
+				     */
 
   // struct loggers_t {
   //   default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);

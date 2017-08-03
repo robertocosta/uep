@@ -360,7 +360,10 @@ private:
 		       << " decoded_pkts="
 		       << decoder_->total_decoded_count()
 		       << " failed_pkts="
-		       << decoder_->total_failed_count();
+		       << decoder_->total_failed_count()
+		       << " avg_push_time="
+		       << decoder_->average_push_time();
+
     BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
   }
 };
