@@ -258,3 +258,28 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(multiple_increment, T, int_types) {
   c1.next(11);
   BOOST_CHECK(c1 == c2);
 }
+
+using namespace uep::stat;
+
+BOOST_AUTO_TEST_CASE(avg) {
+  average_counter ac;
+
+  BOOST_CHECK_EQUAL(ac.count(), 0);
+  BOOST_CHECK_THROW(ac.value(), std::runtime_error);
+
+  ac.add_sample(1.0);
+  BOOST_CHECK_EQUAL(ac.count(), 1);
+  BOOST_CHECK_EQUAL(ac.value(), 1);
+
+  ac.add_sample(10.0);
+  BOOST_CHECK_EQUAL(ac.count(), 2);
+  BOOST_CHECK_CLOSE(ac.value(), 5.5, 1e-9);
+
+  ac.reset();
+  BOOST_CHECK_EQUAL(ac.count(), 0);
+
+  for (int i = 0; i < 100; ++i) {
+    ac.add_sample(i);
+  }
+  BOOST_CHECK_CLOSE(ac.value(), ((99.0*100)/2) / 100, 1e-9);
+}

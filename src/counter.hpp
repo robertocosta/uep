@@ -307,6 +307,40 @@ private:
   value_type curr_val;
 };
 
-}
+namespace stat {
+
+class average_counter {
+public:
+  average_counter() : n(0) {}
+
+  void add_sample(double s) {
+    if (n == 0) {
+      avg = s;
+    }
+    else {
+      avg = (avg * n + s) / (n+1);
+    }
+    ++n;
+  }
+
+  double value() const {
+    if (n == 0) throw std::runtime_error("No samples");
+    return avg;
+  }
+
+  std::size_t count() const {
+    return n;
+  }
+
+  void reset() {
+    n = 0;
+  }
+
+private:
+  std::size_t n;
+  double avg;
+};
+
+}}
 
 #endif
