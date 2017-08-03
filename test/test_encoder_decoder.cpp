@@ -11,6 +11,20 @@
 using namespace std;
 using namespace uep;
 
+// Set globally the log severity level
+struct global_fixture {
+  global_fixture() {
+    uep::log::init();
+    auto warn_filter = boost::log::expressions::attr<
+      uep::log::severity_level>("Severity") >= uep::log::warning;
+    boost::log::core::get()->set_filter(warn_filter);
+  }
+
+  ~global_fixture() {
+  }
+};
+BOOST_GLOBAL_FIXTURE(global_fixture);
+
 packet random_pkt(int size) {
   static std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g;
   packet p;

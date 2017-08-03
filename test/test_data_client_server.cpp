@@ -1,11 +1,23 @@
 #define BOOST_TEST_MODULE test_data_client_server
-#include <iostream>
-
 #include <boost/test/unit_test.hpp>
 
 #include "data_client_server.hpp"
-#include "encoder.hpp"
 #include "decoder.hpp"
+#include "encoder.hpp"
+
+// Set globally the log severity level
+struct global_fixture {
+  global_fixture() {
+    uep::log::init();
+    auto warn_filter = boost::log::expressions::attr<
+      uep::log::severity_level>("Severity") >= uep::log::warning;
+    boost::log::core::get()->set_filter(warn_filter);
+  }
+
+  ~global_fixture() {
+  }
+};
+BOOST_GLOBAL_FIXTURE(global_fixture);
 
 /* Produce random packets of fixed size.
  * Parameters: rng seed, pkt size, stop after max_count pkts

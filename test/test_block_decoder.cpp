@@ -7,6 +7,20 @@
 using namespace std;
 using namespace uep;
 
+// Set globally the log severity level
+struct global_fixture {
+  global_fixture() {
+    uep::log::init();
+    auto warn_filter = boost::log::expressions::attr<
+      uep::log::severity_level>("Severity") >= uep::log::warning;
+    boost::log::core::get()->set_filter(warn_filter);
+  }
+
+  ~global_fixture() {
+  }
+};
+BOOST_GLOBAL_FIXTURE(global_fixture);
+
 BOOST_AUTO_TEST_CASE(check_rows) {
   const int seed = 0x42424242;
   lt_row_generator rowgen(robust_soliton_distribution(3, 0.1, 0.5));
