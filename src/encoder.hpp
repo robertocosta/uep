@@ -76,6 +76,8 @@ public:
 
   /** Construct with the row_generator rg. */
   explicit lt_encoder(const lt_row_generator &rg) :
+    basic_lg(boost::log::keywords::channel = log::basic),
+    perf_lg(boost::log::keywords::channel = log::performance),
     the_input_queue(rg.K()),
     the_block_encoder(rg),
     seqno_counter(MAX_SEQNO),
@@ -115,12 +117,15 @@ public:
    *  one.
    */
   void next_block() {
+    BOOST_LOG(perf_lg) << "encoder::next_block coded_pkts="
+		       << coded_count();
     tot_coded_count += coded_count();
     the_input_queue.pop_block();
     the_block_encoder.reset();
     blockno_counter.next();
     seqno_counter.reset();
-    //PUT_STAT_COUNTER(loggers.newblock);
+    BOOST_LOG_SEV(basic_lg, log::debug) << "Encoder skipped to the next block: "
+					<< blockno_counter.value();
     check_has_block();
   }
 
@@ -195,6 +200,8 @@ public:
   bool operator!() const { return !has_block(); }
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   input_block_queue the_input_queue;
   block_encoder the_block_encoder;
   seed_generator_type the_seed_gen;
@@ -204,15 +211,6 @@ private:
 				*   packets.
 				*/
 
-
-  // struct loggers_t {
-  //   default_logger enc_pkts = make_stat_logger("EncoderCodedPackets", counter);
-  //   default_logger in_pkts = make_stat_logger("EncoderInputPackets", counter);
-  //   default_logger newblock = make_stat_logger("EncoderNewBlock", counter);
-  //   default_logger rows = make_stat_logger("EncoderRowDegree", scalar);
-  //   default_logger text;
-  // } loggers;
-
   /** If the block_encoder is empty and the queue has a full block,
    *  load the block_decoder. Also generate a new block seed.
    */
@@ -221,6 +219,8 @@ private:
       the_block_encoder.set_block_shallow(the_input_queue.block_begin(),
 					  the_input_queue.block_end());
       the_block_encoder.set_seed(the_seed_gen());
+
+      BOOST_LOG_SEV(basic_lg, log::trace) << "The encoder has a new block";
     }
   }
 };
