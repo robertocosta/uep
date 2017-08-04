@@ -138,18 +138,6 @@ private:
 				     *	 an incoming packet.
 				     */
 
-  // struct loggers_t {
-  //   default_logger dec_blocks = make_stat_logger("DecoderDecodedBlocks", counter);
-  //   default_logger decodeable = make_stat_logger("DecoderDecodeablePackets", scalar);
-  //   default_logger dup_pkts = make_stat_logger("DecoderDuplicatePackets", counter);
-  //   default_logger in_pkts = make_stat_logger("DecoderInputPackets", counter);
-  //   default_logger newblock = make_stat_logger("DecoderNewBlock", counter);
-  //   default_logger old_dropped = make_stat_logger("DecoderOldDropped", counter);
-  //   default_logger recv_size = make_stat_logger("DecoderTryWithReceived", scalar);
-  //   default_logger rows = make_stat_logger("DecoderRowDegree", scalar);
-  //   default_logger text;
-  // } loggers;
-
   /** If the current block was not yet enqueued, then do it even if it
    *  is not fully decoded. The missing packets will be empty.
    */
