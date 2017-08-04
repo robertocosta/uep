@@ -42,8 +42,8 @@ struct cout_pkt_sink {
   bool operator!() const { return false; }
 };
 
-const std::size_t nblocks = 10, K = 10000;
-const robust_lt_parameter_set lt_par{K, 0.01, 0.5};
+const std::size_t nblocks = 2, K = 20000;
+const robust_lt_parameter_set lt_par{K, 0.1, 0.5};
 const data_parameter_set data_par{true,
     nblocks*K,
     0,
@@ -51,6 +51,12 @@ const data_parameter_set data_par{true,
     60};
 
 int main(int argc, char **argv) {
+  using namespace uep::log;
+
+  log::init("demo_dc.log");
+  default_logger basic_lg(boost::log::keywords::channel = basic);
+  default_logger perf_lg(boost::log::keywords::channel = performance);
+
   boost::asio::io_service io;
 
   data_client<lt_decoder,cout_pkt_sink> dc(io);
@@ -73,13 +79,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::cerr << "Binding" << std::endl;
   dc.bind(port);
-  std::cerr << "Start receiving" << std::endl;
   dc.start_receive(srv_ip, srv_port);
 
-  std::cerr << "Start io_service loop" << std::endl;
+  BOOST_LOG_SEV(basic_lg, debug) << "Start io_service loop";
   io.run();
-  std::cerr << "io_service loop ended" << std::endl;
+  BOOST_LOG_SEV(basic_lg, debug) << "io_service loop ended";
   return 0;
 }
