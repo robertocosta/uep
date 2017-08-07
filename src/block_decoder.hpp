@@ -35,53 +35,32 @@ struct lazy2p_conv {
   }
 };
 
-/** Converter to evaluate a (index,lazy_xor) pair. */
-struct sym2pair_conv {
-  typedef std::pair<std::size_t,packet> out_t;
-  typedef std::pair<std::size_t,lazy_xor<packet>> in_t;
-
-  out_t operator()(const in_t &p) const {
-    return std::make_pair(p.first, p.second.evaluate());
-  }
-};
-
-/** Converter to build lazy_xors from fountain_packets. */
-struct fp2lazy_conv {
-  lazy_xor<packet> operator()(const fountain_packet &p) const {
-    return lazy_xor<packet>(&p);
-  }
-};
-
-/** Converter to extract the second element from a pair. */
-template <class T, class U>
-struct pair2second_conv {
-  U operator()(const std::pair<T,U> &p) const {
-    return p.second;
-  }
-};
+/** Iterator adaptor that converts from lazy_xors to packets. */
+template <class BaseIter>
+using lazy2p_iterator = boost::transform_iterator<lazy2p_conv, BaseIter>;
 
 /** Class to decode a single LT-encoded block of packets.
  *  The LT-code parameters are given by the lt_row_generator passed to
  *  the constructor. The seed is read from the fountain_packets.
  */
 class block_decoder {
-  typedef lazy_xor<packet> mp_symbol_t;
-  typedef mp::mp_context<mp_symbol_t> mp_ctx_t;
+private:
+  /** Type of the underlying message passing context. */
+  typedef mp::mp_context<lazy_xor<packet>> mp_ctx_t;
+  /** Type of the container for the unique received packets. */
   typedef std::set<fountain_packet, seqno_less> received_t;
+  /** Type of the container used to cache the row generator output. */
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
-  typedef std::vector<packet> decoded_t;
-
-  typedef boost::transform_iterator<lazy2p_conv,
-				    mp_ctx_t::input_symbols_iterator
-				    > mp_packet_iter;
 
 public:
-  typedef decoded_t::const_iterator const_partial_iterator;
-  typedef utils::skip_false_iterator<decoded_t::const_iterator
-				     > const_block_iterator;
-
+  /** Iterator over the input packets, either decoded or empty. */
+  typedef lazy2p_iterator<mp_ctx_t::inputs_iterator> const_partial_iterator;
+  /** Iterator over the decoded input packets. */
+  typedef lazy2p_iterator<mp_ctx_t::decoded_iterator> const_block_iterator;
+  /** Type of the seed used by the row generator. */
   typedef lt_row_generator::rng_type::result_type seed_t;
 
+  /** Construct with the given row generator. */
   explicit block_decoder(const lt_row_generator &rg);
 
   /** Reset the decoder to the initial state. */
@@ -147,8 +126,7 @@ private:
   lt_row_generator rowgen;
   received_t received_pkts;
   link_cache_t link_cache;
-  decoded_t decoded;
-  std::size_t decoded_count_;
+  mp_ctx_t mp_ctx;
   std::size_t blockno;
   std::size_t pktsize;
 
@@ -156,7 +134,13 @@ private:
 				 *   passing algorithm.
 				 */
 
+  /** Check the blocno, seqno and seed of the packet and raise an
+   *  exception if they don't match the current block.
+   */
   void check_correct_block(const fountain_packet &p);
+  /** Run the message passing algortihm over the currently received
+   *  packets.
+   */
   void run_message_passing();
 };
 

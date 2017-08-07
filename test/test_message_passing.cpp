@@ -1,7 +1,11 @@
 #define BOOST_TEST_MODULE test_message_passing
+#include <boost/test/unit_test.hpp>
+
+#include <iostream>
+#include <forward_list>
 
 #include <boost/mpl/vector.hpp>
-#include <boost/test/unit_test.hpp>
+#include <boost/optional.hpp>
 
 #include "lazy_xor.hpp"
 #include "message_passing.hpp"
@@ -9,93 +13,147 @@
 
 using namespace std;
 using namespace uep;
+using namespace uep::mp;
 
-template <class T>
-bool operator==(const lazy_xor<T> &lhs, const lazy_xor<T> &rhs) {
-  return lhs.evaluate() == rhs.evaluate();
-}
+/* Adapt some symbol types to be used with mp_context.
+ * Add a build to construct a symbol starting from a base char.
+ * Add missing operator^= and operator==.
+ * Prevent copying to ensure that mp_context does not copy symbols.
+ */
 
-struct fpSel {typedef fountain_packet sym_type;};
-struct uintSel {typedef unsigned int sym_type;};
-struct lazySel {typedef lazy_xor<fountain_packet> sym_type;};
+class my_opt_char : public boost::optional<char> {
+public:
+  my_opt_char() {}
+  my_opt_char(const boost::optional<char> &oc) : boost::optional<char>(oc) {}
 
-typedef boost::mpl::vector<uintSel, fpSel, lazySel> sym_selectors;
+  my_opt_char(const my_opt_char&) = delete;
+  my_opt_char(my_opt_char&&) = default;
+  my_opt_char &operator=(const my_opt_char&) = delete;
+  my_opt_char &operator=(my_opt_char&&) = default;
+  ~my_opt_char() = default;
 
-template <class SymSel>
-struct sym_builder_t {};
+  my_opt_char &operator^=(const my_opt_char &rhs) {
+    if (!(*this) || !rhs) throw std::runtime_error("Must not be unset");
+    (*(*this)) ^= (*rhs);
+    return *this;
+  }
 
-template <>
-struct sym_builder_t<fpSel> {
-  fountain_packet operator()(char i) const {
-    const size_t size = 1024;
-    return fountain_packet(size, i);
+  static my_opt_char build(char base) {
+    return boost::optional<char>(base);
   }
 };
 
-template <>
-struct sym_builder_t<uintSel> {
-  unsigned int operator()(unsigned int i) const {
-    return i;
+class my_packet : public packet {
+public:
+  my_packet() {}
+  my_packet(const packet &p): packet(p) {}
+
+  my_packet(const my_packet&) = delete;
+  my_packet(my_packet&&) = default;
+  my_packet &operator=(const my_packet&) = delete;
+  my_packet &operator=(my_packet&&) = default;
+  ~my_packet() = default;
+
+  static my_packet build(char base) {
+    return packet(1024, base);
   }
 };
 
-template <>
-struct sym_builder_t<lazySel> {
-  lazySel::sym_type operator()(char i) {
-    const size_t size = 1024;
-    fountain_packet *fp = new fountain_packet(size, i);
-    deleteme.push_back(fp);
-    return lazy_xor<fountain_packet>(fp);
+class my_lazy_xor_packet : public lazy_xor<packet> {
+public:
+  my_lazy_xor_packet() {}
+  my_lazy_xor_packet(const lazy_xor<packet> &p): lazy_xor<packet>(p) {}
+
+  packet p;
+
+  static forward_list<unique_ptr<packet>> base_packets;
+  static my_lazy_xor_packet build(char base) {
+    auto bp = make_unique<packet>(1024, base);
+    base_packets.push_front(move(bp));
+    return lazy_xor<packet>(base_packets.front().get());
   }
 
-  ~sym_builder_t() {
-    for (fountain_packet *fp : deleteme) {
-      delete fp;
-    }
+  bool operator==(const my_lazy_xor_packet &rhs) const {
+    return evaluate() == rhs.evaluate();
   }
-private:
-  std::list<fountain_packet*> deleteme;
 };
+forward_list<unique_ptr<packet>> my_lazy_xor_packet::base_packets;
 
-template <class SymbolSel>
+class my_lazy_xor_char : public lazy_xor<char> {
+public:
+  my_lazy_xor_char() {}
+  my_lazy_xor_char(const lazy_xor<char> &p): lazy_xor<char>(p) {}
+
+  static forward_list<unique_ptr<char>> base_chars;
+  static my_lazy_xor_char build(char base) {
+    auto bc = make_unique<char>(base);
+    base_chars.push_front(move(bc));
+    return lazy_xor<char>(base_chars.front().get());
+  }
+
+  bool operator==(const my_lazy_xor_char &rhs) const {
+    return evaluate() == rhs.evaluate();
+  }
+};
+forward_list<unique_ptr<char>> my_lazy_xor_char::base_chars;
+
+/** Symbol types used to test the mp_context. */
+typedef boost::mpl::vector<my_opt_char,
+			   my_packet,
+			   my_lazy_xor_packet,
+			   my_lazy_xor_char
+			   > symbol_types;
+
+/** Setup some basic bipartite graphs to test. */
+template <class Sym>
 struct mp_setup {
-  typedef typename SymbolSel::sym_type sym_type;
-  typedef message_passing_context<sym_type> mp_t;
+  typedef mp::mp_context<Sym> mp_t;
+  typedef Sym sym_t;
+
   mp_t *mp;
   mp_t *fail;
   mp_t *partial;
   size_t K = 3;
-  vector<sym_type> expected;
-  vector<sym_type> out;
-  vector<pair<size_t,size_t>> edges, decodeable_edges;
-  sym_builder_t<SymbolSel> sym_builder;
+  size_t N = 4;
+  vector<sym_t> expected;
 
   mp_setup() {
-    expected.push_back(sym_builder(0x00));
-    expected.push_back(sym_builder(0x11));
-    expected.push_back(sym_builder(0x22));
+    mp = new mp_t(K);
+    partial = new mp_t(K);
+    fail = new mp_t(K);
 
-    out.push_back(sym_builder(0x11));
-    out.push_back(sym_builder(0x22));
-    out.push_back(sym_builder(0x33));
-    out.push_back(sym_builder(0x44));
+    expected.push_back(Sym::build(0x00));
+    expected.push_back(Sym::build(0x11));
+    expected.push_back(Sym::build(0x22));
 
-    edges.push_back(make_pair(1,0));
-    edges.push_back(make_pair(1,2));
-    edges.push_back(make_pair(1,3));
-    edges.push_back(make_pair(2,2));
-    edges.push_back(make_pair(2,3));
-    edges.push_back(make_pair(0,1));
-    edges.push_back(make_pair(2,1));
+    std::vector<size_t> out_edges;
 
-    decodeable_edges = edges;
+    out_edges = {1};
+    mp->add_output(Sym::build(0x11), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,2};
+    mp->add_output(Sym::build(0x22), out_edges.cbegin(), out_edges.cend());
+    out_edges = {1,2};
+    mp->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+    out_edges = {1,2};
+    mp->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
 
-    mp = new mp_t(K, out.cbegin(), out.cend(), edges.cbegin(), edges.cend());
-    edges.push_back(make_pair(0,2));
-    edges.push_back(make_pair(0,3));
-    partial = new mp_t(K, out.cbegin(), out.cend(), edges.cbegin(), edges.cend());
-    edges.push_back(make_pair(0,0));
-    fail = new mp_t(K, out.cbegin(), out.cend(), edges.cbegin(), edges.cend());
+    out_edges = {1};
+    partial->add_output(Sym::build(0x11), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,2};
+    partial->add_output(Sym::build(0x22), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,1,2};
+    partial->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,1,2};
+    partial->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+
+    out_edges = {0,1};
+    fail->add_output(Sym::build(0x11), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,2};
+    fail->add_output(Sym::build(0x22), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,1,2};
+    fail->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+    out_edges = {0,1,2};
+    fail->add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
   }
 
   ~mp_setup() {
@@ -105,23 +163,23 @@ struct mp_setup {
   }
 };
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_build, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_build, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   BOOST_CHECK_EQUAL(S::mp->input_size(), S::K);
-  BOOST_CHECK_EQUAL(S::mp->output_size(), S::out.size());
+  BOOST_CHECK_EQUAL(S::mp->output_size(), S::N);
   BOOST_CHECK(!S::mp->has_decoded());
   BOOST_CHECK_EQUAL(S::mp->decoded_count(), 0);
   for (auto i = S::mp->input_symbols_begin();
        i != S::mp->input_symbols_end();
        ++i) {
-    typename S::sym_type sym = *i;
+    const typename S::sym_t &sym = *i;
     BOOST_CHECK(!static_cast<bool>(sym));
   }
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   S::mp->run();
   BOOST_CHECK(S::mp->has_decoded());
@@ -129,27 +187,36 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_decoding, SymSel, sym_selectors, mp_setup<Sy
   BOOST_CHECK(equal(S::mp->input_symbols_begin(), S::mp->input_symbols_end(), S::expected.cbegin()));
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_multiple, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_multiple, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   S::mp->run();
   S::mp->run();
   S::mp->run();
   BOOST_CHECK(S::mp->has_decoded());
+  BOOST_CHECK(equal(S::mp->input_symbols_begin(), S::mp->input_symbols_end(), S::expected.cbegin()));
   BOOST_CHECK(equal(S::mp->decoded_symbols_begin(), S::mp->decoded_symbols_end(), S::expected.cbegin()));
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_fail, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_fail, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   BOOST_CHECK(!S::fail->has_decoded());
   S::fail->run();
   BOOST_CHECK(!S::fail->has_decoded());
   BOOST_CHECK_EQUAL(S::fail->decoded_count(), 0);
+  for (auto i = S::fail->input_symbols_begin();
+       i != S::fail->input_symbols_end();
+       ++i) {
+    const typename S::sym_t &sym = *i;
+    BOOST_CHECK(!static_cast<bool>(sym));
+  }
+  BOOST_CHECK(S::fail->decoded_symbols_begin() ==
+	      S::fail->decoded_symbols_end());
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_partial, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_partial, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   BOOST_CHECK(!S::partial->has_decoded());
   S::partial->run();
@@ -168,8 +235,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_partial, SymSel, sym_selectors, mp_setup<Sym
   BOOST_CHECK(i == S::partial->input_symbols_end());
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
   S::partial->run();
   S::partial->run();
@@ -178,159 +245,130 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_retry_partial, SymSel, sym_selectors, mp_set
   BOOST_CHECK(!S::partial->has_decoded());
   BOOST_CHECK_EQUAL(S::partial->decoded_count(), 1);
   BOOST_CHECK(*(S::partial->decoded_symbols_begin()) == S::expected[1]);
+
+  auto i = S::partial->input_symbols_begin();
+  BOOST_CHECK(!(*i));
+  ++i;
+  BOOST_CHECK(static_cast<bool>(*i));
+  BOOST_CHECK(*i == S::expected[1]);
+  ++i;
+  BOOST_CHECK(!(*i));
+  ++i;
+  BOOST_CHECK(i == S::partial->input_symbols_end());
 }
 
-BOOST_AUTO_TEST_CASE(lazy_xor_basic) {
-  const char x1 = 0x11, x2 = 0x22;
-  lazy_xor<char> lx1(&x1);
-  lazy_xor<char> lx2(&x2);
-  lazy_xor<char> lx3 = lx1 ^ lx2;
-  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x11);
-  BOOST_CHECK_EQUAL(lx2.evaluate(), 0x22);
-  BOOST_CHECK_EQUAL(lx3.evaluate(), 0x33);
-  BOOST_CHECK_THROW(lazy_xor<char>().evaluate(), runtime_error);
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_move_after_run, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
 
-  BOOST_CHECK_EQUAL(lx1.size(), 1);
-  BOOST_CHECK_EQUAL(lx2.size(), 1);
-  BOOST_CHECK_EQUAL(lx3.size(), 2);
-  BOOST_CHECK_EQUAL(lazy_xor<char>().size(), 0);
+  S::mp->run();
+  BOOST_CHECK(S::mp->has_decoded());
+  BOOST_CHECK(equal(S::mp->input_symbols_begin(),
+		    S::mp->input_symbols_end(), S::expected.cbegin()));
 
-  BOOST_CHECK_EQUAL(x1, 0x11);
-  BOOST_CHECK_EQUAL(x2, 0x22);
+  typename S::mp_t *other = new typename S::mp_t(99);
+  BOOST_CHECK(!other->has_decoded());
+  BOOST_CHECK_EQUAL(other->input_size(), 99);
+  BOOST_CHECK_NE(S::mp->input_size(), 99);
+
+  swap(*other, *S::mp);
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK_EQUAL(other->input_size(), S::K);
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  delete other;
 }
 
-BOOST_AUTO_TEST_CASE(lazy_xor_shorthand) {
-  const char x1 = 0x11, x2 = 0x22;
-  lazy_xor<char> lx1(&x1);
-  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x11);
-  lx1.xor_with(&x2);
-  BOOST_CHECK_EQUAL(lx1.evaluate(), 0x33);
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_move_before_run, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
+
+  typename S::mp_t *other = new typename S::mp_t(99);
+  swap(*other, *S::mp);
+  other->run();
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  S::mp->run();
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  delete other;
 }
 
-BOOST_AUTO_TEST_CASE(lazy_xor_elision) {
-  const char x1 = 0x11, x2 = 0x22;
-  lazy_xor<char> lx1(&x1);
-  lazy_xor<char> lx2(&x2);
-  lazy_xor<char> lx3;
-  lx3 ^= lx1;
-  BOOST_CHECK_EQUAL(lx3.size(), 1);
-  lx3 ^= lx2;
-  BOOST_CHECK_EQUAL(lx3.size(), 2);
-  lx3 ^= lx1;
-  BOOST_CHECK_EQUAL(lx3.size(), 1);
-  BOOST_CHECK_EQUAL(lx3.evaluate(), 0x22);
-}
+BOOST_AUTO_TEST_CASE_TEMPLATE(mp_reset, Sym, symbol_types) {
+  size_t K = 3;
+  size_t N = 4;
+  vector<Sym> expected;
 
-BOOST_AUTO_TEST_CASE(lazy_xor_fp) {
-  vector<fountain_packet> v;
-  for (int i = 0; i < 10; ++i) {
-    v.push_back(fountain_packet(1024, 0x11 * (i+1)));
-  }
-  BOOST_CHECK_EQUAL(v[0][0], 0x11);
-  BOOST_CHECK_EQUAL(v[9][0], (char)0xaa);
+  expected.push_back(Sym::build(0x00));
+  expected.push_back(Sym::build(0x11));
+  expected.push_back(Sym::build(0x22));
 
-  lazy_xor<fountain_packet> lx;
-  for (auto i = v.cbegin(); i != v.cend(); ++i) {
-    lx ^= lazy_xor<fountain_packet>(&(*i));
-  }
-  BOOST_CHECK_EQUAL(lx.size(), 10);
-  BOOST_CHECK(lx.evaluate() == packet(1024, 0xbb));
-}
+  mp_context<Sym> mp(K);
+  std::vector<size_t> out_edges;
 
-BOOST_AUTO_TEST_CASE(lazy_xor_wrong) {
-  fountain_packet p1(11, 0x11);
-  fountain_packet p2(10, 0x22);
+  out_edges = {1};
+  mp.add_output(Sym::build(0x11), out_edges.cbegin(), out_edges.cend());
+  out_edges = {0,2};
+  mp.add_output(Sym::build(0x22), out_edges.cbegin(), out_edges.cend());
+  out_edges = {1,2};
+  mp.add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+  out_edges = {1,2};
+  mp.add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
 
-  lazy_xor<packet> lz1(&p1), lz2(&p2);
-  lz1 ^= lz2;
-  BOOST_CHECK_THROW(lz1.evaluate(), runtime_error);
-  BOOST_CHECK_NO_THROW(lz2.evaluate());
-
-  lazy_xor<fountain_packet> flz1(&p1), flz2(&p2);
-  flz1 ^= flz2;
-  BOOST_CHECK_THROW(flz1.evaluate(), runtime_error);
-  BOOST_CHECK_NO_THROW(flz2.evaluate());
-}
-
-struct two_mp_setup : public mp_setup<uintSel> {
-  mp_t *mp2;
-  const vector<unsigned int> out2{1,2};
-  const size_t K2 = 2;
-  vector<pair<size_t,size_t>> edges2;
-
-  two_mp_setup() {
-    edges2.push_back(make_pair(0,1));
-    edges2.push_back(make_pair(1,0));
-    mp2 = new mp_t(K2, out2.cbegin(), out2.cend(), edges2.cbegin(), edges2.cend());
-  }
-
-  ~two_mp_setup() {
-    delete mp2;
-  }
-};
-
-BOOST_FIXTURE_TEST_CASE(mp_copy, two_mp_setup) {
-  mp2->run();
-  BOOST_CHECK(mp2->has_decoded());
-  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
-		    mp2->decoded_symbols_end(), out2.crbegin()));
-
-  *mp2 = *mp;
-  mp->run();
-  BOOST_CHECK(!mp2->has_decoded());
-  mp2->run();
-  BOOST_CHECK(mp2->has_decoded());
-  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
-		    mp2->decoded_symbols_end(), expected.cbegin()));
-}
-
-BOOST_FIXTURE_TEST_CASE(mp_move, two_mp_setup) {
-  mp2->run();
-  BOOST_CHECK(mp2->has_decoded());
-  BOOST_CHECK_EQUAL(mp2->input_size(), 2);
-  BOOST_CHECK(mp2->decoded_begin() != mp2->decoded_end());
-  *mp2 = mp_t();
-  BOOST_CHECK_EQUAL(mp2->input_size(), 0);
-  BOOST_CHECK(mp2->has_decoded());
-  BOOST_CHECK(mp2->decoded_begin() == mp2->decoded_end());
-}
-
-BOOST_FIXTURE_TEST_CASE(mp_copy_c, two_mp_setup) {
-  mp_t mp3(*mp2);
-  BOOST_CHECK(!mp3.has_decoded());
-  BOOST_CHECK_EQUAL(mp3.input_size(), 2);
-  mp2->run();
-  BOOST_CHECK(mp2->has_decoded());
-  BOOST_CHECK(equal(mp2->decoded_symbols_begin(),
-		    mp2->decoded_symbols_end(), out2.crbegin()));
-
-  mp_t mp4(*mp2);
-  BOOST_CHECK(mp4.has_decoded());
-  BOOST_CHECK(equal(mp4.decoded_symbols_begin(),
-		    mp4.decoded_symbols_end(), out2.crbegin()));
-}
-
-BOOST_FIXTURE_TEST_CASE(mp_move_c, two_mp_setup) {
-  mp_t mp3(mp_t(10));
-  BOOST_CHECK_EQUAL(mp3.input_size(), 10);
-}
-
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_incremental_build,
-				 SymSel, sym_selectors, mp_setup<SymSel>) {
-  typedef mp_setup<SymSel> S;
-
-  typename S::mp_t mp(3, S::out.cbegin(), S::out.cend());
-  BOOST_CHECK_EQUAL(mp.input_size(), 3);
-  BOOST_CHECK_EQUAL(mp.output_size(), 4);
-
-  for (auto i = S::decodeable_edges.cbegin();
-       i != S::decodeable_edges.cend(); ++i) {
-    mp.add_edge(i->first, i->second);
-  }
+  BOOST_CHECK_EQUAL(mp.output_size(), N);
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 0);
+  BOOST_CHECK(!mp.has_decoded());
+  BOOST_CHECK(mp.decoded_symbols_begin() == mp.decoded_symbols_end());
 
   mp.run();
+
+  BOOST_CHECK_EQUAL(mp.output_size(), N);
+  BOOST_CHECK_EQUAL(mp.decoded_count(), K);
   BOOST_CHECK(mp.has_decoded());
-  BOOST_CHECK(equal(mp.decoded_symbols_begin(),
-		    mp.decoded_symbols_end(),
-		    S::expected.cbegin()));
+  BOOST_CHECK(equal(mp.decoded_symbols_begin(), mp.decoded_symbols_end(),
+		    expected.cbegin()));
+
+  mp.reset();
+
+  BOOST_CHECK_EQUAL(mp.output_size(), 0);
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 0);
+  BOOST_CHECK(!mp.has_decoded());
+  BOOST_CHECK(mp.decoded_symbols_begin() == mp.decoded_symbols_end());
+
+  out_edges = {1};
+  mp.add_output(Sym::build(0x11), out_edges.cbegin(), out_edges.cend());
+  out_edges = {0,2};
+  mp.add_output(Sym::build(0x22), out_edges.cbegin(), out_edges.cend());
+  out_edges = {1,2};
+  mp.add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+  out_edges = {1,2};
+  mp.add_output(Sym::build(0x33), out_edges.cbegin(), out_edges.cend());
+
+  BOOST_CHECK_EQUAL(mp.output_size(), N);
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 0);
+  BOOST_CHECK(!mp.has_decoded());
+  BOOST_CHECK(mp.decoded_symbols_begin() == mp.decoded_symbols_end());
+
+  mp.run();
+
+  BOOST_CHECK_EQUAL(mp.output_size(), N);
+  BOOST_CHECK_EQUAL(mp.decoded_count(), K);
+  BOOST_CHECK(mp.has_decoded());
+  BOOST_CHECK(equal(mp.decoded_symbols_begin(), mp.decoded_symbols_end(),
+		    expected.cbegin()));
 }

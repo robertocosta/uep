@@ -43,3 +43,7 @@ add_test(test_message_passing test_message_passing)
 add_executable(test_packets_rw test_packet_rw.cpp)
 target_link_libraries(test_packets_rw packets_rw)
 add_test(test_packets_rw test_packets_rw)
+
+add_executable(test_lazy_xor test_lazy_xor.cpp)
+target_link_libraries(test_lazy_xor packets)
+add_test(test_lazy_xor test_lazy_xor)
