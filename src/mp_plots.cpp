@@ -1,3 +1,9 @@
+extern "C" {
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+}
+
 #include "encoder.hpp"
 #include "decoder.hpp"
 
@@ -23,10 +29,10 @@ void run_enc_dec(size_t K, double c, double delta,
 		     << " delta=" << delta
 		     << " nblocks=" << nblocks
 		     << " L=" << L;
-  
+
   lt_encoder<mt19937> enc(K,c,delta);
-  lt_decoder dec(K,c,delta);  
-  
+  lt_decoder dec(K,c,delta);
+
   // Load the encoder
   for (size_t i = 0; i < nblocks*K; ++i) {
     enc.push(random_pkt(L));
@@ -43,15 +49,41 @@ void run_enc_dec(size_t K, double c, double delta,
 }
 
 int main(int,char**) {
-  log::init("mp_plots.log");
-  log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
+  pid_t pid, pid2;
+  int status, status2;
+  pid = fork();
+  if (pid == 0) {
+    log::init("mp_plots_A.log");
+    log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
+    BOOST_LOG(perf_lg) << "RUN CASE A";
+    run_enc_dec(10000, 0.01, 0.5, 500, 1);
+    BOOST_LOG(perf_lg) << "DONE A";
+  }
+  else if (pid < 0) {
+    throw std::runtime_error("Fork failed");
+  }
+  else {
+    pid2 = fork();
+    if (pid2 == 0) {
+      log::init("mp_plots_B.log");
+      log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
+      BOOST_LOG(perf_lg) << "RUN CASE B";
+      run_enc_dec(10000, 0.03, 0.5, 500, 1);
+      BOOST_LOG(perf_lg) << "DONE B";
+    }
+    else if (pid < 0) {
+      throw std::runtime_error("Fork failed");
+    }
+    else {
+      log::init("mp_plots_C.log");
+      log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
+      BOOST_LOG(perf_lg) << "RUN CASE C";
+      run_enc_dec(10000, 0.1, 0.5, 500, 1);
+      BOOST_LOG(perf_lg) << "DONE C";
+      wait(&status);
+      wait(&status2);
 
-  BOOST_LOG(perf_lg) << "RUN CASE A";
-  run_enc_dec(10000, 0.01, 0.5, 100, 1);
-  BOOST_LOG(perf_lg) << "RUN CASE B";
-  run_enc_dec(10000, 0.03, 0.5, 100, 1);
-  BOOST_LOG(perf_lg) << "RUN CASE C";
-  run_enc_dec(10000, 0.1, 0.5, 100, 1);
-  BOOST_LOG(perf_lg) << "DONE";
+    }
+  }
   return 0;
 }
