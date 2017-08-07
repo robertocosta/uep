@@ -69,3 +69,10 @@ target_link_libraries(client
   packets_rw
   ${Boost_LIBRARIES}
 )
+
+add_executable(mp_plots mp_plots.cpp)
+target_link_libraries(mp_plots
+  decoder
+  block_encoder
+  log
+)
