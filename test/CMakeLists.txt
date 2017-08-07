@@ -37,7 +37,7 @@ target_link_libraries(test_encoder_decoder
 add_test(test_encoder_decoder test_encoder_decoder)
 
 add_executable(test_message_passing test_message_passing.cpp)
-target_link_libraries(test_message_passing packets)
+target_link_libraries(test_message_passing packets log)
 add_test(test_message_passing test_message_passing)
 
 add_executable(test_packets_rw test_packet_rw.cpp)

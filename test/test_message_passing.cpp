@@ -15,6 +15,20 @@ using namespace std;
 using namespace uep;
 using namespace uep::mp;
 
+// Set globally the log severity level
+struct global_fixture {
+  global_fixture() {
+    uep::log::init();
+    auto warn_filter = boost::log::expressions::attr<
+      uep::log::severity_level>("Severity") >= uep::log::warning;
+    boost::log::core::get()->set_filter(warn_filter);
+  }
+
+  ~global_fixture() {
+  }
+};
+BOOST_GLOBAL_FIXTURE(global_fixture);
+
 /* Adapt some symbol types to be used with mp_context.
  * Add a build to construct a symbol starting from a base char.
  * Add missing operator^= and operator==.

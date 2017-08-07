@@ -1,16 +1,15 @@
 #ifndef UEP_MP_MESSAGE_PASSING_HPP
 #define UEP_MP_MESSAGE_PASSING_HPP
 
-#include <functional>
+#include <chrono>
 #include <memory>
 #include <set>
 #include <utility>
 #include <vector>
 
 #include <boost/iterator/transform_iterator.hpp>
-#include <boost/shared_container_iterator.hpp>
-#include <boost/shared_ptr.hpp>
 
+#include "log.hpp"
 #include "utils.hpp"
 
 namespace uep {
@@ -52,13 +51,13 @@ public:
 
   /** Deleted copy constructor. */
   mp_context(const mp_context &other) = delete;
-  /** Auto-generated move constructor. */
-  mp_context(mp_context &&other) = default;
+  /** Move constructor. */
+  mp_context(mp_context &&other);
 
   /** Deleted copy-assignment operator. */
   mp_context &operator=(const mp_context &other) = delete;
-  /** Auto-generated move-assignment operator. */
-  mp_context &operator=(mp_context &&other) = default;
+  /** Move-assignment operator. */
+  mp_context &operator=(mp_context &&other);
 
   /** Auto-generated destructor. */
   ~mp_context() = default;
@@ -96,6 +95,8 @@ public:
   std::size_t decoded_count() const;
   /** True when all the input symbols have been decoded. */
   bool has_decoded() const;
+  /** Return the time it took to complete the last call to run. */
+  std::chrono::nanoseconds run_duration() const;
 
   /** Return an iterator to the start of the set of input symbols.
    *  The symbols are either decoded or convertible to false.
@@ -116,6 +117,8 @@ public:
   decoded_iterator decoded_symbols_end() const;
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   std::vector<std::unique_ptr<node>> inputs; /**< Pointers to the input nodes. */
   std::vector<std::unique_ptr<node>> outputs; /**< Pointers to the output nodes. */
   node *ripple_first; /**< Start of the singly linked list of nodes in
@@ -130,6 +133,10 @@ private:
   std::size_t decoded_count_; /**< Number of currenlty decoded
 			       *   packets.
 			       */
+
+  std::chrono::nanoseconds last_run_time; /**< The time that the last
+					    *   call to run took.
+					    */
 
   /** Insert an output node in the list of degree one nodes. */
   void insert_degone(node *np);
@@ -177,16 +184,52 @@ struct mp_context<Symbol>::node2sym {
 //	       mp_context<Symbol> template definitions
 
 template <class Symbol>
-mp_context<Symbol>::mp_context(std::size_t in_size) : ripple_first(nullptr),
-						      degone_first(nullptr),
-						      degone_last(nullptr),
-						      decoded_count_(0) {
+mp_context<Symbol>::mp_context(std::size_t in_size) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
+  ripple_first(nullptr),
+  degone_first(nullptr),
+  degone_last(nullptr),
+  decoded_count_(0),
+  last_run_time(std::chrono::nanoseconds::zero()) {
   inputs.resize(in_size);
   for (auto i = inputs.begin(); i != inputs.end(); ++i) {
     auto np = std::make_unique<node>();
     np->symbol = symbol_type();
     *i = std::move(np);
   }
+}
+
+template <class Symbol>
+mp_context<Symbol>::mp_context(mp_context &&other) :
+  // Moving the loggers does not work, copy them
+  //basic_lg(std::move(other.basic_lg)),
+  //perf_lg(std::move(other.perf_lg)),
+  basic_lg(other.basic_lg),
+  perf_lg(other.perf_lg),
+  inputs(std::move(other.inputs)),
+  outputs(std::move(other.outputs)),
+  ripple_first(std::move(other.ripple_first)),
+  degone_first(std::move(other.degone_first)),
+  degone_last(std::move(other.degone_last)),
+  decoded_count_(std::move(other.decoded_count_)),
+  last_run_time(std::move(other.last_run_time)) {
+}
+
+template <class Symbol>
+mp_context<Symbol> &mp_context<Symbol>::operator=(mp_context &&other) {
+  // Moving the loggers does not work, copy them
+  //basic_lg = std::move(other.basic_lg);
+  //perf_lg = std::move(other.perf_lg);
+  basic_lg = other.basic_lg;
+  perf_lg = other.perf_lg;
+  inputs = std::move(other.inputs);
+  outputs = std::move(other.outputs);
+  ripple_first = std::move(other.ripple_first);
+  degone_first = std::move(other.degone_first);
+  degone_last = std::move(other.degone_last);
+  decoded_count_ = std::move(other.decoded_count_);
+  last_run_time = std::move(other.last_run_time);
 }
 
 template <class Symbol>
@@ -268,7 +311,14 @@ void mp_context<Symbol>::process_ripple() {
 
 template <class Symbol>
 void mp_context<Symbol>::run() {
-  if (has_decoded()) return;
+  using namespace std::chrono;
+
+  if (has_decoded()) {
+    last_run_time = nanoseconds::zero();
+    return;
+  }
+
+  auto t = high_resolution_clock::now();
 
   for (;;) {
     decode_degree_one();
@@ -278,6 +328,14 @@ void mp_context<Symbol>::run() {
     }
     process_ripple();
   }
+
+  last_run_time = high_resolution_clock::now() - t;
+  BOOST_LOG(perf_lg) << "mp_context::run run_duration="
+		     << duration_cast<duration<double>>(run_duration()).count()
+		     << " decoded_count="
+		     << decoded_count()
+		     << " output_size="
+		     << output_size();
 }
 
 template <class Symbol>
@@ -384,6 +442,14 @@ void mp_context<Symbol>::reset() {
     (*i)->edges.clear();
   }
   outputs.clear();
+  last_run_time = std::chrono::nanoseconds::zero();
+}
+
+template <class Symbol>
+std::chrono::nanoseconds mp_context<Symbol>::run_duration() const {
+  if (last_run_time == decltype(last_run_time)::zero())
+    throw std::runtime_error("No run duration measured");
+  return last_run_time;
 }
 
 }}
