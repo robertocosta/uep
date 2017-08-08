@@ -4,8 +4,14 @@ set -e -o pipefail
 
 # Get dependencies
 sudo apt-get update
-sudo apt-get install build-essential cmake libboost-all-dev protobuf-compiler libprotobuf-dev libpthread-stubs0-dev
-sudo apt-get install git
+sudo apt-get install -y \
+     build-essential \
+     cmake \
+     libboost-all-dev \
+     protobuf-compiler \
+     libprotobuf-dev \
+     libpthread-stubs0-dev \
+     git
 
 # Clone repo
 git clone https://github.com/riccz/uep.git
