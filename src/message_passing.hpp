@@ -230,6 +230,7 @@ mp_context<Symbol> &mp_context<Symbol>::operator=(mp_context &&other) {
   degone_last = std::move(other.degone_last);
   decoded_count_ = std::move(other.decoded_count_);
   last_run_time = std::move(other.last_run_time);
+  return *this;
 }
 
 template <class Symbol>
