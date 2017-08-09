@@ -76,3 +76,24 @@ target_link_libraries(mp_plots
   block_encoder
   log
 )
+
+add_custom_target(plot_required ALL
+  ${CMAKE_COMMAND} -E copy
+  ${CMAKE_CURRENT_SOURCE_DIR}/plot_required.py
+  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_required
+  COMMENT "Copying plot_required.py into build dir"
+)
+
+add_custom_target(plot_decodeable ALL
+  ${CMAKE_COMMAND} -E copy
+  ${CMAKE_CURRENT_SOURCE_DIR}/plot_decodeable.py
+  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_decodeable
+  COMMENT "Copying plot_decodeable.py into build dir"
+)
+
+add_custom_target(plot_time ALL
+  ${CMAKE_COMMAND} -E copy
+  ${CMAKE_CURRENT_SOURCE_DIR}/plot_time.py
+  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_time
+  COMMENT "Copying plot_time.py into build dir"
+)
