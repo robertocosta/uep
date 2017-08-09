@@ -56,7 +56,7 @@ int main(int,char**) {
     log::init("mp_plots_A.log");
     log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
     BOOST_LOG(perf_lg) << "RUN CASE A";
-    run_enc_dec(10000, 0.01, 0.5, 500, 1);
+    run_enc_dec(10000, 0.01, 0.5, 3, 1);
     BOOST_LOG(perf_lg) << "DONE A";
   }
   else if (pid < 0) {
@@ -68,7 +68,7 @@ int main(int,char**) {
       log::init("mp_plots_B.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE B";
-      run_enc_dec(10000, 0.03, 0.5, 500, 1);
+      run_enc_dec(10000, 0.03, 0.5, 3, 1);
       BOOST_LOG(perf_lg) << "DONE B";
     }
     else if (pid < 0) {
@@ -78,7 +78,7 @@ int main(int,char**) {
       log::init("mp_plots_C.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE C";
-      run_enc_dec(10000, 0.1, 0.5, 500, 1);
+      run_enc_dec(10000, 0.1, 0.5, 3, 1);
       BOOST_LOG(perf_lg) << "DONE C";
       wait(&status);
       wait(&status2);
