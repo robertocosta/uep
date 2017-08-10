@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "counter.hpp"
+#include "lazy_xor.hpp"
 #include "log.hpp"
 #include "message_passing.hpp"
 #include "packets.hpp"
@@ -14,22 +15,44 @@
 
 namespace uep {
 
+/** Converter to evaluate lazy_xors into packets. */
+template <std::size_t MAX_SIZE>
+struct lazy2p_conv {
+  packet operator()(const lazy_xor<packet,MAX_SIZE> &lx) const {
+    if (lx)
+      return lx.evaluate();
+    else
+      return packet();
+  }
+};
+
+/** Iterator adaptor that converts from lazy_xors to packets. */
+template <class BaseIter, std::size_t MAX_SIZE>
+using lazy2p_iterator = boost::transform_iterator<lazy2p_conv<MAX_SIZE>, BaseIter>;
+
 /** Class to decode a single LT-encoded block of packets.
  *  The LT-code parameters are given by the lt_row_generator passed to
  *  the constructor. The seed is read from the fountain_packets.
  */
 class block_decoder {
 private:
+  /** Max size for the lazy_xors. */
+  static constexpr std::size_t LX_MAX_SIZE = 1;
+
+  /** Type of the symbols used for the mp algorithm. */
+  typedef lazy_xor<packet,LX_MAX_SIZE> sym_t;
   /** Type of the underlying message passing context. */
-  typedef mp::mp_context<packet> mp_ctx_t;
+  typedef mp::mp_context<sym_t> mp_ctx_t;
   /** Type of the container used to cache the row generator output. */
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
 
 public:
   /** Iterator over the input packets, either decoded or empty. */
-  typedef mp_ctx_t::inputs_iterator const_partial_iterator;
+  typedef lazy2p_iterator<mp_ctx_t::inputs_iterator,
+			  LX_MAX_SIZE> const_partial_iterator;
   /** Iterator over the decoded input packets. */
-  typedef mp_ctx_t::decoded_iterator const_block_iterator;
+  typedef lazy2p_iterator<mp_ctx_t::decoded_iterator,
+			  LX_MAX_SIZE> const_block_iterator;
   /** Type of the seed used by the row generator. */
   typedef lt_row_generator::rng_type::result_type seed_t;
 

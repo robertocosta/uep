@@ -37,6 +37,7 @@ void block_decoder::check_correct_block(const fountain_packet &p) {
 }
 
 bool block_decoder::push(fountain_packet &&p) {
+  // Make a size-one iter range with p, *mv_ptr should be an rvalue
   auto mv_ptr = std::make_move_iterator(&p);
   auto mv_end = std::make_move_iterator(&p + 1);
   std::size_t n = push(mv_ptr, mv_end);
@@ -86,19 +87,23 @@ std::size_t block_decoder::block_size() const {
 }
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
-  return mp_ctx.decoded_symbols_begin();
+  return const_block_iterator(mp_ctx.decoded_symbols_begin(),
+			      lazy2p_conv<LX_MAX_SIZE>());
 }
 
 block_decoder::const_block_iterator block_decoder::block_end() const {
-  return mp_ctx.decoded_symbols_end();
+  return const_block_iterator(mp_ctx.decoded_symbols_end(),
+			      lazy2p_conv<LX_MAX_SIZE>());
 }
 
 block_decoder::const_partial_iterator block_decoder::partial_begin() const {
-  return mp_ctx.input_symbols_begin();
+  return const_partial_iterator(mp_ctx.input_symbols_begin(),
+				lazy2p_conv<LX_MAX_SIZE>());
 }
 
 block_decoder::const_partial_iterator block_decoder::partial_end() const {
-  return mp_ctx.input_symbols_end();
+  return const_partial_iterator(mp_ctx.input_symbols_end(),
+				lazy2p_conv<LX_MAX_SIZE>());
 }
 
 double block_decoder::average_message_passing_time() const {
@@ -123,7 +128,7 @@ void block_decoder::run_message_passing() {
   for (auto i = last_received.cbegin(); i != last_received.cend(); ++i) {
     // Update the context
     const lt_row_generator::row_type &row = link_cache[i->sequence_number()];
-    mp_pristine.add_output(std::move(*i), row.cbegin(), row.cend());
+    mp_pristine.add_output(sym_t(std::move(*i)), row.cbegin(), row.cend());
   }
   last_received.clear();
 
