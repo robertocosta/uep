@@ -137,18 +137,20 @@ void block_decoder::run_message_passing() {
     mp_ctx.add_output(lazy_xor<packet>(&(*i)), row.cbegin(), row.cend());
   }
 
-  mp_ctx.run();
-
   auto mp_tdiff =
     duration_cast<duration<double>>(high_resolution_clock::now() - tic);
 
-  BOOST_LOG(perf_lg) << "block_decoder::run_message_passing mp_time="
+  mp_ctx.run();
+
+  BOOST_LOG(perf_lg) << "block_decoder::run_message_passing mp_setup_time="
 		     << mp_tdiff.count();
+
   avg_mp.add_sample(mp_tdiff.count());
-  BOOST_LOG(perf_lg) << "block_decoder::run_message_passing decoded_pkts="
-		     << mp_ctx.decoded_count()
-		     << " received_pkts="
-		     << received_pkts.size();
+
+  // BOOST_LOG(perf_lg) << "block_decoder::run_message_passing decoded_pkts="
+  //		     << mp_ctx.decoded_count()
+  //		     << " received_pkts="
+  //		     << received_pkts.size();
 }
 
 }
