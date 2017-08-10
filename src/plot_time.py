@@ -86,4 +86,6 @@ for logf in logfiles:
     print("Avg. mp setup duration: %f" % (avg_setup_time))
     print("Var. of mp setup duration: %f" % (var_setup_time))
 
+    print("Total avg. mp time: %f" %(avg_time + avg_setup_time))
+
 plt.show()
