@@ -10,9 +10,12 @@ logfiles = ['mp_plots_A.log', 'mp_plots_B.log', 'mp_plots_C.log']
 for logf in logfiles:
     times = []
     times.append([])
+    setup_times = []
+    setup_times.append([])
 
     time_re = re.compile('mp_context::run.*run_duration=([^ ]+).*decoded_count=(\d+).*output_size=(\d+)');
     next_re = re.compile('encoder::next_block')
+    setup_re = re.compile('block_decoder::run_message_passing.*mp_setup_time=([^ ]+)')
 
     blockno = 0
     last_out = 0
@@ -22,6 +25,7 @@ for logf in logfiles:
             if l == '':
                 if times[blockno] == []:
                     del times[-1]
+                    del setup_times[-1]
                 break
 
             m = time_re.search(l)
@@ -34,11 +38,19 @@ for logf in logfiles:
                 times[blockno].append((dec_cnt, time))
                 last_out = out_size
 
+
+            m = setup_re.search(l)
+            if m:
+                setup_time = float(m.group(1))
+                # Comes after each `run` time: aligned with `times`
+                setup_times[blockno].append(setup_time)
+
             m = next_re.search(l)
             if m:
                 blockno += 1
                 last_out = 0
                 times.append([])
+                setup_times.append([])
 
     print("Number of blocks: %d" % (len(times)))
 
@@ -52,17 +64,18 @@ for logf in logfiles:
         n_times += len(i)
 
     avg_time = sum_times / n_times
-    print("Avg. run duration: %f" % (avg_time))
+    print("Avg. mp run duration: %f" % (avg_time))
 
-    # lengths = list(map(len, times))
-    # min_length = min(lengths)
-    # for i in times:
-    #     diff = len(i) - min_length
-    #     if diff > 0:
-    #         del i[-diff:]
+    sum_setup_t = 0
+    n_setup_t = 0
+    plt.figure()
+    for b,i in enumerate(setup_times):
+        dec_pts = np.array(times[b])
+        plt.scatter(dec_pts[:,0], i)
+        sum_setup_t += sum(i)
+        n_setup_t += len(i)
 
-    # print(list(map(len, times)))
-
-    # print("Data truncated to length %d" % (min_length))
+    avg_setup_time = sum_setup_t / n_setup_t
+    print("Avg. mp setup duration: %f" % (avg_setup_time))
 
 plt.show()
