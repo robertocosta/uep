@@ -24,7 +24,7 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 
 # Run
-src/mp_plots
+bin/mp_plots
 
 # Upload logs
 subdir_name=$(date +'%Y-%m-%d_%H-%M-%S')
