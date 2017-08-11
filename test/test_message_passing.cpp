@@ -40,9 +40,9 @@ public:
   my_opt_char() {}
   my_opt_char(const boost::optional<char> &oc) : boost::optional<char>(oc) {}
 
-  my_opt_char(const my_opt_char&) = default;
+  my_opt_char(const my_opt_char&) = delete;
   my_opt_char(my_opt_char&&) = default;
-  my_opt_char &operator=(const my_opt_char&) = default;
+  my_opt_char &operator=(const my_opt_char&) = delete;
   my_opt_char &operator=(my_opt_char&&) = default;
   ~my_opt_char() = default;
 
@@ -62,9 +62,9 @@ public:
   my_packet() {}
   my_packet(const packet &p): packet(p) {}
 
-  my_packet(const my_packet&) = default;
+  my_packet(const my_packet&) = delete;
   my_packet(my_packet&&) = default;
-  my_packet &operator=(const my_packet&) = default;
+  my_packet &operator=(const my_packet&) = delete;
   my_packet &operator=(my_packet&&) = default;
   ~my_packet() = default;
 
@@ -78,25 +78,35 @@ public:
   my_lazy_xor_packet() {}
   my_lazy_xor_packet(const lazy_xor<packet> &p): lazy_xor<packet>(p) {}
 
-  packet p;
+  my_lazy_xor_packet(const my_lazy_xor_packet&) = delete;
+  my_lazy_xor_packet(my_lazy_xor_packet&&) = default;
+  my_lazy_xor_packet &operator=(const my_lazy_xor_packet&) = delete;
+  my_lazy_xor_packet &operator=(my_lazy_xor_packet&&) = default;
+  ~my_lazy_xor_packet() = default;
 
-  static forward_list<unique_ptr<packet>> base_packets;
+  static forward_list<unique_ptr<packet>> base_pkts;
   static my_lazy_xor_packet build(char base) {
     auto bp = make_unique<packet>(1024, base);
-    base_packets.push_front(move(bp));
-    return lazy_xor<packet>(base_packets.front().get());
+    base_pkts.push_front(move(bp));
+    return lazy_xor<packet>(base_pkts.front().get());
   }
 
   bool operator==(const my_lazy_xor_packet &rhs) const {
     return evaluate() == rhs.evaluate();
   }
 };
-forward_list<unique_ptr<packet>> my_lazy_xor_packet::base_packets;
+forward_list<unique_ptr<packet>> my_lazy_xor_packet::base_pkts;
 
 class my_lazy_xor_char : public lazy_xor<char> {
 public:
   my_lazy_xor_char() {}
   my_lazy_xor_char(const lazy_xor<char> &p): lazy_xor<char>(p) {}
+
+  my_lazy_xor_char(const my_lazy_xor_char&) = delete;
+  my_lazy_xor_char(my_lazy_xor_char&&) = default;
+  my_lazy_xor_char &operator=(const my_lazy_xor_char&) = delete;
+  my_lazy_xor_char &operator=(my_lazy_xor_char&&) = default;
+  ~my_lazy_xor_char() = default;
 
   static forward_list<unique_ptr<char>> base_chars;
   static my_lazy_xor_char build(char base) {
@@ -387,7 +397,84 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mp_reset, Sym, symbol_types) {
 		    expected.cbegin()));
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_after_run, Sym, symbol_types, mp_setup<Sym>) {
+// Need copyable symbols to test the mp_context copy
+
+class copy_opt_char : public my_opt_char {
+public:
+  copy_opt_char() {}
+  copy_opt_char(my_opt_char &&oc): my_opt_char(std::move(oc)) {}
+
+  copy_opt_char(const copy_opt_char &other) {
+    boost::optional<char>::operator=(other);
+  }
+  copy_opt_char(copy_opt_char&&) = default;
+  copy_opt_char &operator=(const copy_opt_char &other) {
+    boost::optional<char>::operator=(other);
+    return *this;
+  }
+  copy_opt_char &operator=(copy_opt_char&&) = default;
+  ~copy_opt_char() = default;
+};
+
+class copy_packet : public my_packet {
+public:
+  copy_packet() {}
+  copy_packet(my_packet &&p): my_packet(std::move(p)) {}
+
+  copy_packet(const copy_packet &other) {
+    packet::operator=(other);
+  }
+  copy_packet(copy_packet&&) = default;
+  copy_packet &operator=(const copy_packet &other) {
+    packet::operator=(other);
+    return *this;
+  }
+  copy_packet &operator=(copy_packet&&) = default;
+  ~copy_packet() = default;
+};
+
+class copy_lazy_xor_packet : public my_lazy_xor_packet {
+public:
+  copy_lazy_xor_packet() {}
+  copy_lazy_xor_packet(my_lazy_xor_packet &&p): my_lazy_xor_packet(std::move(p)) {}
+
+  copy_lazy_xor_packet(const copy_lazy_xor_packet &other) {
+    lazy_xor<packet>::operator=(other);
+  }
+  copy_lazy_xor_packet(copy_lazy_xor_packet&&) = default;
+  copy_lazy_xor_packet &operator=(const copy_lazy_xor_packet &other) {
+    lazy_xor<packet>::operator=(other);
+    return *this;
+  }
+  copy_lazy_xor_packet &operator=(copy_lazy_xor_packet&&) = default;
+  ~copy_lazy_xor_packet() = default;
+};
+
+class copy_lazy_xor_char : public my_lazy_xor_char {
+public:
+  copy_lazy_xor_char() {}
+  copy_lazy_xor_char(my_lazy_xor_char &&c): my_lazy_xor_char(std::move(c)) {}
+
+  copy_lazy_xor_char(const copy_lazy_xor_char &other) {
+    lazy_xor<char>::operator=(other);
+  }
+  copy_lazy_xor_char(copy_lazy_xor_char&&) = default;
+  copy_lazy_xor_char &operator=(const copy_lazy_xor_char &other) {
+    lazy_xor<char>::operator=(other);
+    return *this;
+  }
+  copy_lazy_xor_char &operator=(copy_lazy_xor_char&&) = default;
+  ~copy_lazy_xor_char() = default;
+};
+
+/** Copyable symbol types used to test the mp_context. */
+typedef boost::mpl::vector<copy_opt_char,
+			   copy_packet,
+			   copy_lazy_xor_packet,
+			   copy_lazy_xor_char
+			   > cp_symbol_types;
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_after_run, Sym, cp_symbol_types, mp_setup<Sym>) {
   typedef mp_setup<Sym> S;
 
   S::mp->run();
@@ -415,7 +502,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_after_run, Sym, symbol_types, mp_setup<
   delete other;
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_before_run, Sym, symbol_types, mp_setup<Sym>) {
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_before_run, Sym, cp_symbol_types, mp_setup<Sym>) {
   typedef mp_setup<Sym> S;
 
   typename S::mp_t *other = new typename S::mp_t(*S::mp);
