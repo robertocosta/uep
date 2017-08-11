@@ -32,5 +32,10 @@ for l in *log; do
     aws s3 cp "$l" s3://uep.zanol.eu/simulation_logs/"$subdir_name"/"$l"
 done
 
+aws sns publish \
+    --region 'us-east-1' \
+    --topic-arn 'arn:aws:sns:us-east-1:402432167722:NotifyMe' \
+    --message "mp_plots run is finished ($subdir_name)"
+
 # Shutdown
 sudo poweroff
