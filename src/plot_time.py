@@ -57,6 +57,7 @@ for logf in logfiles:
     sum_times = 0
     sum2_times = 0
     n_times = 0
+    max_time = 0
     plt.figure()
     for i in times:
         pts = np.array(i)
@@ -64,27 +65,31 @@ for logf in logfiles:
         sum_times += sum(pts[:,1])
         sum2_times += sum(pts[:,1]) ** 2
         n_times += len(i)
+        max_time = max(max_time, max(pts[:,1]))
 
     avg_time = sum_times / n_times
     var_time = (sum2_times - sum_times) / n_times
     print("Avg. mp run duration: %f" % (avg_time))
     print("Var. of mp run duration: %f" % (var_time))
+    print("Max mp run duration: %f" % (max_time))
 
     sum_setup_t = 0
     sum2_setup_t = 0
     n_setup_t = 0
+    max_setup_t = 0
     plt.figure()
     for b,i in enumerate(setup_times):
-        dec_pts = np.array(times[b])
-        plt.scatter(dec_pts[:,0], i)
+        plt.plot(range(1,len(i)+1), i)
         sum_setup_t += sum(i)
         sum2_setup_t += sum(i) ** 2
         n_setup_t += len(i)
+        max_setup_t = max(max_setup_t, max(i))
 
     avg_setup_time = sum_setup_t / n_setup_t
     var_setup_time = (sum2_setup_t - sum_setup_t) / n_setup_t
     print("Avg. mp setup duration: %f" % (avg_setup_time))
     print("Var. of mp setup duration: %f" % (var_setup_time))
+    print("Max mp setup duration: %f" % (max_setup_t))
 
     print("Total avg. mp time: %f" %(avg_time + avg_setup_time))
 
