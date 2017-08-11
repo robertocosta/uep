@@ -1,6 +1,8 @@
 #include "block_decoder.hpp"
 
 #include <chrono>
+#include <iterator>
+#include <stdexcept>
 
 using namespace std;
 using namespace std::chrono;
@@ -10,13 +12,15 @@ namespace uep {
 block_decoder::block_decoder(const lt_row_generator &rg) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  rowgen(rg), mp_ctx(rg.K()), mp_pristine(rg.K()) {
+  rowgen(rg),
+  mp_ctx(rg.K()),
+  mp_pristine(rg.K()) {
   link_cache.reserve(rg.K());
 }
 
 void block_decoder::check_correct_block(const fountain_packet &p) {
   // First packet: set blockno, length, seed
-  if (received_pkts.empty()) {
+  if (received_seqnos.empty()) {
     blockno = p.block_number();
     rowgen.reset(p.block_seed());
     pktsize = p.size();
@@ -33,32 +37,10 @@ void block_decoder::check_correct_block(const fountain_packet &p) {
 }
 
 bool block_decoder::push(fountain_packet &&p) {
-  check_correct_block(p);
-  size_t p_seqno = p.sequence_number();
-
-  // Ignore packets after successful decoding
-  if (has_decoded()) {
-    return false;
-  }
-
-  auto ins_ret = received_pkts.insert(p_seqno);
-  // Ignore duplicates
-  if (!ins_ret.second) {
-    return false;
-  }
-
-  last_pkt = std::move(p);
-  // Generate enough output links
-  if (link_cache.size() <= p_seqno) {
-    size_t prev_size = link_cache.size();
-    link_cache.resize(p_seqno+1);
-    for (size_t i = prev_size; i < p_seqno+1; ++i) {
-      link_cache[i] = rowgen.next_row();
-    }
-  }
-
-  run_message_passing();
-  return true;
+  auto mv_ptr = std::make_move_iterator(&p);
+  auto mv_end = std::make_move_iterator(&p + 1);
+  std::size_t n = push(mv_ptr, mv_end);
+  return n == 1;
 }
 
 bool block_decoder::push(const fountain_packet &p) {
@@ -68,20 +50,22 @@ bool block_decoder::push(const fountain_packet &p) {
 
 void block_decoder::reset() {
   rowgen.reset();
-  received_pkts.clear();
+  received_seqnos.clear();
   link_cache.clear();
+  last_received.clear();
   mp_ctx.reset();
   mp_pristine.reset();
   avg_mp.reset();
+  avg_setup.reset();
 }
 
 block_decoder::seed_t block_decoder::seed() const {
-  if (received_pkts.empty()) throw std::runtime_error("No received packets");
+  if (received_seqnos.empty()) throw std::runtime_error("No received packets");
   return rowgen.seed();
 }
 
 std::size_t block_decoder::block_number() const {
-  if (received_pkts.empty()) throw std::runtime_error("No received packets");
+  if (received_seqnos.empty()) throw std::runtime_error("No received packets");
   return blockno;
 }
 
@@ -121,6 +105,10 @@ double block_decoder::average_message_passing_time() const {
   return avg_mp.value();
 }
 
+double block_decoder::average_mp_setup_time() const {
+  return avg_setup.value();
+}
+
 block_decoder::operator bool() const {
   return has_decoded();
 }
@@ -130,26 +118,27 @@ bool block_decoder::operator!() const {
 }
 
 void block_decoder::run_message_passing() {
-  using std::swap;
-  
   auto tic = high_resolution_clock::now();
 
-  // Update the context
-  const lt_row_generator::row_type &row = link_cache[last_pkt.sequence_number()];
-  mp_pristine.add_output(std::move(last_pkt), row.cbegin(), row.cend());
-
-  mp_ctx = mp_pristine;
-  
-  auto mp_tdiff =
-    duration_cast<duration<double>>(high_resolution_clock::now() - tic);
+  for (auto i = last_received.cbegin(); i != last_received.cend(); ++i) {
+    // Update the context
+    const lt_row_generator::row_type &row = link_cache[i->sequence_number()];
+    mp_pristine.add_output(std::move(*i), row.cbegin(), row.cend());
+  }
+  last_received.clear();
 
   // Run on a copy
-  mp_ctx.run();
+  mp_ctx = mp_pristine;
+
+  duration<double> mp_tdiff = high_resolution_clock::now() - tic;
 
   BOOST_LOG(perf_lg) << "block_decoder::run_message_passing mp_setup_time="
 		     << mp_tdiff.count();
 
-  avg_mp.add_sample(mp_tdiff.count());
+  mp_ctx.run();
+
+  avg_setup.add_sample(mp_tdiff.count());
+  avg_mp.add_sample(mp_ctx.run_duration());
 
   // BOOST_LOG(perf_lg) << "block_decoder::run_message_passing decoded_pkts="
   //		     << mp_ctx.decoded_count()
