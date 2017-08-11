@@ -40,9 +40,9 @@ public:
   my_opt_char() {}
   my_opt_char(const boost::optional<char> &oc) : boost::optional<char>(oc) {}
 
-  my_opt_char(const my_opt_char&) = delete;
+  my_opt_char(const my_opt_char&) = default;
   my_opt_char(my_opt_char&&) = default;
-  my_opt_char &operator=(const my_opt_char&) = delete;
+  my_opt_char &operator=(const my_opt_char&) = default;
   my_opt_char &operator=(my_opt_char&&) = default;
   ~my_opt_char() = default;
 
@@ -62,9 +62,9 @@ public:
   my_packet() {}
   my_packet(const packet &p): packet(p) {}
 
-  my_packet(const my_packet&) = delete;
+  my_packet(const my_packet&) = default;
   my_packet(my_packet&&) = default;
-  my_packet &operator=(const my_packet&) = delete;
+  my_packet &operator=(const my_packet&) = default;
   my_packet &operator=(my_packet&&) = default;
   ~my_packet() = default;
 
@@ -385,4 +385,59 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mp_reset, Sym, symbol_types) {
   BOOST_CHECK(mp.has_decoded());
   BOOST_CHECK(equal(mp.decoded_symbols_begin(), mp.decoded_symbols_end(),
 		    expected.cbegin()));
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_after_run, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
+
+  S::mp->run();
+  BOOST_CHECK(S::mp->has_decoded());
+  BOOST_CHECK(equal(S::mp->input_symbols_begin(),
+		    S::mp->input_symbols_end(), S::expected.cbegin()));
+
+  typename S::mp_t *other = new typename S::mp_t(99);
+  BOOST_CHECK(!other->has_decoded());
+  BOOST_CHECK_EQUAL(other->input_size(), 99);
+  BOOST_CHECK_NE(S::mp->input_size(), 99);
+
+  *other = *S::mp;
+  auto tmp = typename S::mp_t(99);
+  *S::mp = tmp;
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK_EQUAL(other->input_size(), S::K);
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  delete other;
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_before_run, Sym, symbol_types, mp_setup<Sym>) {
+  typedef mp_setup<Sym> S;
+
+  typename S::mp_t *other = new typename S::mp_t(*S::mp);
+  auto tmp = typename S::mp_t(99);
+  *S::mp = tmp;
+  other->run();
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  S::mp->run();
+
+  BOOST_CHECK(other->has_decoded());
+  BOOST_CHECK(equal(other->input_symbols_begin(),
+		    other->input_symbols_end(), S::expected.cbegin()));
+
+  BOOST_CHECK_EQUAL(S::mp->input_size(), 99);
+  BOOST_CHECK(!S::mp->has_decoded());
+
+  delete other;
 }

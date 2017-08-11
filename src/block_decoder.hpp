@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "counter.hpp"
-#include "lazy_xor.hpp"
 #include "log.hpp"
 #include "message_passing.hpp"
 #include "packets.hpp"
@@ -25,20 +24,6 @@ struct seqno_less {
   }
 };
 
-/** Converter to evaluate lazy_xors into packets. */
-struct lazy2p_conv {
-  packet operator()(const lazy_xor<packet> &lx) const {
-    if (lx)
-      return lx.evaluate();
-    else
-      return packet();
-  }
-};
-
-/** Iterator adaptor that converts from lazy_xors to packets. */
-template <class BaseIter>
-using lazy2p_iterator = boost::transform_iterator<lazy2p_conv, BaseIter>;
-
 /** Class to decode a single LT-encoded block of packets.
  *  The LT-code parameters are given by the lt_row_generator passed to
  *  the constructor. The seed is read from the fountain_packets.
@@ -46,17 +31,17 @@ using lazy2p_iterator = boost::transform_iterator<lazy2p_conv, BaseIter>;
 class block_decoder {
 private:
   /** Type of the underlying message passing context. */
-  typedef mp::mp_context<lazy_xor<packet>> mp_ctx_t;
+  typedef mp::mp_context<packet> mp_ctx_t;
   /** Type of the container for the unique received packets. */
-  typedef std::set<fountain_packet, seqno_less> received_t;
+  typedef std::set<std::size_t> received_t;
   /** Type of the container used to cache the row generator output. */
   typedef std::vector<lt_row_generator::row_type> link_cache_t;
 
 public:
   /** Iterator over the input packets, either decoded or empty. */
-  typedef lazy2p_iterator<mp_ctx_t::inputs_iterator> const_partial_iterator;
+  typedef mp_ctx_t::inputs_iterator const_partial_iterator;
   /** Iterator over the decoded input packets. */
-  typedef lazy2p_iterator<mp_ctx_t::decoded_iterator> const_block_iterator;
+  typedef mp_ctx_t::decoded_iterator const_block_iterator;
   /** Type of the seed used by the row generator. */
   typedef lt_row_generator::rng_type::result_type seed_t;
 
@@ -126,7 +111,9 @@ private:
   lt_row_generator rowgen;
   received_t received_pkts;
   link_cache_t link_cache;
+  fountain_packet last_pkt;
   mp_ctx_t mp_ctx;
+  mp_ctx_t mp_pristine;
   std::size_t blockno;
   std::size_t pktsize;
 

@@ -10,7 +10,7 @@ namespace uep {
 block_decoder::block_decoder(const lt_row_generator &rg) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  rowgen(rg), mp_ctx(rg.K()) {
+  rowgen(rg), mp_ctx(rg.K()), mp_pristine(rg.K()) {
   link_cache.reserve(rg.K());
 }
 
@@ -41,12 +41,13 @@ bool block_decoder::push(fountain_packet &&p) {
     return false;
   }
 
-  auto ins_ret = received_pkts.insert(move(p));
+  auto ins_ret = received_pkts.insert(p_seqno);
   // Ignore duplicates
   if (!ins_ret.second) {
     return false;
   }
 
+  last_pkt = std::move(p);
   // Generate enough output links
   if (link_cache.size() <= p_seqno) {
     size_t prev_size = link_cache.size();
@@ -70,6 +71,7 @@ void block_decoder::reset() {
   received_pkts.clear();
   link_cache.clear();
   mp_ctx.reset();
+  mp_pristine.reset();
   avg_mp.reset();
 }
 
@@ -92,7 +94,7 @@ std::size_t block_decoder::decoded_count() const {
 }
 
 std::size_t block_decoder::received_count() const {
-  return received_pkts.size();
+  return mp_ctx.output_size();
 }
 
 std::size_t block_decoder::block_size() const {
@@ -100,19 +102,19 @@ std::size_t block_decoder::block_size() const {
 }
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
-  return const_block_iterator(mp_ctx.decoded_symbols_begin(), lazy2p_conv());
+  return mp_ctx.decoded_symbols_begin();
 }
 
 block_decoder::const_block_iterator block_decoder::block_end() const {
-  return const_block_iterator(mp_ctx.decoded_symbols_end(), lazy2p_conv());
+  return mp_ctx.decoded_symbols_end();
 }
 
 block_decoder::const_partial_iterator block_decoder::partial_begin() const {
-  return const_partial_iterator(mp_ctx.input_symbols_begin(), lazy2p_conv());
+  return mp_ctx.input_symbols_begin();
 }
 
 block_decoder::const_partial_iterator block_decoder::partial_end() const {
-  return const_partial_iterator(mp_ctx.input_symbols_end(), lazy2p_conv());
+  return mp_ctx.input_symbols_end();
 }
 
 double block_decoder::average_message_passing_time() const {
@@ -128,18 +130,20 @@ bool block_decoder::operator!() const {
 }
 
 void block_decoder::run_message_passing() {
+  using std::swap;
+  
   auto tic = high_resolution_clock::now();
 
-  // Rebuild the context each time
-  mp_ctx.reset();
-  for (auto i = received_pkts.cbegin(); i != received_pkts.cend(); ++i) {
-    const lt_row_generator::row_type &row = link_cache[i->sequence_number()];
-    mp_ctx.add_output(lazy_xor<packet>(&(*i)), row.cbegin(), row.cend());
-  }
+  // Update the context
+  const lt_row_generator::row_type &row = link_cache[last_pkt.sequence_number()];
+  mp_pristine.add_output(std::move(last_pkt), row.cbegin(), row.cend());
 
+  mp_ctx = mp_pristine;
+  
   auto mp_tdiff =
     duration_cast<duration<double>>(high_resolution_clock::now() - tic);
 
+  // Run on a copy
   mp_ctx.run();
 
   BOOST_LOG(perf_lg) << "block_decoder::run_message_passing mp_setup_time="

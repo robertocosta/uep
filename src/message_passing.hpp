@@ -1,9 +1,10 @@
 #ifndef UEP_MP_MESSAGE_PASSING_HPP
 #define UEP_MP_MESSAGE_PASSING_HPP
 
+#include <algorithm>
 #include <chrono>
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -26,7 +27,9 @@ namespace mp {
  *
  *  The generic symbol type `Symbol` must be DefaultConstructible,
  *  MoveAssignable and Swappable. It must also be convertible to bool
- *  and operator^= must be defined for this type.
+ *  and operator^= must be defined for this type.  If the mp_context
+ *  is to be copied then the symbols must also be CopyConstructible
+ *  and CopyAssignable.
  */
 template <class Symbol>
 class mp_context {
@@ -49,13 +52,13 @@ public:
   /** Construct a context with in_size default-constructed input symbols. */
   explicit mp_context(std::size_t in_size);
 
-  /** Deleted copy constructor. */
-  mp_context(const mp_context &other) = delete;
+  /** Copy constructor. */
+  mp_context(const mp_context &other);
   /** Move constructor. */
   mp_context(mp_context &&other);
 
-  /** Deleted copy-assignment operator. */
-  mp_context &operator=(const mp_context &other) = delete;
+  /** Copy-assignment operator. */
+  mp_context &operator=(const mp_context &other);
   /** Move-assignment operator. */
   mp_context &operator=(mp_context &&other);
 
@@ -63,7 +66,9 @@ public:
   ~mp_context() = default;
 
   /** Add an output symbol to the bipartite graph, connected with the
-   *  input symbols given by the iterator pair.
+   *  input symbols given by the iterator pair. If the input symbols
+   *  are partially decoded, the new output symbol is XOR-ed with
+   *  those linked to it.
    */
   template <class EdgeIter>
   void add_output(symbol_type &&s, EdgeIter edges_begin, EdgeIter edges_end);
@@ -119,8 +124,14 @@ public:
 private:
   log::default_logger basic_lg, perf_lg;
 
-  std::vector<std::unique_ptr<node>> inputs; /**< Pointers to the input nodes. */
-  std::vector<std::unique_ptr<node>> outputs; /**< Pointers to the output nodes. */
+  /** Pointers to the input nodes. These manage the lifetime of the
+   *  nodes.
+   */
+  std::vector<std::unique_ptr<node>> inputs;
+  /** Pointers to the output nodes. These manage the lifetime of the
+   *  nodes.
+   */
+  std::vector<std::unique_ptr<node>> outputs;
   node *ripple_first; /**< Start of the singly linked list of nodes in
 		       *   the ripple.
 		       */
@@ -162,6 +173,9 @@ public: // old typedefs
 template <class Symbol>
 struct mp_context<Symbol>::node {
   symbol_type symbol; /**< The symbol carried by this node. */
+  std::size_t position; /**< The position of this node in the inputs
+			 *   or outputs list.
+			 */
   node *next; /**< Pointer to the next node in a singly linked
 	       *   list. Can be used either by the ripple or the
 	       *   degone lists.
@@ -169,9 +183,9 @@ struct mp_context<Symbol>::node {
   node *prev; /**< Pointer to the previous node in a linked list. Is
 	       *   used by the degone list.
 	       */
-  std::set<node*> edges; /**< Pointers to the nodes connected to this
-			  *   one.
-			  */
+  std::unordered_set<std::size_t> edges; /**< Indices of the nodes
+					  *   connected to this.
+					  */
 };
 
 template <class Symbol>
@@ -192,10 +206,13 @@ mp_context<Symbol>::mp_context(std::size_t in_size) :
   degone_last(nullptr),
   decoded_count_(0),
   last_run_time(std::chrono::nanoseconds::zero()) {
+  // Build in_size empty input nodes
   inputs.resize(in_size);
+  std::size_t pos = 0;
   for (auto i = inputs.begin(); i != inputs.end(); ++i) {
     auto np = std::make_unique<node>();
     np->symbol = symbol_type();
+    np->position = pos++;
     *i = std::move(np);
   }
 }
@@ -217,6 +234,31 @@ mp_context<Symbol>::mp_context(mp_context &&other) :
 }
 
 template <class Symbol>
+mp_context<Symbol>::mp_context(const mp_context &other) :
+  basic_lg(other.basic_lg),
+  perf_lg(other.perf_lg),
+  inputs(other.inputs.size()), // copied after
+  outputs(other.outputs.size()), // copied after
+  ripple_first(nullptr), // Is always null outside of run()
+  degone_first(nullptr), // The list must be rebuilt
+  degone_last(nullptr), // The list must be rebuilt
+  decoded_count_(other.decoded_count_),
+  last_run_time(other.last_run_time) {
+  std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
+		 [](const std::unique_ptr<node> &p){
+		   return std::make_unique<node>(*p);
+		 });
+  std::transform(other.outputs.cbegin(), other.outputs.cend(), outputs.begin(),
+		 [this](const std::unique_ptr<node> &p){
+		   auto p_new = std::make_unique<node>(*p);
+		   if (p_new->edges.size() == 1) {
+		     insert_degone(p_new.get());
+		   }
+		   return p_new;
+		 });
+}
+
+template <class Symbol>
 mp_context<Symbol> &mp_context<Symbol>::operator=(mp_context &&other) {
   // Moving the loggers does not work, copy them
   //basic_lg = std::move(other.basic_lg);
@@ -234,6 +276,32 @@ mp_context<Symbol> &mp_context<Symbol>::operator=(mp_context &&other) {
 }
 
 template <class Symbol>
+mp_context<Symbol> &mp_context<Symbol>::operator=(const mp_context &other) {
+  basic_lg = other.basic_lg;
+  perf_lg = other.perf_lg;
+  inputs.resize(other.inputs.size()); // copied after
+  outputs.resize(other.outputs.size()); // copied after
+  ripple_first = nullptr; // Is always null outside of run()
+  degone_first = nullptr; // The list must be rebuilt
+  degone_last = nullptr; // The list must be rebuilt
+  decoded_count_ = other.decoded_count_;
+  last_run_time = other.last_run_time;
+  std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
+		 [](const std::unique_ptr<node> &p){
+		   return std::make_unique<node>(*p);
+		 });
+  std::transform(other.outputs.cbegin(), other.outputs.cend(), outputs.begin(),
+		 [this](const std::unique_ptr<node> &p){
+		   auto p_new = std::make_unique<node>(*p);
+		   if (p_new->edges.size() == 1) {
+		     insert_degone(p_new.get());
+		   }
+		   return p_new;
+		 });
+  return *this;
+}
+
+template <class Symbol>
 template <class EdgeIter>
 void mp_context<Symbol>::add_output(const symbol_type &s,
 				    EdgeIter edges_begin, EdgeIter edges_end) {
@@ -246,17 +314,24 @@ template <class EdgeIter>
 void mp_context<Symbol>::add_output(symbol_type &&s,
 				    EdgeIter edges_begin, EdgeIter edges_end) {
   // Move the new symbol in an output node
-  auto npu = std::make_unique<node>();
-  npu->symbol = std::move(s);
-  node *np = npu.get();
-  outputs.push_back(std::move(npu));
+  auto nup = std::make_unique<node>();
+  nup->symbol = std::move(s);
+  nup->position = outputs.size();
+  node *np = nup.get();
+  outputs.push_back(std::move(nup));
   // Add the edges
   for (EdgeIter i = edges_begin; i != edges_end; ++i) {
     node *inp = inputs.at(*i).get();
-    auto ins_ret = np->edges.insert(inp);
-    if (!ins_ret.second)
-      throw std::logic_error("Setting a parallel edge on the output");
-    inp->edges.insert(np);
+     if (inp->symbol) {
+       // input is already decoded, ignore edge
+       np->symbol ^= inp->symbol;
+     }
+     else {
+       auto ins_ret = np->edges.insert(*i);
+       if (!ins_ret.second)
+	 throw std::logic_error("Setting a parallel edge on the output");
+       inp->edges.insert(np->position);
+     }
   }
   // Check if degree one
   if (np->edges.size() == 1) {
@@ -269,7 +344,7 @@ void mp_context<Symbol>::decode_degree_one() {
   using std::swap;
   // Process each output node in the degone list
   for (node *np = degone_first; np != nullptr; np = np->next) {
-    node *inp = *(np->edges.begin());
+    node *inp = inputs[*(np->edges.begin())].get();
     if (!(inp->symbol)) { // Not already decoded
       swap(inp->symbol, np->symbol);
       ++decoded_count_;
@@ -277,7 +352,7 @@ void mp_context<Symbol>::decode_degree_one() {
     }
     // Remove the edge
     np->edges.clear();
-    inp->edges.erase(np);
+    inp->edges.erase(np->position);
   }
   // All this outputs have now degree 0
   degone_first = nullptr;
@@ -290,11 +365,11 @@ void mp_context<Symbol>::process_ripple() {
   for (node *inp = ripple_first; inp != nullptr; inp = inp->next) {
     // Follow each edge
     for (auto i = inp->edges.cbegin(); i != inp->edges.cend(); ++i) {
-      node *outp = *i;
+      node *outp = outputs[*i].get();
       // Update the output symbol
       outp->symbol ^= inp->symbol;
       // Remove the edge (in <- out)
-      outp->edges.erase(inp);
+      outp->edges.erase(inp->position);
       // Update degree one list
       if (outp->edges.size() == 1) {
 	insert_degone(outp);
@@ -331,6 +406,7 @@ void mp_context<Symbol>::run() {
   }
 
   last_run_time = high_resolution_clock::now() - t;
+
   BOOST_LOG(perf_lg) << "mp_context::run run_duration="
 		     << duration_cast<duration<double>>(run_duration()).count()
 		     << " decoded_count="
