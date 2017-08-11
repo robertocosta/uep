@@ -101,7 +101,7 @@ public:
   /** True when all the input symbols have been decoded. */
   bool has_decoded() const;
   /** Return the time it took to complete the last call to run. */
-  std::chrono::nanoseconds run_duration() const;
+  double run_duration() const;
 
   /** Return an iterator to the start of the set of input symbols.
    *  The symbols are either decoded or convertible to false.
@@ -145,9 +145,10 @@ private:
 			       *   packets.
 			       */
 
-  std::chrono::nanoseconds last_run_time; /**< The time that the last
-					    *   call to run took.
-					    */
+  std::chrono::duration<double> last_run_time; /**< The time that the
+						*   last call to run
+						*   took.
+						*/
 
   /** Insert an output node in the list of degree one nodes. */
   void insert_degone(node *np);
@@ -205,7 +206,7 @@ mp_context<Symbol>::mp_context(std::size_t in_size) :
   degone_first(nullptr),
   degone_last(nullptr),
   decoded_count_(0),
-  last_run_time(std::chrono::nanoseconds::zero()) {
+  last_run_time(std::chrono::duration<double>::zero()) {
   // Build in_size empty input nodes
   inputs.resize(in_size);
   std::size_t pos = 0;
@@ -390,7 +391,7 @@ void mp_context<Symbol>::run() {
   using namespace std::chrono;
 
   if (has_decoded()) {
-    last_run_time = nanoseconds::zero();
+    last_run_time = duration<double>::zero();
     return;
   }
 
@@ -408,11 +409,11 @@ void mp_context<Symbol>::run() {
   last_run_time = high_resolution_clock::now() - t;
 
   BOOST_LOG(perf_lg) << "mp_context::run run_duration="
-		     << duration_cast<duration<double>>(run_duration()).count()
+		     << last_run_time.count()
 		     << " decoded_count="
-		     << decoded_count()
+		     << decoded_count_
 		     << " output_size="
-		     << output_size();
+		     << outputs.size();
 }
 
 template <class Symbol>
@@ -519,14 +520,14 @@ void mp_context<Symbol>::reset() {
     (*i)->edges.clear();
   }
   outputs.clear();
-  last_run_time = std::chrono::nanoseconds::zero();
+  last_run_time = std::chrono::duration<double>::zero();
 }
 
 template <class Symbol>
-std::chrono::nanoseconds mp_context<Symbol>::run_duration() const {
+double mp_context<Symbol>::run_duration() const {
   if (last_run_time == decltype(last_run_time)::zero())
     throw std::runtime_error("No run duration measured");
-  return last_run_time;
+  return last_run_time.count();
 }
 
 }}
