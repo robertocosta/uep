@@ -187,10 +187,18 @@ void packet::xor_data(const packet &other) {
     throw runtime_error("The packets must have equal size");
   if (empty())
     throw runtime_error("The packets must not be empty");
-  iterator j = begin();
-  const_iterator i = other.cbegin();
-  while(i != other.cend()) {
+  typedef std::uint64_t fast_uint;
+  fast_uint *j = reinterpret_cast<fast_uint*>(shared_data->data());
+  const fast_uint *i = reinterpret_cast<const fast_uint*>(other.shared_data->data());
+  const fast_uint *other_end = i + (other.size() / sizeof(fast_uint));
+  while(i != other_end) {
     *j++ ^= *i++;
+  }
+  char *j_c = reinterpret_cast<char*>(j);
+  const char *i_c = reinterpret_cast<const char*>(i);
+  const char *other_end_c = other.shared_data->data() + other.size();
+  while(i_c != other_end_c) {
+    *j_c++ ^= *i_c++;
   }
 }
 
@@ -224,12 +232,12 @@ packet operator^(const packet &a, const packet &b) {
   packet c(a);
   return c ^= b;
 }
-  
+
 fountain_packet::fountain_packet(int blockno_, int seqno_, int seed_,
 				 size_type count, char value) :
   packet(count, value),
   blockno(blockno_), seqno(seqno_), seed(seed_), priorita(0) {}
-  
+
 fountain_packet::fountain_packet(int blockno_, int seqno_, int seed_,
 				 size_type count, char value, uint8_t p_) :
   packet(count, value),
