@@ -58,7 +58,7 @@ int main(int,char**) {
     log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
     BOOST_LOG(perf_lg) << "RUN CASE A";
     BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-    run_enc_dec(10000, 0.01, 0.5, 3, 1);
+    run_enc_dec(10000, 0.01, 0.5, 3, 1024);
     BOOST_LOG(perf_lg) << "DONE A";
   }
   else if (pid < 0) {
@@ -71,7 +71,7 @@ int main(int,char**) {
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE B";
       BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-      run_enc_dec(10000, 0.03, 0.5, 3, 1);
+      run_enc_dec(10000, 0.03, 0.5, 3, 1024);
       BOOST_LOG(perf_lg) << "DONE B";
     }
     else if (pid < 0) {
@@ -82,7 +82,7 @@ int main(int,char**) {
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE C";
       BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-      run_enc_dec(10000, 0.1, 0.5, 3, 1);
+      run_enc_dec(10000, 0.1, 0.5, 3, 1024);
       BOOST_LOG(perf_lg) << "DONE C";
       wait(&status);
       wait(&status2);
