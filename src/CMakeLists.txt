@@ -14,7 +14,7 @@ foreach(cppfile IN LISTS cpp_files)
 endforeach(cppfile)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS controlMessage.proto)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+#include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(controlMessage.pb STATIC ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(controlMessage.pb ${PROTOBUF_LIBRARIES})
 
@@ -77,23 +77,17 @@ target_link_libraries(mp_plots
   log
 )
 
-add_custom_target(plot_required ALL
-  ${CMAKE_COMMAND} -E copy
-  ${CMAKE_CURRENT_SOURCE_DIR}/plot_required.py
-  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_required
-  COMMENT "Copying plot_required.py into build dir"
+set(python_files
+  plot_decodeable
+  plot_required
+  plot_time
 )
 
-add_custom_target(plot_decodeable ALL
-  ${CMAKE_COMMAND} -E copy
-  ${CMAKE_CURRENT_SOURCE_DIR}/plot_decodeable.py
-  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_decodeable
-  COMMENT "Copying plot_decodeable.py into build dir"
-)
-
-add_custom_target(plot_time ALL
-  ${CMAKE_COMMAND} -E copy
-  ${CMAKE_CURRENT_SOURCE_DIR}/plot_time.py
-  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plot_time
-  COMMENT "Copying plot_time.py into build dir"
-)
+foreach(pyf IN LISTS python_files)
+  add_custom_target(${pyf} ALL
+    ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}
+    COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}"
+  )
+endforeach(pyf)

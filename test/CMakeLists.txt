@@ -1,4 +1,4 @@
-include_directories(../src)
+#include_directories(../src)
 link_libraries(${Boost_LIBRARIES})
 
 add_executable(test_rng test_rng.cpp)
