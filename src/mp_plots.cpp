@@ -6,6 +6,7 @@ extern "C" {
 
 #include "encoder.hpp"
 #include "decoder.hpp"
+#include "cmake_defines.hpp"
 
 using namespace std;
 using namespace uep;
@@ -56,6 +57,7 @@ int main(int,char**) {
     log::init("mp_plots_A.log");
     log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
     BOOST_LOG(perf_lg) << "RUN CASE A";
+    BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
     run_enc_dec(10000, 0.01, 0.5, 3, 1);
     BOOST_LOG(perf_lg) << "DONE A";
   }
@@ -68,6 +70,7 @@ int main(int,char**) {
       log::init("mp_plots_B.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE B";
+      BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
       run_enc_dec(10000, 0.03, 0.5, 3, 1);
       BOOST_LOG(perf_lg) << "DONE B";
     }
@@ -78,6 +81,7 @@ int main(int,char**) {
       log::init("mp_plots_C.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE C";
+      BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
       run_enc_dec(10000, 0.1, 0.5, 3, 1);
       BOOST_LOG(perf_lg) << "DONE C";
       wait(&status);
