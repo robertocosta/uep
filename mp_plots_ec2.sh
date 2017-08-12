@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e -o pipefail
+set -x
 
 # Get dependencies
 sudo apt-get update
@@ -18,6 +19,7 @@ git clone https://github.com/riccz/uep.git
 
 # Build
 cd uep
+git checkout master
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
