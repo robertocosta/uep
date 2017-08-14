@@ -37,7 +37,7 @@ public:
   /** Returns the soliton probability mass distribution for a certain
    *  blocksize K and degree d.
    */
-  static double soliton_pmd(std::size_t K, std::size_t d);
+  static constexpr double soliton_pmd(std::size_t K, std::size_t d);
 
   explicit soliton_distribution(std::size_t input_pkt_count);
 };
@@ -45,12 +45,14 @@ public:
 /** Produces robust-soliton-distributed random numbers. */
 class robust_soliton_distribution : public degree_distribution {
 public:
-  static double S(std::size_t K, double c, double delta);
-  static double tau(std::size_t K_S, double S_delta, std::size_t i);
-  static double beta(std::size_t K, std::size_t K_S, double S_delta);
-  static double robust_pmd(std::size_t K, double c, double delta, std::size_t d);
+  static constexpr double S(std::size_t K, double c, double delta);
+  static constexpr double tau(std::size_t K_S, double S_delta, std::size_t i);
+  static constexpr double beta(std::size_t K, std::size_t K_S, double S_delta);
+  static constexpr double robust_pmd(std::size_t K, double c, double delta,
+				     std::size_t d);
 
-  explicit robust_soliton_distribution(std::size_t input_pkt_count, double c, double delta);
+  explicit robust_soliton_distribution(std::size_t input_pkt_count,
+				       double c, double delta);
   /** Return the c coefficient */
   double c() const;
   /** Return the delta_max parameter */

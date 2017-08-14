@@ -29,17 +29,19 @@ soliton_distribution::soliton_distribution(std::size_t input_pkt_count) :
   degree_distribution(input_pkt_count, bind(soliton_pmd, input_pkt_count, _1)) {
 }
 
-double soliton_distribution::soliton_pmd(std::size_t K, std::size_t d) {
+constexpr double soliton_distribution::soliton_pmd(std::size_t K, std::size_t d) {
   if (d == 1) return 1/(double)K;
   else if (d >= 2 && d <= K) return 1/((double)d*(d-1));
   else return 0;
 }
 
-double robust_soliton_distribution::S(std::size_t K, double c, double delta) {
+constexpr double robust_soliton_distribution::S(std::size_t K, double c,
+						double delta) {
   return c * log(K/delta) * sqrt(K);
 }
 
-double robust_soliton_distribution::tau(std::size_t K_S, double S_delta, std::size_t i) {
+constexpr double robust_soliton_distribution::tau(std::size_t K_S, double S_delta,
+						  std::size_t i) {
   if (i >= 1 && i <= K_S - 1)
     return 1/((double)K_S * i);
   else if (i == K_S)
@@ -48,7 +50,8 @@ double robust_soliton_distribution::tau(std::size_t K_S, double S_delta, std::si
     return 0;
 }
 
-double robust_soliton_distribution::beta(std::size_t K, std::size_t K_S, double S_delta) {
+constexpr double robust_soliton_distribution::beta(std::size_t K, std::size_t K_S,
+						   double S_delta) {
   double sum = 0;
   for (size_t i = 1; i <= K; ++i) {
     sum += soliton_distribution::soliton_pmd(K,i) + tau(K_S, S_delta, i);
@@ -56,8 +59,9 @@ double robust_soliton_distribution::beta(std::size_t K, std::size_t K_S, double 
   return sum;
 }
 
-double robust_soliton_distribution::robust_pmd(std::size_t K, double c, double delta,
-					       std::size_t d) {
+constexpr double robust_soliton_distribution::robust_pmd(std::size_t K, double c,
+							 double delta,
+							 std::size_t d) {
   if (d >= 1 && d <= K) {
     double S_ = S(K, c, delta);
     size_t K_S = lround(K/S_);
