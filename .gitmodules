@@ -1,0 +1,3 @@
+[submodule "jsvm"]
+	path = jsvm
+	url = https://github.com/riccz/jsvm.git
