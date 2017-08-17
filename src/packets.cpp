@@ -6,6 +6,40 @@
 
 using namespace std;
 
+namespace uep {
+
+buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs) {
+  if (lhs.size() != rhs.size())
+    throw runtime_error("XOR buffers with different sizes");
+  if (lhs.empty())
+    throw runtime_error("XOR empty bufffers");
+
+  typedef std::uint_fast32_t fast_uint;
+
+  fast_uint *i = reinterpret_cast<fast_uint*>(lhs.data());
+  const fast_uint *j = reinterpret_cast<const fast_uint*>(rhs.data());
+  fast_uint *lhs_fast_end = i + (lhs.size() / sizeof(fast_uint));
+  while (i != lhs_fast_end) {
+    *i++ ^= *j++;
+  }
+
+  char *i_c = reinterpret_cast<char*>(i);
+  const char *j_c = reinterpret_cast<const char*>(j);
+  char *lhs_end = lhs.data() + lhs.size();
+  while (i_c != lhs_end) {
+    *i_c++ ^= *j_c++;
+  }
+
+  return lhs;
+}
+
+buffer_type operator^(const buffer_type &lhs, const buffer_type &rhs) {
+  buffer_type res(lhs);
+  return res ^= rhs;
+}
+
+}
+
 packet::packet() :
   shared_data(new vector<char>()) {}
 
@@ -183,23 +217,8 @@ std::size_t packet::shared_count() const {
 }
 
 void packet::xor_data(const packet &other) {
-  if (size() != other.size())
-    throw runtime_error("The packets must have equal size");
-  if (empty())
-    throw runtime_error("The packets must not be empty");
-  typedef std::uint64_t fast_uint;
-  fast_uint *j = reinterpret_cast<fast_uint*>(shared_data->data());
-  const fast_uint *i = reinterpret_cast<const fast_uint*>(other.shared_data->data());
-  const fast_uint *other_end = i + (other.size() / sizeof(fast_uint));
-  while(i != other_end) {
-    *j++ ^= *i++;
-  }
-  char *j_c = reinterpret_cast<char*>(j);
-  const char *i_c = reinterpret_cast<const char*>(i);
-  const char *other_end_c = other.shared_data->data() + other.size();
-  while(i_c != other_end_c) {
-    *j_c++ ^= *i_c++;
-  }
+  using namespace uep;
+  *shared_data ^= *(other.shared_data);
 }
 
 packet::operator bool() const {

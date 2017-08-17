@@ -1,10 +1,24 @@
 #ifndef UEP_PACKETS_HPP
 #define UEP_PACKETS_HPP
 
+#include <cstdint>
 #include <memory>
 #include <ostream>
 #include <type_traits>
 #include <vector>
+
+namespace uep {
+
+/** Class used to hold a chunk of binary data. */
+typedef std::vector<char> buffer_type;
+
+/** In-place bitwise XOR between buffers. */
+buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs);
+
+/** Bitwise XOR between buffers. */
+buffer_type operator^(const buffer_type &lhs, const buffer_type &rhs);
+
+}
 
 static_assert(std::is_same<std::size_t,
 	      std::vector<char>::size_type>::value,
