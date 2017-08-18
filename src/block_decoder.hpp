@@ -18,11 +18,15 @@ namespace uep {
 /** Converter to evaluate lazy_xors into packets. */
 template <std::size_t MAX_SIZE>
 struct lazy2p_conv {
-  packet operator()(const lazy_xor<packet,MAX_SIZE> &lx) const {
-    if (lx)
-      return lx.evaluate();
-    else
+  packet operator()(const lazy_xor<buffer_type,MAX_SIZE> &lx) const {
+    if (lx) {
+      packet p;
+      p.buffer() = lx.evaluate();
+      return p;
+    }
+    else {
       return packet();
+    }
   }
 };
 
@@ -40,7 +44,7 @@ private:
   static constexpr std::size_t LX_MAX_SIZE = 1;
 
   /** Type of the symbols used for the mp algorithm. */
-  typedef lazy_xor<packet,LX_MAX_SIZE> sym_t;
+  typedef lazy_xor<buffer_type,LX_MAX_SIZE> sym_t;
   /** Type of the underlying message passing context. */
   typedef mp::mp_context<sym_t> mp_ctx_t;
   /** Type of the container used to cache the row generator output. */
