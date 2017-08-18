@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <unordered_set>
 
+#include "utils.hpp"
+
 namespace uep {
 
 /** Class used to delay the application of XORs on some other type.
@@ -13,9 +15,13 @@ namespace uep {
  *  performs the XOR between them either upon a call to evaluate() or
  *  when the pointer list exceeds a maximum size.
 */
-template <class T, std::size_t MAX_SIZE = 1>
+template <class T, std::size_t MAX_SIZE = 1,
+	  class XorableTraits = utils::symbol_traits<T>>
 class lazy_xor {
 public:
+  typedef T base_type;
+  typedef XorableTraits xorable_traits;
+
   /* Build an empty lazy_xor. */
   lazy_xor() : size_(0) {}
   /* Build a lazy_xor using the intitial value pointed to by initial.
@@ -91,10 +97,10 @@ public:
     else e = *(*j++);
 
     for (; i != to_xor.cend(); ++i) {
-      e ^= *(*i);
+      xorable_traits::inplace_xor(e, *(*i));
     }
     for (; j != shared_to_xor.cend(); ++j) {
-      e ^= *(*j);
+      xorable_traits::inplace_xor(e, *(*j));
     }
 
     return e;

@@ -7,25 +7,32 @@
 #include <type_traits>
 #include <vector>
 
+#include "utils.hpp"
+
 namespace uep {
 
-/** Class used to hold a chunk of binary data. */
+/** Class to hold a chunk of data. */
 typedef std::vector<char> buffer_type;
 
-/** In-place bitwise XOR between buffers. */
-buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs);
+/** Perform a bitwise XOR between two buffers. */
+void inplace_xor(buffer_type &lhs, const buffer_type &rhs);
 
-/** Bitwise XOR between buffers. */
-buffer_type operator^(const buffer_type &lhs, const buffer_type &rhs);
+/** Specialization of symbol_traits for buffers. */
+namespace utils {
+template<>
+class symbol_traits<buffer_type> {
+public:
+  static bool is_empty(const buffer_type &s) {
+    return s.empty();
+  }
 
+  static void inplace_xor(buffer_type &lhs, const buffer_type &rhs) {
+    uep::inplace_xor(lhs,rhs);
+  }
+};
 }
 
-static_assert(std::is_same<std::size_t,
-	      std::vector<char>::size_type>::value,
-	      "Vector size is not size_t");
-static_assert(std::is_same<std::size_t,
-	      unsigned long>::value,
-	      "Size_t is not unsigned long");
+}
 
 /** Base packet class that holds a sequence of bytes (chars).
  *  The interface of this class is very similar to std::vector and
@@ -130,8 +137,12 @@ public:
   /** Perform a bitwise-XOR between this packet and another packet. */
   void xor_data(const packet &other);
 
-  uep::buffer_type &buffer() {return *shared_data;}
-  const uep::buffer_type &buffer() const {return *shared_data;}
+  uep::buffer_type &buffer() {
+    return *shared_data;
+  }
+  const uep::buffer_type &buffer() const {
+    return *shared_data;
+  }
 
   /** Is true when the packet is non-empty. */
   explicit operator bool() const;
@@ -142,7 +153,7 @@ public:
 
 protected:
   /** Shared pointer to the packet's data. Must never be null. */
-  std::shared_ptr< std::vector<char> > shared_data;
+  std::shared_ptr<uep::buffer_type> shared_data;
 };
 
 bool operator==(const packet &lhs, const packet &rhs);
