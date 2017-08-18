@@ -75,7 +75,8 @@ public:
 
   /** Add many packets to the current block. Try to decode only once
    *  all packets have been pushed. Return the number of unique
-   *  packets that were added to the block.
+   *  packets that were added to the block. To move from the packets
+   *  the iterators can be wrapped in std::move_iterator.
    */
   template <class Iter>
   std::size_t push(Iter in_first, Iter in_last);
@@ -175,7 +176,7 @@ std::size_t block_decoder::push(Iter in_first, Iter in_last) {
   std::size_t pushed = 0;
   std::size_t max_seqno = 0;
   for (auto i = in_first; i != in_last; ++i) {
-    fountain_packet p(*i); // Use a move_iterator to avoid copying
+    fountain_packet p(*i);
     check_correct_block(p);
     size_t p_seqno = p.sequence_number();
 

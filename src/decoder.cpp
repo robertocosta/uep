@@ -10,7 +10,8 @@ using namespace std;
 namespace uep {
 
 lt_decoder::lt_decoder(const parameter_set &ps) :
-  lt_decoder(ps.K, ps.c, ps.delta) {}
+  lt_decoder(ps.K, ps.c, ps.delta) {
+}
 
 lt_decoder::lt_decoder(std::size_t K, double c, double delta) :
   lt_decoder(make_robust_lt_row_generator(K, c, delta)) {
@@ -34,50 +35,10 @@ lt_decoder::lt_decoder(const lt_row_generator &rg) :
 }
 
 void lt_decoder::push(fountain_packet &&p) {
-  using namespace std::chrono;
-
-  auto tic = high_resolution_clock::now();
-
-  std::size_t pbn = static_cast<size_t>(p.block_number());
-  std::size_t psn = static_cast<size_t>(p.sequence_number());
-
-  if (blockno_counter.last() != pbn) {
-    auto recv_blockno(blockno_counter);
-    recv_blockno.set(pbn);
-    if (recv_blockno.is_after(blockno_counter)) {
-      BOOST_LOG(perf_lg) << "lt_decoder::push new_block blockno="
-			 << pbn
-			 << " seqno="
-			 << psn;
-      flush_small_blockno(pbn);
-    }
-    else {
-      BOOST_LOG(perf_lg) << "lt_decoder::push old_pkt blockno="
-			 << pbn
-			 << " seqno="
-			 << psn;
-      // This is not a new block number: do nothing
-      return;
-    }
-  }
-
-  bool uniq = the_block_decoder.push(move(p));
-  if (uniq) ++uniq_recv_count;
-  else BOOST_LOG(perf_lg) << "lt_decoder::push duplicate_pkt blockno="
-			  << pbn
-			  << " seqno="
-			  << psn;
-
-  // Extract if fully decoded block (just once)
-  if (the_block_decoder) {
-    enqueue_partially_decoded();
-  }
-
-  auto push_tdiff =
-    duration_cast<duration<double>>(high_resolution_clock::now() - tic);
-  BOOST_LOG(perf_lg) << "lt_decoder::push push_time="
-		     << push_tdiff.count();
-  avg_push_t.add_sample(push_tdiff.count());
+  // Make a size-one iter range with p, *mv_ptr should be an rvalue
+  auto mv_ptr = std::make_move_iterator(&p);
+  auto mv_end = std::make_move_iterator(&p + 1);
+  push(mv_ptr, mv_end);
 }
 
 void lt_decoder::push(const fountain_packet &p) {
@@ -234,16 +195,23 @@ void lt_decoder::enqueue_partially_decoded() {
   has_enqueued = true;
 
   BOOST_LOG(perf_lg) << "lt_decoder::enqueue_partially_decoded"
+		     << " blockno="
+		     << blockno()
 		     << " decoded_pkts="
 		     << the_block_decoder.decoded_count()
 		     << " avg_mp_time="
-		     << the_block_decoder.average_message_passing_time();
+		     << the_block_decoder.average_message_passing_time()
+		     << " avg_mp_setup_time="
+		     << the_block_decoder.average_mp_setup_time()
+		     << " avg_push_time="
+		     << average_push_time();
+
   if (the_block_decoder.has_decoded())
     BOOST_LOG_SEV(basic_lg, log::debug) <<
-      "Decoder enqueued fully decoded block";
+      "Decoder enqueued a fully decoded block";
   else
     BOOST_LOG_SEV(basic_lg, log::debug) <<
-      "Decoder enqueued partially decoded block";
+      "Decoder enqueued a partially decoded block";
 }
 
 }
