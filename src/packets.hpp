@@ -130,6 +130,9 @@ public:
   /** Perform a bitwise-XOR between this packet and another packet. */
   void xor_data(const packet &other);
 
+  uep::buffer_type &buffer() {return *shared_data;}
+  const uep::buffer_type &buffer() const {return *shared_data;}
+
   /** Is true when the packet is non-empty. */
   explicit operator bool() const;
   /** Is true when the packet is empty. */
