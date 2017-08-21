@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "log.hpp"
 #include "packets.hpp"
 #include "rng.hpp"
 
@@ -57,6 +58,8 @@ public:
   bool operator!() const;
 
 private:
+  log::default_logger basic_lg, perf_lg;
+
   lt_row_generator rowgen;
   std::vector<packet> block;
   std::size_t out_count;
