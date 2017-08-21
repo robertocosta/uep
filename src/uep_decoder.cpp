@@ -54,7 +54,7 @@ bool uep_decoder::has_decoded() const {
   return std_dec.has_decoded();
 }
 
-std::size_t uep_decoder::block_size_out() const {
+std::size_t uep_decoder::block_size() const {
   return std::accumulate(Ks.cbegin(), Ks.cend(), 0);
 }
 
@@ -63,8 +63,12 @@ std::size_t uep_decoder::block_size_in() const {
 				 RFs.cbegin(), 0);
 }
 
+std::size_t uep_decoder::block_size_out() const {
+  return block_size();
+}
+
 std::size_t uep_decoder::K() const {
-  return block_size_out();
+  return block_size();
 }
 
 std::size_t uep_decoder::blockno() const {
@@ -75,7 +79,7 @@ circular_counter<std::size_t> uep_decoder::block_number_counter() const {
   return std_dec.block_number_counter();
 }
 
-int uep_decoder::block_seed() const {
+ block_decoder::seed_t uep_decoder::block_seed() const {
   return std_dec.block_seed();
 }
 

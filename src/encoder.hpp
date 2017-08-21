@@ -39,15 +39,15 @@ public:
    *  If the encoder tries to generate more packets from a single
    *  input block, an exception is thrown.
    */
-  static const std::size_t MAX_SEQNO = 0xffff;
+  static constexpr std::size_t MAX_SEQNO = 0xffff;
   /** Maximum allowed value for the block numbers.
    *  When the encoder goes past this value it loop back to zero.
    */
-  static const std::size_t MAX_BLOCKNO = 0xffff;
+  static constexpr std::size_t MAX_BLOCKNO = 0xffff;
   /** Maximum forward distance for a block number to be considered
    *  more recent.
    */
-  static const std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
+  static constexpr std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
 
   // Check that the types used for block numbers and sequence numbers
   // are big enough.
@@ -154,7 +154,9 @@ public:
    */
   bool has_block() const { return the_block_encoder.can_encode(); }
   /** The block size. */
-  std::size_t K() const { return the_block_encoder.block_size(); }
+  std::size_t block_size() const { return the_block_encoder.block_size(); }
+  /** Alias of block_size. */
+  std::size_t K() const { return block_size(); }
   /** The sequence number of the current block. */
   std::size_t blockno() const { return blockno_counter.last(); }
   /** Return a copy of the current block number counter. */
@@ -164,7 +166,7 @@ public:
   /** The sequence number of the last generated packet. */
   std::size_t seqno() const { return seqno_counter.last(); }
   /** The seed used in the current block. */
-  int block_seed() const { return the_block_encoder.seed(); }
+  block_encoder::seed_t block_seed() const { return the_block_encoder.seed(); }
   /** The number of queued packets, excluding the current block. */
   std::size_t queue_size() const { return the_input_queue.queue_size(); }
   /** Total number of packets held by the encoder. */

@@ -23,7 +23,7 @@ public:
    */
   typedef Gen seed_generator_type;
   /** Iterator over the current block. */
-  typedef typename lt_encoder<Gen>::const_block_iterator const_block_iterator;
+  //typedef typename lt_encoder<Gen>::const_block_iterator const_block_iterator;
 
   static constexpr std::size_t MAX_SEQNO = lt_encoder<Gen>::MAX_SEQNO;
   static constexpr std::size_t MAX_BLOCKNO = lt_encoder<Gen>::MAX_BLOCKNO;
@@ -36,6 +36,10 @@ public:
   void push(fountain_packet &&p);
   /** Enqueue a packet according to its priority level. */
   void push(const fountain_packet &p);
+  /** Enqueue a packet with default priority 0. */
+  void push (packet &&p);
+  /** Enqueue a packet with default priority 0. */
+  void push (const packet &p);
 
   /** Generate the next coded packet from the current block. */
   fountain_packet next_coded();
@@ -56,9 +60,11 @@ public:
   bool has_block() const;
   /** The block size used by the underlying standard LT encoder. */
   std::size_t block_size_out() const;
-  /** The block size used to pack the input packets. */
+  /** The block size used when considering the input packets. */
+  std::size_t block_size() const;
+  /** Alias of block_size. */
   std::size_t block_size_in() const;
-  /** Alias of block_size_in(). */
+  /** Alias of block_size. */
   std::size_t K() const;
   /** Constant reference to the array of blocksizes. */
   const std::vector<std::size_t> &block_sizes() const;
@@ -69,7 +75,7 @@ public:
   /** The sequence number of the last generated packet. */
   std::size_t seqno() const;
   /** The seed used in the current block. */
-  int block_seed() const;
+  block_encoder::seed_t block_seed() const;
   /** The number of queued packets, excluding the current block. */
   std::size_t queue_size() const;
   /** Total number of (input) packets held by the encoder. */
@@ -81,9 +87,9 @@ public:
   seed_generator_type seed_generator() const;
 
   /** Return an iterator to the start of the current block. */
-  const_block_iterator current_block_begin() const;
+  //const_block_iterator current_block_begin() const;
   /** Return an iterator to the end of the current block. */
-  const_block_iterator current_block_end() const;
+  //const_block_iterator current_block_end() const;
 
   /** Return the number of coded packets that were produced for the
    *  current block.
@@ -157,6 +163,19 @@ void uep_encoder<Gen>::push(fountain_packet &&p) {
 }
 
 template <class Gen>
+void uep_encoder<Gen>::push(packet &&p) {
+  fountain_packet fp(std::move(p));
+  fp.setPriority(0);
+  push(std::move(p));
+}
+
+template <class Gen>
+void uep_encoder<Gen>::push(const packet &p) {
+  packet p_copy(p);
+  push(std::move(p));
+}
+
+template <class Gen>
 fountain_packet uep_encoder<Gen>::next_coded() {
   return std_enc.next_coded();
 }
@@ -204,13 +223,18 @@ std::size_t uep_encoder<Gen>::block_size_out() const {
 }
 
 template <class Gen>
-std::size_t uep_encoder<Gen>::block_size_in() const {
+std::size_t uep_encoder<Gen>::block_size() const {
   return std::accumulate(Ks.cbegin(), Ks.cend(), 0);
 }
 
 template <class Gen>
+std::size_t uep_encoder<Gen>::block_size_in() const {
+  return block_size();
+}
+
+template <class Gen>
 std::size_t uep_encoder<Gen>::K() const {
-  return block_size_in();
+  return block_size();
 }
 
 template <class Gen>
@@ -234,7 +258,7 @@ std::size_t uep_encoder<Gen>::seqno() const {
 }
 
 template <class Gen>
-int uep_encoder<Gen>::block_seed() const {
+block_encoder::seed_t uep_encoder<Gen>::block_seed() const {
   return std_enc.block_seed();
 }
 
@@ -266,17 +290,17 @@ uep_encoder<Gen>::seed_generator() const {
   return std_enc.seed_generator();
 }
 
-template <class Gen>
-typename uep_encoder<Gen>::const_block_iterator
-uep_encoder<Gen>::current_block_begin() const {
-  return std_enc.current_block_begin();
-}
+// template <class Gen>
+// typename uep_encoder<Gen>::const_block_iterator
+// uep_encoder<Gen>::current_block_begin() const {
+//   return std_enc.current_block_begin();
+// }
 
-template <class Gen>
-typename uep_encoder<Gen>::const_block_iterator
-uep_encoder<Gen>::current_block_end() const {
-  return std_enc.current_block_end();
-}
+// template <class Gen>
+// typename uep_encoder<Gen>::const_block_iterator
+// uep_encoder<Gen>::current_block_end() const {
+//   return std_enc.current_block_end();
+// }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::coded_count() const {

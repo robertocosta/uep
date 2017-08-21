@@ -90,13 +90,15 @@ public:
   /** Return true if the current block has been decoded. */
   bool has_decoded() const;
   /** Return the block size. */
+  std::size_t block_size() const;
+  /** Alias for block_size. */
   std::size_t K() const;
   /** Return the current block number. */
   std::size_t blockno() const;
   /** Return a copy of the current block number counter. */
   circular_counter<std::size_t> block_number_counter() const;
   /** Return the current block seed. */
-  int block_seed() const;
+  block_decoder::seed_t block_seed() const;
   /** Number of unique packets received for the current block. */
   std::size_t received_count() const;
   /** Number of packets decoded for the current block. */
