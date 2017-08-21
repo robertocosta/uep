@@ -7,6 +7,7 @@ set(cpp_files
   packets
   packets_rw
   rng
+  uep_decoder
 )
 
 foreach(cppfile IN LISTS cpp_files)
@@ -31,6 +32,10 @@ target_link_libraries(block_decoder
 target_link_libraries(decoder
   block_decoder
   block_queues
+  ${Boost_LIBRARIES}
+)
+target_link_libraries(uep_decoder
+  decoder
   ${Boost_LIBRARIES}
 )
 target_link_libraries(log

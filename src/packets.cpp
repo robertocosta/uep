@@ -8,7 +8,7 @@ using namespace std;
 
 namespace uep {
 
-buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs) {
+void inplace_xor(buffer_type &lhs, const buffer_type &rhs) {
   if (lhs.size() != rhs.size())
     throw runtime_error("XOR buffers with different sizes");
   if (lhs.empty())
@@ -29,7 +29,10 @@ buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs) {
   while (i_c != lhs_end) {
     *i_c++ ^= *j_c++;
   }
+}
 
+buffer_type &operator^=(buffer_type &lhs, const buffer_type &rhs) {
+  inplace_xor(lhs,rhs);
   return lhs;
 }
 
@@ -217,8 +220,7 @@ std::size_t packet::shared_count() const {
 }
 
 void packet::xor_data(const packet &other) {
-  using namespace uep;
-  *shared_data ^= *(other.shared_data);
+  uep::inplace_xor(*shared_data, *(other.shared_data));
 }
 
 packet::operator bool() const {

@@ -5,6 +5,8 @@ using namespace std;
 namespace uep {
 
 block_encoder::block_encoder(const lt_row_generator &rg) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
   rowgen(rg), out_count(0) {
   block.reserve(rg.K());
 }

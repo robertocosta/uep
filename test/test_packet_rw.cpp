@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(wrong_raw) {
 
   u = v;
   u[10] = 2;
-  BOOST_CHECK_THROW(parse_raw_data_packet(u), exception);
+  BOOST_CHECK_NO_THROW(parse_raw_data_packet(u));
 
   u = v;
   u[10] = 4;
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(wrong_raw) {
 
   u = v;
   u.resize(data_header_size + 4);
-  BOOST_CHECK_THROW(parse_raw_data_packet(u), exception);
+  BOOST_CHECK_NO_THROW(parse_raw_data_packet(u));
 
   u = v;
   u.resize(data_header_size + 2);
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(ack_fail) {
 
   BOOST_CHECK_THROW(parse_raw_ack_packet(empty), runtime_error);
   BOOST_CHECK_THROW(parse_raw_ack_packet(shr), runtime_error);
-  BOOST_CHECK_THROW(parse_raw_ack_packet(lng), runtime_error);
+  BOOST_CHECK_NO_THROW(parse_raw_ack_packet(lng));
 
   std::size_t overflow_bn = 0x10000;
   BOOST_CHECK_THROW(build_raw_ack(overflow_bn), boost::numeric::positive_overflow);

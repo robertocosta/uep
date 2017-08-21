@@ -96,10 +96,10 @@ fountain_packet parse_raw_data_packet(const std::vector<char> &rp) {
 
   uint16_t length = extract_ntoh_uint16(i);
   if (length != 0) {
-    if (rp.size() != length + data_header_size)
-      throw runtime_error("The packet has the wrong length");
+    if (rp.size() < length + data_header_size)
+      throw runtime_error("The packet is too short");
     fp.resize(length);
-    copy(i, rp.cend(), fp.begin());
+    copy(i, i + length, fp.begin());
   }
 
   return fp;
@@ -118,8 +118,8 @@ std::vector<char> build_raw_ack(std::size_t blockno) {
 }
 
 std::size_t parse_raw_ack_packet(const std::vector<char> &rp) {
-  if (rp.size() != ack_header_size)
-    throw runtime_error("The packet has the wrong length");
+  if (rp.size() < ack_header_size)
+    throw runtime_error("The packet is too short");
   auto i = rp.cbegin();
 
   char type = *i++;

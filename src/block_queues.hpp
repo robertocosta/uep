@@ -17,6 +17,7 @@ class input_block_queue {
 public:
   typedef std::vector<packet>::iterator block_iterator;
   typedef std::vector<packet>::const_iterator const_block_iterator;
+  typedef std::move_iterator<block_iterator> move_block_iterator;
 
   explicit input_block_queue(std::size_t block_size);
 
@@ -50,6 +51,10 @@ public:
    *  If there is no block, a logic_error is raised.
    */
   const packet &block_at(std::size_t pos) const;
+  /** Move-iterator pointing to the start of the block. */
+  move_block_iterator block_mbegin();
+  /** Move-iterator pointing to the end of the block. */
+  move_block_iterator block_mend();
 
   /** True when has_block returns true. */
   explicit operator bool() const;
@@ -57,7 +62,7 @@ public:
   bool operator!() const;
 
 private:
-  const std::size_t K;
+  std::size_t K;
   std::queue<packet> input_queue;
   std::vector<packet> input_block;
 
@@ -77,7 +82,8 @@ public:
   explicit output_block_queue(std::size_t block_size);
 
   /** Push all the packets in the [first,last) sequence to the end of
-   *  the queue. The packets are deep-copied.
+   *  the queue. The packets can be move-copied if Iter is a
+   *  move_iterator.
    */
   template <class InputIt>
   void push(InputIt first, InputIt last);
@@ -89,6 +95,9 @@ public:
 
   /** Return a const reference to the packet at the top of the queue. */
   const packet &front() const;
+  /** Return a reference to the top of the queue. */
+  packet &front();
+
   /** Remove the packet at the front of the queue. */
   void pop();
   /** Remove all the packets from the queue. */
@@ -105,7 +114,7 @@ public:
   bool operator!() const;
 
 private:
-  const std::size_t K;
+  std::size_t K;
   std::queue<packet> output_queue;
 };
 

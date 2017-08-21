@@ -128,7 +128,7 @@ void block_decoder::run_message_passing() {
   for (auto i = last_received.cbegin(); i != last_received.cend(); ++i) {
     // Update the context
     const lt_row_generator::row_type &row = link_cache[i->sequence_number()];
-    mp_pristine.add_output(sym_t(std::move(*i)), row.cbegin(), row.cend());
+    mp_pristine.add_output(sym_t(std::move(i->buffer())), row.cbegin(), row.cend());
   }
   last_received.clear();
 

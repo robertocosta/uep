@@ -1,0 +1,2 @@
+cd jvsm
+./bin/H264AVCEncoderLibTestStaticd -pf svc_example.cfg -lqp 0 30 -rqp 0 32 -lqp 1 24 -rqp 1 26

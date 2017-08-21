@@ -14,8 +14,10 @@
 #include "log.hpp"
 #include "packets_rw.hpp"
 
-namespace uep {
-namespace net {
+namespace uep::net {
+
+/** Maximum payload size that can be carried by a UDP packet. */
+static constexpr std::size_t UDP_MAX_PAYLOAD = 0x10000;
 
 /** Receive coded packets via a UDP socket.
  *
@@ -25,9 +27,6 @@ namespace net {
  */
 template <class Decoder, class Sink>
 class data_client {
-  /** Maximum payload size that can be carried by a UDP packet. */
-  static const std::size_t UDP_MAX_PAYLOAD = 0x10000;
-
 public:
   typedef Decoder decoder_type;
   typedef Sink sink_type;
@@ -37,155 +36,64 @@ public:
   /** Construct a data_client tied to an io_service. This does not
    *  bind the socket yet.
    */
-  explicit data_client(boost::asio::io_service &io) :
-    basic_lg(boost::log::keywords::channel = log::basic),
-    perf_lg(boost::log::keywords::channel = log::performance),
-    io_service_(io),
-    strand_(io_service_),
-    socket_(io_service_),
-    recv_buffer(UDP_MAX_PAYLOAD),
-    ack_enabled(true),
-    exp_count(0),
-    is_stopped_(true),
-    timeout_timer(io),
-    timeout_(std::chrono::microseconds::zero()) {
-  }
+  explicit data_client(boost::asio::io_service &io);
 
   /** Replace the decoder object with one built from the given
    *  parameters.
    */
-  void setup_decoder(const decoder_parameter_set &ps) {
-    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the decoder";
-    decoder_.reset(new Decoder(ps));
-  }
-
+  void setup_decoder(const decoder_parameter_set &ps);
   /** Replace the sink object with one built from the given
    *  parameters.
    */
-  void setup_sink(const sink_parameter_set &ps) {
-    BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the sink";
-    sink_.reset(new Sink(ps));
-  }
+  void setup_sink(const sink_parameter_set &ps);
 
   /** Bind the socket to the given port. */
-  void bind(const std::string &service) {
-    using boost::asio::ip::udp;
-    BOOST_LOG_SEV(basic_lg, log::trace) << "Binding the client UDP port";
-    udp::resolver resolver(io_service_);
-    udp::resolver::query listen_q(service);
-    listen_endpoint_ = *resolver.resolve(listen_q);
-    socket_.open(udp::v4());
-    socket_.bind(listen_endpoint_);
-    BOOST_LOG_SEV(basic_lg, log::info) << "Client bound to UDP: "
-				       << socket_.local_endpoint();
-  }
+  void bind(const std::string &service);
+  /** Bind the socket to the given port. */
+  void bind(unsigned short port);
 
   /** Listen asynchronously for packets coming from a given remote
    *  (source) endpoint.
    */
-  void start_receive(const boost::asio::ip::udp::endpoint &src_ep) {
-    using namespace std::placeholders;
-    server_endpoint_ = src_ep;
-    BOOST_LOG_SEV(basic_lg, log::info) << "Start receiving UDP data pkts from: "
-				       << server_endpoint_;
-    BOOST_LOG(perf_lg) << "data_client::start_receive";
-    is_stopped_ = false;
-    socket_.async_receive_from(boost::asio::buffer(recv_buffer),
-			       server_endpoint_,
-			       std::bind(&data_client::handle_received,
-					 this,
-					 std::placeholders::_1, std::placeholders::_2));
-    auto t = timeout_.load();
-    if (t.count() > 0) {
-      timeout_timer.expires_from_now(t);
-      timeout_timer.async_wait(std::bind(&data_client::handle_timeout,
-					 this,
-					 std::placeholders::_1));
-    }
-  }
-
+  void start_receive(const boost::asio::ip::udp::endpoint &src_ep);
   /** Listen asynchronously for packets coming from a given remote
    *  (source) IP address and port.
    */
-  void start_receive(const std::string &src_addr, unsigned short src_port) {
-    using namespace boost::asio;
-    ip::address a = ip::address::from_string(src_addr);
-    start_receive(ip::udp::endpoint(a, src_port));
-  }
-
+  void start_receive(const std::string &src_addr, unsigned short src_port);
   /** Listen asynchronously for packets coming from a given remote
    *  (source) IP address and port.
    */
-  void start_receive(const std::string &src_addr, const std::string &src_port) {
-    using boost::asio::ip::udp;
-    udp::resolver resolver(io_service_);
-    udp::resolver::query query(udp::v4(), src_addr, src_port);
-    auto i = resolver.resolve(query);
-    if (i == udp::resolver::iterator()) {
-      throw std::runtime_error("No endpoint found");
-    }
-    start_receive(*i); // pick the first found
-  }
+  void start_receive(const std::string &src_addr, const std::string &src_port);
 
   /** Schedule the stopping of the data_client. */
-  void stop() {
-    BOOST_LOG_SEV(basic_lg, log::info) << "Stopping the UDP client";
-    strand_.dispatch(std::bind(&data_client::handle_stop, this));
-  }
-  /** Get the UDP endpoint that the server socket is currently bound
+  void stop();
+
+  /** Get the UDP endpoint that the client socket is currently bound
    *  to.
    */
-  boost::asio::ip::udp::endpoint client_endpoint() const {
-    return socket_.local_endpoint();
-  }
+  boost::asio::ip::udp::endpoint client_endpoint() const;
+
   /** Enable or disable the sending of ACKs. */
-  void enable_ack(bool b) {
-    ack_enabled = b;
-  }
-
+  void enable_ack(bool b);
   /** Return true when the sending of ACKs is enabled. */
-  bool is_ack_enabled() const {
-    return ack_enabled;
-  }
-
+  bool is_ack_enabled() const;
   /** Set the number of packets to be received before stopping. */
-  void expected_count(std::size_t ec) {
-    exp_count = ec;
-  }
-
+  void expected_count(std::size_t ec);
   /** Get the number of packets to be received before stopping. */
-  std::size_t expected_count() const {
-    return exp_count;
-  }
-
+  std::size_t expected_count() const;
   /** True if the client is not listening for packets. */
-  bool is_stopped() const {
-    return is_stopped_;
-  };
-
+  bool is_stopped() const;
   /** Set the timeout interval in seconds. A value of 0 disables the
    *  timeout.
    */
-  void timeout(double t) {
-    timeout_ = std::chrono::microseconds(static_cast<long>(t * 1e6));
-  }
-
+  void timeout(double t);
   /** Get the current timeout value in seconds. */
-  double timeout() const {
-    using namespace std::chrono;
-    typedef duration<double> double_seconds;
-    return duration_cast<double_seconds>(timeout_.load()).count();
-  }
+  double timeout() const;
 
   /** Return a const reference to the sink object. */
-  const Sink &sink() const {
-    return *sink_;
-  }
-
+  const Sink &sink() const;
   /** Return a const reference to the decoder object. */
-  const Decoder &decoder() const {
-    return *decoder_;
-  }
+  const Decoder &decoder() const;
 
 private:
   log::default_logger basic_lg, perf_lg;
@@ -218,13 +126,12 @@ private:
 						    *   receive
 						    *   packets.
 						    */
-
-  std::vector<char> recv_buffer; /**< Buffer to hold the last received
-				  *   UDP payload.
-				  */
-  std::vector<char> ack_buffer; /**< Buffer to hold the raw ack during
-				 *   the async transmission.
-				 */
+  buffer_type recv_buffer; /**< Buffer that holds the last received
+			    *	UDP payload.
+			    */
+  buffer_type ack_buffer; /**< Buffer to hold the raw ack during
+			   *   the async transmission.
+			   */
 
   std::atomic_bool ack_enabled; /**< Set when the data_client should
 				 *   send back ACKs.
@@ -246,126 +153,21 @@ private:
    */
   std::atomic<std::chrono::steady_clock::duration> timeout_;
 
+  /** Setup the socket to asynchronously receive a packet. */
+  void async_receive_pkt();
+  /** Setup the timer to expire after the timeout value. */
+  void reset_timer();
   /** Schedule the transmission of an ACK to the server. */
-  void schedule_ack(std::size_t blockno) {
-    using namespace std::placeholders;
-
-    if (!ack_enabled) return;
-
-    ack_buffer = build_raw_ack(blockno);
-    socket_.async_send_to(boost::asio::buffer(ack_buffer),
-			  server_endpoint_,
-			  strand_.wrap(std::bind(&data_client::handle_sent_ack,
-						 this,
-						 std::placeholders::_1, std::placeholders::_2)));
-  }
+  void schedule_ack(std::size_t blockno);
 
   /** Called when a new packet is received. */
-  void handle_received(const boost::system::error_code& ec, std::size_t size) {
-    using std::move;
-    using namespace std::placeholders;
-
-    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
-    if (ec) throw boost::system::system_error(ec);
-    if (size == 0) throw std::runtime_error("Empty packet");
-
-    recv_buffer.resize(size);
-    fountain_packet p;
-    try {
-      p = parse_raw_data_packet(recv_buffer);
-    }
-    catch (std::runtime_error e) {
-      // should handle malformed packets
-      throw e;
-    }
-
-    // Reset the timeout
-    auto t = timeout_.load();
-    if (t.count() > 0) {
-      timeout_timer.expires_from_now(t);
-      timeout_timer.async_wait(std::bind(&data_client::handle_timeout,
-					 this,
-					 std::placeholders::_1));
-    }
-
-    decoder_->push(move(p));
-
-    // Extract eventual decoded packets
-    while (*decoder_ && *sink_) {
-      sink_->push(decoder_->next_decoded());
-    }
-
-    // ACK when the block is decoded
-    if (decoder_->has_decoded()) {
-      auto bnc = decoder_->block_number_counter();
-      schedule_ack(bnc.next());
-    }
-
-    // Keep listening if not all packets have been decoded or failed
-    if (exp_count == 0 ||
-	(decoder_->total_decoded_count() +
-	 decoder_->total_failed_count()) < exp_count) {
-      socket_.async_receive_from(boost::asio::buffer(recv_buffer),
-				 server_endpoint_,
-				 std::bind(&data_client::handle_received,
-					   this,
-					   std::placeholders::_1, std::placeholders::_2));
-    }
-    else { // Stop the client
-      stop();
-    }
-  }
-
+  void handle_received(const boost::system::error_code& ec, std::size_t size);
   /** Called when the ACK has been sent. */
-  void handle_sent_ack(const boost::system::error_code& ec, std::size_t size) {
-    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
-    if (ec) throw boost::system::system_error(ec);
-    if (size != ack_buffer.size()) throw std::runtime_error("Was not sent fully");
-  }
-
+  void handle_sent_ack(const boost::system::error_code& ec, std::size_t size);
   /** Called when the timeout timer expires or is cancelled. */
-  void handle_timeout(const boost::system::error_code& ec) {
-    if (ec == boost::asio::error::operation_aborted) return; // was cancelled
-    if (ec) throw boost::system::system_error(ec);
-
-    // Assume all successive packets failed
-    if (exp_count > 0) {
-      std::size_t total_queued = decoder_->total_decoded_count() +
-	decoder_->total_failed_count();
-      std::size_t blocks_queued = total_queued / decoder_->K();
-      // Flush also the current block (already queued but still synced on it)
-      if (decoder_->has_decoded()) --blocks_queued;
-      std::size_t nblocks = std::ceil(static_cast<double>(exp_count) /
-				      decoder_->K());
-      decoder_->flush_n_blocks(nblocks - blocks_queued);
-
-      // Extract eventual decoded packets
-      while (*decoder_ && *sink_) {
-	sink_->push(decoder_->next_decoded());
-      }
-    }
-
-    stop();
-  }
-
+  void handle_timeout(const boost::system::error_code& ec);
   /** Called after stop(). */
-  void handle_stop() {
-    timeout_timer.cancel();
-    socket_.cancel();
-    socket_.close();
-    is_stopped_ = true;
-    BOOST_LOG(perf_lg) << "data_client::stopped"
-		       << " received_pkts="
-		       << decoder_->total_received_count()
-		       << " decoded_pkts="
-		       << decoder_->total_decoded_count()
-		       << " failed_pkts="
-		       << decoder_->total_failed_count()
-		       << " avg_push_time="
-		       << decoder_->average_push_time();
-
-    BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
-  }
+  void handle_stop();
 };
 
 /** Send the packets output by an encoder through a UDP socket.
@@ -723,7 +525,321 @@ private:
   }
 };
 
+//	    data_client<Decoder,Sink> template definitions
+
+template <class Decoder, class Sink>
+data_client<Decoder,Sink>::data_client(boost::asio::io_service &io) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
+  io_service_(io),
+  strand_(io_service_),
+  socket_(io_service_),
+  recv_buffer(UDP_MAX_PAYLOAD),
+  ack_enabled(true),
+  exp_count(0),
+  is_stopped_(true),
+  timeout_timer(io),
+  timeout_(std::chrono::steady_clock::duration::zero()) {
 }
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::setup_decoder(const decoder_parameter_set &ps) {
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the decoder";
+  decoder_ = std::make_unique<Decoder>(ps);
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::setup_sink(const sink_parameter_set &ps) {
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the sink";
+  sink_ = std::make_unique<Sink>(ps);
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::bind(const std::string &service) {
+  using namespace boost::asio::ip;
+  using boost::asio::ip::udp;
+
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Resolving the client port";
+
+  udp::resolver resolver(io_service_);
+  udp::resolver::query listen_q(service);
+  udp::endpoint ep = *resolver.resolve(listen_q);
+  bind(ep.port()); // Take the first one
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::bind(unsigned short port) {
+  using namespace boost::asio::ip;
+  using boost::asio::ip::udp;
+
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Binding the client UDP port";
+
+  listen_endpoint_.port(port);
+  listen_endpoint_.address(boost::asio::ip::address_v4::any());
+
+  socket_.open(udp::v4());
+  socket_.bind(listen_endpoint_);
+
+  BOOST_LOG_SEV(basic_lg, log::info) << "Client bound to UDP: "
+				     << socket_.local_endpoint();
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::start_receive(const boost::asio::ip::udp::endpoint &src_ep) {
+  using namespace std::placeholders;
+
+  server_endpoint_ = src_ep;
+  BOOST_LOG_SEV(basic_lg, log::info) << "Start receiving UDP data pkts from: "
+				     << server_endpoint_;
+  BOOST_LOG(perf_lg) << "data_client::start_receive";
+
+  socket_.non_blocking(true); // Read without blocking in handle_received
+  is_stopped_ = false;
+  async_receive_pkt();
+  reset_timer();
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::start_receive(const std::string &src_addr,
+					      unsigned short src_port) {
+  using namespace boost::asio;
+  ip::address a = ip::address::from_string(src_addr);
+  start_receive(ip::udp::endpoint(a, src_port));
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::start_receive(const std::string &src_addr,
+					      const std::string &src_port) {
+  using boost::asio::ip::udp;
+  udp::resolver resolver(io_service_);
+  udp::resolver::query query(udp::v4(), src_addr, src_port);
+  auto i = resolver.resolve(query);
+  if (i == udp::resolver::iterator()) {
+    throw std::runtime_error("No endpoint found");
+  }
+  start_receive(*i); // pick the first found
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::stop() {
+  BOOST_LOG_SEV(basic_lg, log::info) << "Stopping the UDP client";
+  strand_.dispatch(std::bind(&data_client::handle_stop, this));
+}
+
+template <class Decoder, class Sink>
+boost::asio::ip::udp::endpoint data_client<Decoder,Sink>::client_endpoint() const {
+  return socket_.local_endpoint();
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::enable_ack(bool b) {
+  ack_enabled = b;
+}
+
+template <class Decoder, class Sink>
+bool data_client<Decoder,Sink>::is_ack_enabled() const {
+  return ack_enabled;
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::expected_count(std::size_t ec) {
+  exp_count = ec;
+}
+
+template <class Decoder, class Sink>
+std::size_t data_client<Decoder,Sink>::expected_count() const {
+  return exp_count;
+}
+
+template <class Decoder, class Sink>
+bool data_client<Decoder,Sink>::is_stopped() const {
+  return is_stopped_;
+};
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::timeout(double t) {
+  using namespace std::chrono;
+
+  duration<double> td(t);
+  timeout_ = duration_cast<steady_clock::duration>(td);
+}
+
+template <class Decoder, class Sink>
+double data_client<Decoder,Sink>::timeout() const {
+  using namespace std::chrono;
+
+  return duration_cast<duration<double>>(timeout_.load()).count();
+}
+
+template <class Decoder, class Sink>
+const Sink &data_client<Decoder,Sink>::sink() const {
+  return *sink_;
+}
+
+template <class Decoder, class Sink>
+const Decoder &data_client<Decoder,Sink>::decoder() const {
+  return *decoder_;
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::async_receive_pkt() {
+  socket_.async_receive_from(boost::asio::buffer(recv_buffer),
+			     server_endpoint_,
+			     strand_.wrap(std::bind(&data_client::handle_received,
+						    this,
+						    std::placeholders::_1,
+						    std::placeholders::_2)));
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::reset_timer() {
+  auto t = timeout_.load();
+  if (t.count() > 0) {
+    timeout_timer.expires_from_now(t);
+    timeout_timer.async_wait(strand_.wrap(std::bind(&data_client::handle_timeout,
+						    this,
+						    std::placeholders::_1)));
+  }
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::schedule_ack(std::size_t blockno) {
+  if (!ack_enabled) return;
+
+  ack_buffer = build_raw_ack(blockno);
+  socket_.async_send_to(boost::asio::buffer(ack_buffer),
+			server_endpoint_,
+			strand_.wrap(std::bind(&data_client::handle_sent_ack,
+					       this,
+					       std::placeholders::_1,
+					       std::placeholders::_2)));
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder,Sink>::handle_received(const boost::system::error_code& ec,
+						std::size_t size) {
+  if (ec == boost::asio::error::operation_aborted) return; // was cancelled
+  if (ec) throw boost::system::system_error(ec);
+
+  if (size == 0) throw std::runtime_error("Empty packet");
+
+  std::list<fountain_packet> recv_list;
+
+  // Insert first packet
+  fountain_packet p;
+  try {
+    p = parse_raw_data_packet(recv_buffer);
+  }
+  catch (const std::runtime_error &e) {
+    // should handle malformed packets
+    throw e;
+  }
+  recv_list.push_back(std::move(p));
+
+  // Read more packets if available
+  while (socket_.available() > 0) {
+    try {
+      socket_.receive_from(boost::asio::buffer(recv_buffer),
+			   server_endpoint_);
+      p = parse_raw_data_packet(recv_buffer);
+    }
+    catch(const boost::system::system_error &e) {
+      if (e.code() == boost::asio::error::would_block) {
+	BOOST_LOG_SEV(basic_lg, log::warning) <<
+	  "data_client socket would block after checking available";
+	break;
+      }
+      else throw e;
+    }
+    catch (const std::runtime_error &e) {
+      // should handle malformed packets
+      throw e;
+    }
+    recv_list.push_back(std::move(p));
+  }
+
+  BOOST_LOG(perf_lg) << "data_client::handle_received received_count="
+		     << recv_list.size();
+
+  reset_timer();
+
+  decoder_->push(std::make_move_iterator(recv_list.begin()),
+		 std::make_move_iterator(recv_list.end()));
+
+  // Extract eventual decoded packets
+  while (*decoder_ && *sink_) {
+    sink_->push(decoder_->next_decoded());
+  }
+
+  // ACK when the block is decoded
+  if (decoder_->has_decoded()) {
+    auto bnc = decoder_->block_number_counter();
+    schedule_ack(bnc.next());
+  }
+
+  // Keep listening if not all packets have been decoded or failed
+  if (exp_count == 0 ||
+      (decoder_->total_decoded_count() +
+       decoder_->total_failed_count()) < exp_count) {
+    async_receive_pkt();
+  }
+  else {
+    stop();
+  }
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder, Sink>::handle_sent_ack(const boost::system::error_code& ec,
+						 std::size_t size) {
+  if (ec == boost::asio::error::operation_aborted) return; // was cancelled
+  if (ec) throw boost::system::system_error(ec);
+  if (size != ack_buffer.size()) throw std::runtime_error("Was not sent fully");
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder, Sink>::handle_timeout(const boost::system::error_code& ec) {
+  if (ec == boost::asio::error::operation_aborted) return; // was cancelled
+  if (ec) throw boost::system::system_error(ec);
+
+  // Assume all successive packets failed
+  if (exp_count > 0) {
+    std::size_t total_queued = decoder_->total_decoded_count() +
+      decoder_->total_failed_count();
+    std::size_t blocks_queued = total_queued / decoder_->K();
+    // Flush also the current block (already enqueued but still waiting on it)
+    if (decoder_->has_decoded()) --blocks_queued;
+    std::size_t nblocks = std::ceil(static_cast<double>(exp_count) /
+				    decoder_->K());
+    decoder_->flush_n_blocks(nblocks - blocks_queued);
+
+    // Extract eventual decoded packets
+    while (*decoder_ && *sink_) {
+      sink_->push(decoder_->next_decoded());
+    }
+  }
+
+  stop();
+}
+
+template <class Decoder, class Sink>
+void data_client<Decoder, Sink>::handle_stop() {
+  timeout_timer.cancel();
+  socket_.cancel();
+  socket_.close();
+  is_stopped_ = true;
+  BOOST_LOG(perf_lg) << "data_client::stopped"
+		     << " received_pkts="
+		     << decoder_->total_received_count()
+		     << " decoded_pkts="
+		     << decoder_->total_decoded_count()
+		     << " failed_pkts="
+		     << decoder_->total_failed_count()
+		     << " avg_push_time="
+		     << decoder_->average_push_time();
+
+  BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
+}
+
 }
 
 #endif

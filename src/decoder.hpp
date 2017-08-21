@@ -28,9 +28,9 @@ public:
   /** Maximum allowed value for the block numbers.
    *  The decoder expects that it loops back to zero after this value.
    */
-  static const std::size_t MAX_BLOCKNO = 0xffff;
+  static constexpr std::size_t MAX_BLOCKNO = 0xffff;
   /** Maximum forward distance for a block to be considered more recent. */
-  static const std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
+  static constexpr std::size_t BLOCK_WINDOW = MAX_BLOCKNO / 2;
 
   /** Construct using the given parameter set. */
   explicit lt_decoder(const parameter_set &ps);
@@ -51,6 +51,13 @@ public:
    *  block number is received.
    */
   void push(fountain_packet &&p);
+
+  /** Pass many received packets at once. The packets can be reordered
+   *  before being decoded. To move from the packets the iterators can
+   *  be wrapped in std::move_iterator.
+   */
+  template <class Iter>
+  void push(Iter first, Iter last);
 
   /** Extract the oldest decoded packet from the FIFO queue. */
   packet next_decoded();
@@ -111,7 +118,7 @@ public:
    */
   std::size_t total_failed_count() const;
 
-  /** Return the average measured time to push a packet in seconds. */
+  /** Return the average time to push a packet. */
   double average_push_time() const;
 
   /** True if there are decoded packets still in the queue. */
@@ -145,10 +152,79 @@ private:
 
   /** Used to push incomplete or empty blocks to the queue. This
    *  requires the target blockno to be within the comparison
-   *  window. \sa flush
+   *  window. After a call the decoder will expect packets with
+   *  blocknumber `blockno_`.
+   *  \sa flush
    */
   void flush_small_blockno(std::size_t blockno_);
 };
+
+//		   lt_decoder template definitions
+
+template <class Iter>
+void lt_decoder::push(Iter first, Iter last) {
+  using namespace std::chrono;
+
+  auto tic = high_resolution_clock::now();
+
+  // Sort the packets by blockno
+  std::vector<fountain_packet> pkts;
+  for (Iter i = first; i != last; ++i) {
+    pkts.push_back(*i);
+  }
+  std::sort(pkts.begin(), pkts.end(),
+	    [](const fountain_packet &lhs, const fountain_packet &rhs){
+	      return lhs.block_number() < rhs.block_number();
+	    });
+
+  // Push to the block decoder block-by-block
+  auto i = std::make_move_iterator(pkts.begin());
+  auto end = std::make_move_iterator(pkts.end());
+  while (i != end) {
+    auto bn = i.base()->block_number();
+    auto next_b = std::find_if_not(i.base(), end.base(),
+				 [bn](const fountain_packet &p){
+				   return p.block_number() == bn;
+				 });
+    auto next = std::make_move_iterator(next_b);
+
+    // Handle different block number
+    if (blockno_counter.last() != static_cast<std::size_t>(bn)) {
+      auto recv_blockno(blockno_counter);
+      recv_blockno.set(bn);
+      if (recv_blockno.is_after(blockno_counter)) {
+	BOOST_LOG(perf_lg) << "lt_decoder::push new_block blockno="
+			   << bn;
+	flush_small_blockno(bn); // Then push normally
+      }
+      else {
+	BOOST_LOG(perf_lg) << "lt_decoder::push old_block blockno="
+			   << bn;
+	// This is not a new block number: do nothing
+	i = next;
+	continue;
+      }
+    }
+
+    std::size_t pushed = the_block_decoder.push(i, next);
+    uniq_recv_count += pushed;
+    if (pushed != static_cast<std::size_t>(next - i))
+      BOOST_LOG(perf_lg) << "lt_decoder::push duplicate_pkts blockno="
+			 << bn;
+
+    // Extract if fully decoded block (just once)
+    if (the_block_decoder) {
+      enqueue_partially_decoded();
+    }
+
+    i = next;
+  }
+
+  duration<double> push_tdiff = high_resolution_clock::now() - tic;
+  BOOST_LOG(perf_lg) << "lt_decoder::push push_time="
+		     << push_tdiff.count();
+  avg_push_t.add_sample(push_tdiff.count());
+}
 
 }
 

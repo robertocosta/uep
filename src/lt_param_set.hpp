@@ -28,7 +28,17 @@ struct robust_lt_parameter_set {
 struct lt_uep_parameter_set {
 	uint8_t RFM;	/* repeat factor for the most important part */
 	uint8_t RFL;  /* repeat factor for the less important part */
+
 	uint8_t EF;	/* expanding factor */
+  std::vector<std::size_t> Ks; /**< Array of sub-block sizes. */
+  std::vector<std::size_t> RFs; /**< Array of repetition factors to
+				 *   apply to each sub-block.
+				 */
+
+  double c; /**< Coefficient c of the robust soltion distribution. */
+  double delta; /**< Failure prob bound of the robust soliton
+		 *   distribution.
+		 */
 };
 
 }

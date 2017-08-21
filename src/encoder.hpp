@@ -157,6 +157,10 @@ public:
   std::size_t K() const { return the_block_encoder.block_size(); }
   /** The sequence number of the current block. */
   std::size_t blockno() const { return blockno_counter.last(); }
+  /** Return a copy of the current block number counter. */
+  circular_counter<std::size_t> block_number_counter() const {
+    return blockno_counter;
+  }
   /** The sequence number of the last generated packet. */
   std::size_t seqno() const { return seqno_counter.last(); }
   /** The seed used in the current block. */
