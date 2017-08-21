@@ -3,7 +3,6 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-<<<<<<< HEAD
 #include<boost/algorithm/string.hpp>
 #include <sstream>
 #include <fstream>
@@ -18,12 +17,6 @@
 #include "encoder.hpp"
 #include "log.hpp"
 #include <ostream>
-=======
-
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/enable_shared_from_this.hpp>
->>>>>>> 685ba94e9f6719f6e078a2417ac3cc753e23d112
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/shared_ptr.hpp>
@@ -71,11 +64,7 @@ char * readByteFromFile(std::string filename, int from, int len) {
 using boost::asio::ip::tcp;
 using namespace std;
 using namespace uep::net;
-<<<<<<< HEAD
 using namespace uep::log;
-=======
-using namespace uep;
->>>>>>> 685ba94e9f6719f6e078a2417ac3cc753e23d112
 
 // DEFAULT PARAMETER SET
 struct all_params: public lt_uep_parameter_set, public robust_lt_parameter_set {
