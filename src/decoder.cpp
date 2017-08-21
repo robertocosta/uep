@@ -130,8 +130,12 @@ bool lt_decoder::has_decoded() const {
   return the_block_decoder.has_decoded();
 }
 
-std::size_t lt_decoder::K() const {
+std::size_t lt_decoder::block_size() const {
   return the_block_decoder.block_size();
+}
+
+std::size_t lt_decoder::K() const {
+  return block_size();
 }
 
 std::size_t lt_decoder::blockno() const {
@@ -142,7 +146,7 @@ circular_counter<std::size_t> lt_decoder::block_number_counter() const {
   return blockno_counter;
 }
 
-int lt_decoder::block_seed() const {
+block_decoder::seed_t lt_decoder::block_seed() const {
   return the_block_decoder.seed();
 }
 
