@@ -14,7 +14,7 @@
 #include "log.hpp"
 #include "utils.hpp"
 
-namespace uep::mp {
+namespace uep { namespace mp {
 
 /** Class used to execute the message-passing algorithm.
  *
@@ -531,6 +531,6 @@ double mp_context<Symbol,SymbolTraits>::run_duration() const {
   return last_run_time.count();
 }
 
-}
+}}
 
 #endif
