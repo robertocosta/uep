@@ -8,7 +8,7 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
-namespace uep::utils {
+namespace uep { namespace utils {
 
 /** Predicate that just converts the input to bool. */
 template <class T>
@@ -85,6 +85,6 @@ struct knuth_mul_hasher {
   }
 };
 
-}
+}}
 
 #endif

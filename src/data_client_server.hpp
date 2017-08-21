@@ -14,7 +14,7 @@
 #include "log.hpp"
 #include "packets_rw.hpp"
 
-namespace uep::net {
+namespace uep { namespace net {
 
 /** Maximum payload size that can be carried by a UDP packet. */
 static constexpr std::size_t UDP_MAX_PAYLOAD = 0x10000;
@@ -840,6 +840,6 @@ void data_client<Decoder, Sink>::handle_stop() {
   BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
 }
 
-}
+}}
 
 #endif
