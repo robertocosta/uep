@@ -1,7 +1,5 @@
 #include <ctime>
-#include <fstream>
 #include <iostream>
-#include <ostream>
 #include <string>
 #include<boost/algorithm/string.hpp>
 #include <sstream>
@@ -18,13 +16,15 @@
 #include "log.hpp"
 #include <ostream>
 #include <boost/iostreams/device/file.hpp>
+#include <fstream>
 #include <boost/iostreams/stream.hpp>
-#include <boost/shared_ptr.hpp>
 
-#include "controlMessage.pb.h"
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 #include "data_client_server.hpp"
-#include "encoder.hpp"
-
 /*	
 	1: client to server: streamName
 	2: server to client: TXParam
@@ -62,19 +62,16 @@ char * readByteFromFile(std::string filename, int from, int len) {
 
 
 using boost::asio::ip::tcp;
-using namespace std;
+using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
 
 // DEFAULT PARAMETER SET
-struct all_params: public lt_uep_parameter_set, public robust_lt_parameter_set {
+struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	all_params() {
-		Ks = {2, 4};
 		K = 8;
-		robust_lt_parameter_set::c = 0.1;
-		robust_lt_parameter_set::delta = 0.01;
-		lt_uep_parameter_set::c = 0.1;
-		lt_uep_parameter_set::delta = 0.01;
+		c = 0.1;
+		delta = 0.01;
 		RFM = 3;
 		RFL = 1;
 		EF = 2;
@@ -245,10 +242,10 @@ struct packet_source {
 		if (newFile.is_open()) { 
 			for (int ii = 0; ii<fileSize; ii++) {
 				if (!textFile) {
-					std::uniform_int_distribution<> dist(0, 255);
+					boost::random::uniform_int_distribution<> dist(0, 255);
 					newFile << ((char) dist(gen));
 				} else {
-					std::uniform_int_distribution<> dist(65, 90);
+					boost::random::uniform_int_distribution<> dist(65, 90);
 					int randN = dist(gen);
 					newFile << ((char) randN);
 				}
@@ -350,7 +347,7 @@ struct packet_source {
 
 	bool operator!() const { return !static_cast<bool>(*this); }
 	
-	std::mt19937 gen;
+	boost::random::mt19937 gen;
 };
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
@@ -390,8 +387,8 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
 			secondMessage.set_k(ps.K);
-			secondMessage.set_c(ps.robust_lt_parameter_set::c);
-			secondMessage.set_delta(ps.robust_lt_parameter_set::delta);
+			secondMessage.set_c(ps.c);
+			secondMessage.set_delta(ps.delta);
 			secondMessage.set_rfm(ps.RFM);
 			secondMessage.set_rfl(ps.RFL);
 			secondMessage.set_ef(ps.EF);
@@ -620,7 +617,3 @@ int main() {
 	}
 	return 0;
 }
-
-// Local Variables:
-// tab-width: 2
-// End:

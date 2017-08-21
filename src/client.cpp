@@ -1,8 +1,6 @@
 #include <iostream>
-
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-
 #include "controlMessage.pb.h"
 #include "data_client_server.hpp"
 #include "decoder.hpp"
@@ -12,14 +10,11 @@ using namespace uep;
 using namespace uep::net;
 
 // DEFAULT PARAMETER SET
-struct all_params: public lt_uep_parameter_set, public robust_lt_parameter_set {
+struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	all_params() {
-		Ks = {2, 4};
 		K = 8;
-		robust_lt_parameter_set::c = 0.1;
-		robust_lt_parameter_set::delta = 0.01;
-		lt_uep_parameter_set::c = 0.1;
-		lt_uep_parameter_set::delta = 0.01;
+		c = 0.1;
+		delta = 0.01;
 		RFM = 3;
 		RFL = 1;
 		EF = 2;
@@ -128,8 +123,8 @@ int main(int argc, char* argv[]) {
 
 				// CREATION OF DECODER
 				ps.K = secondMessage.k();
-				ps.robust_lt_parameter_set::c = secondMessage.c();
-				ps.robust_lt_parameter_set::delta = secondMessage.delta();
+				ps.c = secondMessage.c();
+				ps.delta = secondMessage.delta();
 				ps.RFM = secondMessage.rfm();
 				ps.RFL = secondMessage.rfl();
 				ps.EF = secondMessage.ef();
@@ -194,7 +189,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-
-// Local Variables:
-// tab-width: 2
-// End:
