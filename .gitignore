@@ -29,3 +29,5 @@ Makefile
 /src/*.pb.cc
 /lib/
 /bin/
+/dataset/
+jsvm-prefix/

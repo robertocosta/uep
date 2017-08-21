@@ -1,20 +1,30 @@
 #include <ctime>
-#include <fstream>
 #include <iostream>
-#include <ostream>
 #include <string>
+#include<boost/algorithm/string.hpp>
+#include <sstream>
+#include <fstream>
+#include <codecvt>
 
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/stream.hpp>
+//#include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
-
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/asio.hpp>
 #include "controlMessage.pb.h"
-#include "data_client_server.hpp"
+#include <boost/array.hpp>
 #include "encoder.hpp"
+#include "log.hpp"
+#include <ostream>
+#include <boost/iostreams/device/file.hpp>
+#include <fstream>
+#include <boost/iostreams/stream.hpp>
 
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+#include "data_client_server.hpp"
 /*	
 	1: client to server: streamName
 	2: server to client: TXParam
@@ -36,20 +46,32 @@
 		DataServer.start
 */
 
+//std::vector<unsigned char> readByteFromFile(const char* filename, int from, int len) {
+char * readByteFromFile(std::string filename, int from, int len) {
+	std::ifstream ifs(filename, std::ifstream::binary);
+	//std::vector<unsigned char> vec;
+	if (ifs) {
+		ifs.seekg (from, std::ios::beg);
+		char * buffer = new char [len];
+		ifs.read(buffer, len);
+		ifs.close();
+		return buffer;
+	} else 
+		return NULL;	
+}
+
+
 using boost::asio::ip::tcp;
-using namespace std;
-using namespace uep::net;
 using namespace uep;
+using namespace uep::net;
+using namespace uep::log;
 
 // DEFAULT PARAMETER SET
-struct all_params: public lt_uep_parameter_set, public robust_lt_parameter_set {
+struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	all_params() {
-		Ks = {2, 4};
 		K = 8;
-		robust_lt_parameter_set::c = 0.1;
-		robust_lt_parameter_set::delta = 0.01;
-		lt_uep_parameter_set::c = 0.1;
-		lt_uep_parameter_set::delta = 0.01;
+		c = 0.1;
+		delta = 0.01;
 		RFM = 3;
 		RFL = 1;
 		EF = 2;
@@ -64,7 +86,128 @@ struct all_params: public lt_uep_parameter_set, public robust_lt_parameter_set {
 };
 all_params ps;
 
+
+struct streamTrace {
+	unsigned int startPos;
+	int len;
+	int lid;
+	int tid;
+	int qid;
+	int packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
+	bool discardable;
+	bool truncatable;
+};
+streamTrace *videoTrace;
+
+streamTrace* loadTrace(std::string streamName) {
+	std::ifstream file;
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
+	if (!file.is_open()) throw std::runtime_error("Failed opening file");
+	file.seekg (0, std::ios::beg);
+	std::string line;
+	std::string header;
+	//std::regex regex("^0x\\([0-9]+\\)=[0-9]+No$");
+	uint16_t lineN = 0;
+	uint16_t nRows = 0;
+	while (!file.eof()) {
+		std::getline(file,line);
+		nRows++;
+	}
+	file.close();
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
+	if (!file.is_open()) throw std::runtime_error("Failed opening file");
+	file.seekg (0, std::ios::beg);
+	streamTrace saved[nRows-3];
+	streamTrace *sTp;
+	sTp = saved;
+	//std::cout << nRows << std::endl;
+	while (!file.eof()) {
+		std::getline(file,line);
+		//std::cout << line << std::endl;
+		if (line.length()==0) {
+			break;
+		}
+		lineN++;
+		std::istringstream iss(line);
+		if (lineN>2) {
+			std::string whiteSpacesTrimmed;
+			int n = line.find(" ");
+			std::string s = line;
+			while (n>=0) {
+				if (n==0) {
+					s = s.substr(1,s.length());
+				} else if (n>0) {
+					whiteSpacesTrimmed += s.substr(0,n) + " ";
+					s = s.substr(n,s.length());
+				}
+				n = s.find(" ");
+			}
+			whiteSpacesTrimmed += s;
+			for (int i=0; i<8; i++) {
+				int n = whiteSpacesTrimmed.find(" ");
+				std::string s = whiteSpacesTrimmed.substr(0,n);
+				int nn;
+				//std::cout << i << std::endl;
+				switch (i) {
+				case (0):
+					saved[lineN-3].startPos = strtoul(s.substr(s.find("x")+1,s.length()).c_str(), NULL, 16);
+					break;
+				case (1): case (2): case(3): case (4):
+					if (s == "0") {
+						nn = 0;
+					} else {
+						nn = stoi( s );
+					}
+					break;
+				case (5):
+					if (s == "StreamHeader") {
+						saved[lineN-3].packetType = 1;
+					} else if (s == "ParameterSet") {
+						saved[lineN-3].packetType = 2;
+					} else if (s == "SliceData") {
+						saved[lineN-3].packetType = 3;
+					}
+					break;
+				case (6):
+					if (s == "Yes") {
+						saved[lineN-3].discardable = true;
+					} else if (s == "No") {
+						saved[lineN-3].discardable = false;
+					}
+					break;
+				case (7):
+					if (s == "Yes") {
+						saved[lineN-3].truncatable = true;
+					} else if (s == "No") {
+						saved[lineN-3].truncatable = false;
+					}
+				break;
+				}
+				switch (i) {
+				case (1):
+					saved[lineN-3].len = nn;
+					break;
+				case (2):
+					saved[lineN-3].lid = nn;
+					break;
+				case (3):
+					saved[lineN-3].tid = nn;
+					break;
+				case (4):
+					saved[lineN-3].qid = nn;
+					break;
+				}
+				whiteSpacesTrimmed = whiteSpacesTrimmed.substr(n+1,whiteSpacesTrimmed.length());
+			}
+		}
+	}
+	file.close();
+	return (sTp);
+}
+
 // PACKET SOURCE
+char * header;
+int headerTo;
 struct packet_source {
 	typedef all_params parameter_set;
 	int Ls;
@@ -78,18 +221,20 @@ struct packet_source {
 	int efReal;
 	std::string streamName;
 	std::ifstream file;
+	
 	explicit packet_source(const parameter_set &ps) {
 		Ls = ps.Ls;
 		rfm = ps.RFM;
 		rfl = ps.RFL;
 		ef = ps.EF;
-		max_count = ps.fileSize;
+		//max_count = ps.fileSize;
 		currInd = 0;
 		rfmReal = 0;
 		rflReal = 0;
 		efReal = 0;
 		streamName = ps.streamName;
 		/* RANDOM GENERATION OF FILE */
+		/*
 		bool textFile = true;
 		int fileSize = max_count; // file size = fileSize * Ls;
 		std::ofstream newFile (streamName+".txt");
@@ -97,22 +242,67 @@ struct packet_source {
 		if (newFile.is_open()) { 
 			for (int ii = 0; ii<fileSize; ii++) {
 				if (!textFile) {
-					std::uniform_int_distribution<> dist(0, 255);
+					boost::random::uniform_int_distribution<> dist(0, 255);
 					newFile << ((char) dist(gen));
 				} else {
-					std::uniform_int_distribution<> dist(65, 90);
+					boost::random::uniform_int_distribution<> dist(65, 90);
 					int randN = dist(gen);
 					newFile << ((char) randN);
 				}
-					
-				
 			}
 		}
 		newFile.close();
-
-		file = std::ifstream(streamName+".txt", std::ios::in|std::ios::binary|std::ios::ate);
+		*/
+		videoTrace = loadTrace(streamName);
+		/*
+		for (int i=5; i<10; i++) {
+			std::cout << videoTrace[i].startPos << "," << videoTrace[i].len << "," << videoTrace[i].lid<< "," << videoTrace[i].tid<< ",";
+			std::cout << videoTrace[i].qid << "," << videoTrace[i].packetType << "," << videoTrace[i].discardable<< "," << videoTrace[i].truncatable<< ";\n";
+		}
+		*/
+		// parse .trace to produce a txt with parts repeated
+		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
+		int from = videoTrace[0].startPos;
+		int to;
+		for (to = from; videoTrace[to].packetType < 3; ++to) { }
+		int sliceDataInd = to-1;
+		to = videoTrace[to-1].startPos + videoTrace[to-1].len;
+		header = readByteFromFile("dataset/"+streamName+".264",videoTrace[sliceDataInd].startPos,videoTrace[sliceDataInd].len);
+		headerTo = *header + to-from;
+		file = std::ifstream("dataset/"+streamName+".264", std::ios::in|std::ios::binary|std::ios::ate);
 		if (!file.is_open()) throw std::runtime_error("Failed opening file");
 		else max_count = file.tellg();
+
+
+			//file.seekg (from, std::ios::beg);
+			//wchar_t mDataBuffer[to-from]; 
+		//std::vector<unsigned char> mDataBuffer;
+		//mDataBuffer.resize( to-from );
+		//file.read( (char*)( &mDataBuffer[0]), to-from );
+			//file.read( (char*)mDataBuffer, to-from );
+			//wprintf(L"%s\n", mDataBuffer);
+		//std::string videoParams( mDataBuffer.begin(), mDataBuffer.end());
+		//std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> cv;
+		//std::string str8 = cv.to_bytes(videoParams);
+		//file.close();
+		//header = videoParams;
+
+		//std::bitset<((from-to)*8)> vp (videoParams);
+		/*
+		std::string videoParams;
+		videoParams.resize(to-from);
+		
+		std::ostringstream out;
+		
+		//videoParams.reserve(to-from);
+		//videoParams.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>(from,to));
+		file.read (&videoParams[0], videoParams.size()); */
+
+		/*for (int i=0; i<to-from; i++) {
+			std::cout << mDataBuffer[i] << std::endl;
+		}
+		*/
+		//std::cout << videoParams.length();
 	}
 
 	packet next_packet() {
@@ -157,7 +347,7 @@ struct packet_source {
 
 	bool operator!() const { return !static_cast<bool>(*this); }
 	
-	std::mt19937 gen;
+	boost::random::mt19937 gen;
 };
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
@@ -185,6 +375,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			ps.streamName = s;
 			
 			/* CREATION OF DATA SERVER */
+			//BOOST_LOG_SEV(basic_lg, debug) << "Creation of encoder...\n";
 			std::cout << "Creation of encoder...\n";
 			ds_type *ds = new ds_type(io);
 			ds_p.reset(ds);
@@ -196,14 +387,62 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
 			secondMessage.set_k(ps.K);
-			secondMessage.set_c(ps.robust_lt_parameter_set::c);
-			secondMessage.set_delta(ps.robust_lt_parameter_set::delta);
+			secondMessage.set_c(ps.c);
+			secondMessage.set_delta(ps.delta);
 			secondMessage.set_rfm(ps.RFM);
 			secondMessage.set_rfl(ps.RFL);
 			secondMessage.set_ef(ps.EF);
 			secondMessage.set_ack(ps.ack);
 			secondMessage.set_filesize(ps.fileSize);
+			
+			
+			uint8_t * head = new uint8_t[headerTo - *header +1];
+			//uint16_t * head2 = new uint16_t[(headerTo - *header)/2+1];
+			//uint32_t * head4 = new uint32_t[(headerTo - *header)/4+1];
 
+			auto iter2 = header;
+			for (int i=0; i<headerTo - *header; i++) {
+				head[i] = (uint8_t)*iter2;
+				iter2 = iter2 + 1;
+			}
+			/*
+			for (int i=0; i<(headerTo - *header); i+=2) {
+				head2[i/2] = head[i] | (head[i+1] << 8);
+			}
+			for (int i=0; i<(headerTo - *header); i+=4) {
+				head4[i/4] = head2[i/2] | (head2[i/2+1] << 16);
+			}
+			for (int i=0; i<(headerTo - *header); i+=4) {
+				secondMessage.add_header(head4[i/4]);
+			}
+			*/
+			uint16_t * head2 = new uint16_t[headerTo - *header + 1];
+			std::cout << (headerTo - *header) << std::endl;
+			auto iter = header;
+			for (int i=0; i<headerTo - *header; i++) {
+				head2[i] = *iter;
+				iter = iter + 1;
+			}
+
+			uint32_t head4 [(headerTo - *header)/2];
+			for (int i=0; i<(headerTo - *header); i+=2) {
+				head4[i/2] = head2[i] | (head2[i+1] << 16);
+				secondMessage.add_header(head4[i/2]);
+			}
+
+
+			std::cout << secondMessage.header_size() << std::endl;
+			std::cout << "\n8 bit:\n";
+			for (int i=0; i<headerTo - *header; i++)
+				std::cout << head[i]<<",";
+			std::cout << "\n16 bit:\n";
+			for (int i=0; i<headerTo - *header; i+=2)
+				std::cout << head2[i/2]<<",";
+				//std::cout << header[i] << std::endl;
+			std::cout << "\n32 bit:\n";
+			for (int i=0; i<(headerTo - *header); i+=4) 
+				std::cout << head4[i/4]<<",";
+			
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
 				/*	Call boost::asio::async_write() to serve the data to the client. 
@@ -358,6 +597,11 @@ class tcp_server {
 };
 
 int main() {
+	/*
+	log::init("demo_ds.log");
+	default_logger basic_lg(boost::log::keywords::channel = basic);
+	default_logger perf_lg(boost::log::keywords::channel = performance);
+	*/
 	try {
 		// We need to create a server object to accept incoming client connections.
 		boost::asio::io_service io_service;
@@ -373,7 +617,3 @@ int main() {
 	}
 	return 0;
 }
-
-// Local Variables:
-// tab-width: 2
-// End:

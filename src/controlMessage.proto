@@ -13,6 +13,7 @@ message TXParam {
 	required uint32 EF = 6;
 	required bool ACK = 7;
 	required uint64 fileSize = 8;
+	repeated uint32 header = 9;
 }
 
 message Connect {
