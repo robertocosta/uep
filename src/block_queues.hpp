@@ -57,7 +57,7 @@ public:
   bool operator!() const;
 
 private:
-  const std::size_t K;
+  std::size_t K;
   std::queue<packet> input_queue;
   std::vector<packet> input_block;
 
@@ -105,7 +105,7 @@ public:
   bool operator!() const;
 
 private:
-  const std::size_t K;
+  std::size_t K;
   std::queue<packet> output_queue;
 };
 

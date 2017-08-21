@@ -26,8 +26,8 @@ public:
   template<class Gen> std::size_t operator()(Gen &g);
 
 private:
-  const std::size_t K_;
-  const pmd_t pmd_;
+  std::size_t K_;
+  pmd_t pmd_;
   std::discrete_distribution<std::size_t> distrib;
 };
 
@@ -59,8 +59,8 @@ public:
   double beta() const;
 
 private:
-  const double c_;
-  const double delta_;
+  double c_;
+  double delta_;
 };
 
 /** Chooses uniformly which input packets to mix into the next coded
