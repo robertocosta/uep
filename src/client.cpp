@@ -21,7 +21,7 @@ struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	}
 	std::string tcp_port_num = "12312";
 	uint32_t udp_port_num = 12345;
-	std::string streamName = "primo stream";
+	std::string streamName = "CREW_352x288_30_orig_01";
 	bool ack = true;
 	int sendRate = 10240;
 	size_t fileSize = 20480;
@@ -111,7 +111,14 @@ int main(int argc, char* argv[]) {
 				std::cout << "RFL="<<secondMessage.rfl()<<"; ";
 				std::cout << "EF="<<secondMessage.ef()<<"; ";
 				std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
-				std::cout << "fileSize="<<secondMessage.filesize()<<"\n";
+				std::cout << "fileSize="<<secondMessage.filesize()<<";";
+				uint32_t * head = new uint32_t[secondMessage.header_size()];
+				//header = secondMessage.header();
+				std::cout <<  "headerLength="<<secondMessage.header_size() << "\n";
+				for (uint16_t i=0; i<secondMessage.header_size(); i++) {
+					head[i] = secondMessage.header(i);
+					std::cout << secondMessage.header(i);
+				}
 				std::cout << "Creation of decoder...\n";
 
 				// CREATION OF DECODER
