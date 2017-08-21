@@ -47,3 +47,11 @@ add_test(test_packets_rw ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_packets_rw)
 add_executable(test_lazy_xor test_lazy_xor.cpp)
 target_link_libraries(test_lazy_xor packets)
 add_test(test_lazy_xor ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_lazy_xor)
+
+add_executable(test_uep_encdec test_uep_encdec.cpp)
+target_link_libraries(test_uep_encdec
+  block_encoder
+  decoder
+  uep_decoder
+)
+add_test(test_uep_encdec ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_uep_encdec)
