@@ -172,10 +172,10 @@ void lt_decoder::push(Iter first, Iter last) {
   for (Iter i = first; i != last; ++i) {
     pkts.push_back(*i);
   }
-  std::stable_sort(pkts.begin(), pkts.end(),
-		   [](const fountain_packet &lhs, const fountain_packet &rhs){
-		     return lhs.block_number() < rhs.block_number();
-		   });
+  std::sort(pkts.begin(), pkts.end(),
+	    [](const fountain_packet &lhs, const fountain_packet &rhs){
+	      return lhs.block_number() < rhs.block_number();
+	    });
 
   // Push to the block decoder block-by-block
   auto i = std::make_move_iterator(pkts.begin());
