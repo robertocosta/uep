@@ -46,6 +46,16 @@ const packet &input_block_queue::block_at(std::size_t pos) const {
   return input_block.at(pos);
 }
 
+input_block_queue::move_block_iterator input_block_queue::block_mbegin() {
+  if (!has_block()) throw logic_error("Does not have a block");
+  return move_block_iterator(input_block.begin());
+}
+
+input_block_queue::move_block_iterator input_block_queue::block_mend() {
+  if (!has_block()) throw logic_error("Does not have a block");
+  return move_block_iterator(input_block.end());
+}
+
 void input_block_queue::clear() {
   input_block.clear();
   typedef decltype(input_queue) queue_t;
@@ -86,6 +96,10 @@ output_block_queue::output_block_queue(std::size_t block_size) :
   K(block_size) {}
 
 const packet &output_block_queue::front() const {
+  return output_queue.front();
+}
+
+packet &output_block_queue::front() {
   return output_queue.front();
 }
 
