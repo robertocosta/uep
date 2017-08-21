@@ -12,7 +12,8 @@
 #include <boost/asio.hpp>
 #include "controlMessage.pb.h"
 #include <boost/array.hpp>
-#include "encoder.hpp"
+//#include "encoder.hpp"
+#include "uep_encoder.hpp"
 #include "log.hpp"
 #include <ostream>
 #include <boost/iostreams/device/file.hpp>
@@ -66,27 +67,6 @@ using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
 
-// DEFAULT PARAMETER SET
-struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
-	all_params() {
-		K = 8;
-		c = 0.1;
-		delta = 0.01;
-		RFM = 3;
-		RFL = 1;
-		EF = 2;
-	}
-	std::string streamName;
-	bool ack = true;
-	double sendRate = 10240;
-	size_t fileSize = 20480;
-	int tcp_port_num = 12312;
-	/* PARAMETERS CHOICE */ 
-	int Ls = 64;
-};
-all_params ps;
-
-
 struct streamTrace {
 	unsigned int startPos;
 	int len;
@@ -97,7 +77,26 @@ struct streamTrace {
 	bool discardable;
 	bool truncatable;
 };
-streamTrace *videoTrace;
+
+// DEFAULT PARAMETER SET
+struct all_params: /*public robust_lt_parameter_set,*/ public lt_uep_parameter_set {
+	all_params() {
+		EF = 2;	
+		Ks = {2, 4};
+		RFs = {2, 1}; 
+		c = 0.1;
+		delta = 0.5;
+	}
+	std::string streamName;
+	bool ack = true;
+	double sendRate = 10240;
+	size_t fileSize = 20480;
+	int tcp_port_num = 12312;
+	std::vector<streamTrace> videoTraceAr;
+};
+all_params ps;
+
+streamTrace *videoTrace = &(ps.videoTraceAr[0]);
 
 streamTrace* loadTrace(std::string streamName) {
 	std::ifstream file;
@@ -223,7 +222,7 @@ struct packet_source {
 	std::ifstream file;
 	
 	explicit packet_source(const parameter_set &ps) {
-		Ls = ps.Ls;
+		Ls = ps.Ks[0];
 		rfm = ps.RFM;
 		rfl = ps.RFL;
 		ef = ps.EF;
@@ -356,7 +355,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 		as long as there is an operation that refers to it.*/
 	public:
 		typedef boost::shared_ptr<tcp_connection> pointer;
-		typedef uep::net::data_server<lt_encoder<std::mt19937>,packet_source> ds_type;
+		typedef uep::net::data_server<uep_encoder<std::mt19937>,packet_source> ds_type;
 		static pointer create(boost::asio::io_service& io_service) {
 			return pointer(new tcp_connection(io_service));
 		}
@@ -386,24 +385,27 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
-			secondMessage.set_k(ps.K);
+			secondMessage.add_ks(ps.Ks[0]);
+			secondMessage.add_ks(ps.Ks[1]);
 			secondMessage.set_c(ps.c);
 			secondMessage.set_delta(ps.delta);
-			secondMessage.set_rfm(ps.RFM);
-			secondMessage.set_rfl(ps.RFL);
+			secondMessage.add_rfs(ps.RFs[0]);
+			secondMessage.add_rfs(ps.RFs[1]);
+
 			secondMessage.set_ef(ps.EF);
 			secondMessage.set_ack(ps.ack);
 			secondMessage.set_filesize(ps.fileSize);
-			
-			
-			uint8_t * head = new uint8_t[headerTo - *header +1];
+
+			uint8_t * head = new uint8_t[headerTo - *header + 1];
 			//uint16_t * head2 = new uint16_t[(headerTo - *header)/2+1];
 			//uint32_t * head4 = new uint32_t[(headerTo - *header)/4+1];
 
 			auto iter2 = header;
 			for (int i=0; i<headerTo - *header; i++) {
 				head[i] = (uint8_t)*iter2;
+				std::string st = std::to_string(head[i]);
 				iter2 = iter2 + 1;
+				secondMessage.add_header(st);
 			}
 			/*
 			for (int i=0; i<(headerTo - *header); i+=2) {
@@ -416,33 +418,14 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				secondMessage.add_header(head4[i/4]);
 			}
 			*/
-			uint16_t * head2 = new uint16_t[headerTo - *header + 1];
-			std::cout << (headerTo - *header) << std::endl;
-			auto iter = header;
-			for (int i=0; i<headerTo - *header; i++) {
-				head2[i] = *iter;
-				iter = iter + 1;
-			}
-
-			uint32_t head4 [(headerTo - *header)/2];
-			for (int i=0; i<(headerTo - *header); i+=2) {
-				head4[i/2] = head2[i] | (head2[i+1] << 16);
-				secondMessage.add_header(head4[i/2]);
-			}
 
 
 			std::cout << secondMessage.header_size() << std::endl;
 			std::cout << "\n8 bit:\n";
 			for (int i=0; i<headerTo - *header; i++)
 				std::cout << head[i]<<",";
-			std::cout << "\n16 bit:\n";
-			for (int i=0; i<headerTo - *header; i+=2)
-				std::cout << head2[i/2]<<",";
-				//std::cout << header[i] << std::endl;
-			std::cout << "\n32 bit:\n";
-			for (int i=0; i<(headerTo - *header); i+=4) 
-				std::cout << head4[i/4]<<",";
-			
+	
+				
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
 				/*	Call boost::asio::async_write() to serve the data to the client. 

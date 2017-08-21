@@ -5,15 +5,14 @@ message StreamName {
 }
 
 message TXParam {
-	required uint64 K = 1;
+	repeated uint32 Ks = 1;
 	required double c = 2;
 	required double delta = 3;
-	required uint32 RFM = 4;
-	required uint32 RFL = 5;
-	required uint32 EF = 6;
-	required bool ACK = 7;
-	required uint64 fileSize = 8;
-	repeated uint32 header = 9;
+	repeated uint32 RFs = 4;
+	required uint32 EF = 5;
+	required bool ACK = 6;
+	required uint64 fileSize = 7;
+	repeated bytes header = 8;
 }
 
 message Connect {
