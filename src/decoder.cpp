@@ -80,7 +80,7 @@ void lt_decoder::flush_n_blocks(std::size_t n) {
 void lt_decoder::flush(std::size_t blockno_) {
   // This still cannot flush more than MAX_BLOCKNO blocks
   auto target_bn(blockno_counter);
-  target_bn = blockno_;
+  target_bn.set(blockno_);
   size_t dist = blockno_counter.forward_distance(target_bn);
   size_t win =  blockno_counter.comparison_window();
 
@@ -90,13 +90,15 @@ void lt_decoder::flush(std::size_t blockno_) {
     bnc_copy.next(win);
     flush_small_blockno(bnc_copy.value());
   }
-  flush_small_blockno(blockno_);
+  if (dist % win > 0) flush_small_blockno(blockno_);
 }
 
 void lt_decoder::flush_small_blockno(std::size_t blockno_) {
   auto recv_blockno(blockno_counter);
   recv_blockno.set(blockno_);
   size_t dist = blockno_counter.forward_distance(recv_blockno);
+
+  if (dist == 0) return;
 
   if (dist > 1 || !has_decoded())
     BOOST_LOG_SEV(basic_lg, log::info) << "Decoder is skipping to block "
