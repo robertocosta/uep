@@ -106,7 +106,7 @@ std::vector<streamTrace> videoTrace;
 
 std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::ifstream file;
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary);
 	if (!file.is_open()) throw std::runtime_error("Failed opening file");
 	file.seekg (0, std::ios::beg);
 	std::string line;
@@ -262,7 +262,8 @@ struct packet_source {
 		newFile.close();
 		*/
 		videoTrace = loadTrace(streamName);
-		max_count = videoTrace[videoTrace.size()].startPos + videoTrace[videoTrace.size()].len;
+		max_count = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
+		std::cout << "max_count: " << std::to_string(max_count) << std::endl;
 		// parse .trace to produce a txt with parts repeated
 		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
 		int fromHead = videoTrace[0].startPos;
@@ -314,13 +315,15 @@ struct packet_source {
 				} else {
 					currRep[currQid] = 0;
 					currQid++;
-				}
-			} else {
+				}		
+			}
+			if (currQid == Ks.size()) {
 				currRep[currQid] = 0;
 				efReal++;
 				currQid = 0;
 			}
-		} else {
+		}
+		if (efReal == ef) {
 			currQid = 0;
 			efReal = 0;
 			for (uint i=0; i<Ks.size(); i++) {
@@ -330,7 +333,15 @@ struct packet_source {
 		}
 		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
 		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
+		std::cout << streamN << ": from " << std::to_string(currInd[currQid]) << ", length: " << std::to_string(Ks[currQid]) << std::endl;
+		/*
+		std::cout << "next_packet():" << std::endl;
+		for (uint i=0; i < read.size(); i++) {
+			std::cout << read[i];
+		}
+		std::cout << std::endl;*/
 		fountain_packet fp(read);
+		//std::cout << "currQid: " << std::to_string(currQid) << "; Ks.size(): " << std::to_string(Ks.size()) << std::endl;
 		fp.setPriority(currQid);
 		return fp;
 	}
@@ -420,7 +431,6 @@ private:
 
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
-			assert(ps.Ks.size() == 2);
 			secondMessage.add_ks(ps.Ks[0]);
 			secondMessage.add_ks(ps.Ks[1]);
 			secondMessage.set_c(ps.c);
@@ -582,7 +592,7 @@ int main(int argc, char **argv) {
 	default_logger perf_lg(boost::log::keywords::channel = performance);
 
 	ps.EF = 2;
-	ps.Ks = {2,4};
+	ps.Ks = {256,512};
 	ps.RFs = {2,1};
 	ps.c = 0.1;
 	ps.delta = 0.5;
