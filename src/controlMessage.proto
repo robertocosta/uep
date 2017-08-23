@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 package controlMessage;
 
 message StreamName {
@@ -24,5 +26,5 @@ message ConnACK {
 }
 
 message Play {
-	
+	optional bool play = 1 [default = true];
 }

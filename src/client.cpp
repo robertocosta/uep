@@ -134,11 +134,12 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "\nCreation of decoder...\n";
 	// CREATION OF DECODER
-	assert(ps.Ks.size() == 2);
+	ps.Ks.resize(secondMessage.ks_size());
 	ps.Ks[0] = secondMessage.ks(0);
 	ps.Ks[1] = secondMessage.ks(1);
 	ps.c = secondMessage.c();
 	ps.delta = secondMessage.delta();
+	ps.RFs.resize(secondMessage.rfs_size());
 	ps.RFs[0] = secondMessage.rfs(0);
 	ps.RFs[1] = secondMessage.rfs(1);
 	ps.EF = secondMessage.ef();
@@ -177,10 +178,13 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Sending PLAY command\n";
 	controlMessage::Play playMessage;
+	playMessage.set_play(true);
 	if (!playMessage.SerializeToString(&serialize_buf)) {
 		throw std::runtime_error("Serialization of playMessage failed");
 	}
+	assert(serialize_buf.size() > 0);
 	written = socket.write_some(boost::asio::buffer(serialize_buf));
+	assert(written > 0);
 	std::cout << "PLAY command sent.\n";
 
 	std::cout << "Run" << std::endl;

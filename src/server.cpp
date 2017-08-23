@@ -315,7 +315,7 @@ struct packet_source {
 				} else {
 					currRep[currQid] = 0;
 					currQid++;
-				}		
+				}
 			}
 			if (currQid == Ks.size()) {
 				currRep[currQid] = 0;
@@ -343,6 +343,11 @@ struct packet_source {
 		fountain_packet fp(read);
 		//std::cout << "currQid: " << std::to_string(currQid) << "; Ks.size(): " << std::to_string(Ks.size()) << std::endl;
 		fp.setPriority(currQid);
+
+		cerr << "packet_source::next_packet size=" << fp.size()
+		     << " priority=" << static_cast<size_t>(fp.getPriority())
+		     << endl;
+
 		return fp;
 	}
 
