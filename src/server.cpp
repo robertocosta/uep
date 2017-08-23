@@ -26,7 +26,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "data_client_server.hpp"
-/*
+/*	
 	1: client to server: streamName
 	2: server to client: TXParam
 		2.1 decoder parameters
@@ -47,6 +47,13 @@
 		DataServer.start
 */
 
+inline bool file_exists (const std::string& name) {
+    std::ifstream f(name.c_str());
+	bool out = f.good();
+	f.close();
+	return out;
+}
+
 //std::vector<unsigned char> readByteFromFile(const char* filename, int from, int len) {
 std::vector<char> readByteFromFile(std::string filename, int from, int len) {
 	std::ifstream ifs(filename, std::ifstream::binary);
@@ -59,6 +66,29 @@ std::vector<char> readByteFromFile(std::string filename, int from, int len) {
 		ifs.close();
 	}
 	return content;
+}
+std::vector<char> readByteFromFileOpened(std::ifstream ifs, int from, int len) {
+	std::vector<char> content;
+	if (ifs) {
+		content.resize(len);
+		ifs.seekg (from, std::ios::beg);
+		ifs.read(&content[0], len);
+	}
+	return content;
+}
+
+bool writeCharVecToFile(std::string filename, std::vector<char> v) {
+	std::ofstream newFile;
+	newFile.open(filename, std::ios_base::app); // append mode
+	bool out = false;
+	if (newFile.is_open()) { 
+		for (uint i=0; i<v.size(); i++) {
+			newFile << v[i];
+		}
+		out = true;
+	}
+	newFile.close();
+	return out;
 }
 
 using namespace std;
@@ -75,8 +105,9 @@ std::vector<streamTrace> videoTrace;
 
 std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::ifstream file;
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios_base::in);
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
 	if (!file.is_open()) throw std::runtime_error("Failed opening file");
+	file.seekg (0, std::ios::beg);
 	std::string line;
 	std::string header;
 	//std::regex regex("^0x\\([0-9]+\\)=[0-9]+No$");
@@ -94,13 +125,12 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::vector<streamTrace> sTp;
 	//std::cout << nRows << std::endl;
 	while (!file.eof()) {
-		std::getline(file, line);
+		std::getline(file,line);
 		//std::cout << line << std::endl;
 		if (line.length()==0) {
 			break;
 		}
 		lineN++;
-
 		std::istringstream iss(line);
 		if (lineN>2) {
 			std::string whiteSpacesTrimmed;
@@ -121,7 +151,7 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 				int n = whiteSpacesTrimmed.find(" ");
 				std::string s = whiteSpacesTrimmed.substr(0,n);
 				int nn;
-
+				
 				//std::cout << i << std::endl;
 				switch (i) {
 				case (0):
@@ -169,7 +199,7 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 					elem.tid = nn;
 					break;
 				case (4):
-					elem.qid = nn;
+					elem.qid = (uint16_t)nn;
 					break;
 				}
 				whiteSpacesTrimmed = whiteSpacesTrimmed.substr(n+1,whiteSpacesTrimmed.length());
@@ -187,36 +217,36 @@ int headerSize;
 int sliceDataInd;
 struct packet_source {
 	typedef all_params parameter_set;
-	int Ls;
-	int rfm;
-	int rfl;
-	int ef;
+	std::vector<size_t> Ks;
+	std::vector<size_t> rfs;
+	std::vector<size_t> currInd;
+	std::vector<uint8_t> currRep;
+	uint ef;
 	size_t max_count;
-	size_t currInd;
-	int rfmReal;
-	int rflReal;
-	int efReal;
+	uint currQid;
+	uint efReal;
 	std::string streamName;
-	std::ifstream file;
-
+	std::vector<std::ifstream> files;
+	
 	explicit packet_source(const parameter_set &ps) {
-		Ls = ps.Ks[0];
-		rfm = ps.RFM;
-		rfl = ps.RFL;
+		Ks = ps.Ks;
+		rfs = ps.RFs;
 		ef = ps.EF;
-		//max_count = ps.fileSize;
-		currInd = 0;
-		rfmReal = 0;
-		rflReal = 0;
+		currInd.resize(Ks.size());
+		currRep.resize(Ks.size());
+		files.resize(Ks.size());
+		for (uint i=0; i<currInd.size(); i++) { currInd[i]=0; currRep[i]=0; }
+		currQid = 0;
 		efReal = 0;
 		streamName = ps.streamName;
+
 		/* RANDOM GENERATION OF FILE */
 		/*
 		bool textFile = true;
 		int fileSize = max_count; // file size = fileSize * Ls;
 		std::ofstream newFile (streamName+".txt");
 		//std::cout << streamName << ".txt\n";
-		if (newFile.is_open()) {
+		if (newFile.is_open()) { 
 			for (int ii = 0; ii<fileSize; ii++) {
 				if (!textFile) {
 					boost::random::uniform_int_distribution<> dist(0, 255);
@@ -231,12 +261,7 @@ struct packet_source {
 		newFile.close();
 		*/
 		videoTrace = loadTrace(streamName);
-		/*
-		for (int i=0; i<10; i++) {
-			std::cout << videoTrace[i].startPos << "," << videoTrace[i].len << "," << videoTrace[i].lid<< "," << videoTrace[i].tid<< ",";
-			std::cout << videoTrace[i].qid << "," << videoTrace[i].packetType << "," << videoTrace[i].discardable<< "," << videoTrace[i].truncatable<< ";\n";
-		}
-		*/
+		max_count = videoTrace[videoTrace.size()].startPos + videoTrace[videoTrace.size()].len;
 		// parse .trace to produce a txt with parts repeated
 		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
 		int fromHead = videoTrace[0].startPos;
@@ -247,91 +272,78 @@ struct packet_source {
 		sliceDataInd = toHead;
 		toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
 		// int fromSliceData = toHead + 1;
-		//int toSliceData = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
-
+		
 		header = readByteFromFile("dataset/"+streamName+".264",fromHead,headerSize);
-		/*
-		std::cout << "header: from " << fromHead << " , for " << headerSize << " to " << toHead << std::endl;
-		std::cout << "sliceData: from " << fromSliceData << " , for " << toSliceData-fromSliceData << " , to " << toSliceData << std::endl;
-		*/
-		file = std::ifstream("dataset/"+streamName+".264", std::ios::in|std::ios::binary|std::ios::ate);
-		if (!file.is_open()) throw std::runtime_error("Failed opening file");
-		else max_count = file.tellg();
 
-
-			//file.seekg (from, std::ios::beg);
-			//wchar_t mDataBuffer[to-from];
-		//std::vector<unsigned char> mDataBuffer;
-		//mDataBuffer.resize( to-from );
-		//file.read( (char*)( &mDataBuffer[0]), to-from );
-			//file.read( (char*)mDataBuffer, to-from );
-			//wprintf(L"%s\n", mDataBuffer);
-		//std::string videoParams( mDataBuffer.begin(), mDataBuffer.end());
-		//std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> cv;
-		//std::string str8 = cv.to_bytes(videoParams);
-		//file.close();
-		//header = videoParams;
-
-		//std::bitset<((from-to)*8)> vp (videoParams);
-		/*
-		std::string videoParams;
-		videoParams.resize(to-from);
-
-		std::ostringstream out;
-
-		//videoParams.reserve(to-from);
-		//videoParams.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>(from,to));
-		file.read (&videoParams[0], videoParams.size()); */
-
-		/*for (int i=0; i<to-from; i++) {
-			std::cout << mDataBuffer[i] << std::endl;
-		}
-		*/
-		//std::cout << videoParams.length();
-	}
-
-	packet next_packet() {
-		if (currInd >= max_count) throw std::runtime_error("Max packet count");
-		if (efReal<ef) {
-			if (rfmReal<rfm) rfmReal++;
-			else {
-				if (rfmReal==rfm) {
-					rfmReal++;
-					currInd += Ls;
-				}
-				if (rflReal<rfl) rflReal++;
-				else {
-					rfmReal = 0;
-					rflReal = 0;
-					efReal++;
-					currInd -= Ls;
+		for (uint8_t i=0; i<Ks.size(); i++) {
+			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
+			if (file_exists(streamN)) {
+				std::cout << streamN << " already created.\n";
+			} else {
+				uint ii=sliceDataInd;
+				while (ii<videoTrace.size()) {
+					if (((videoTrace[ii].packetType == 3) && (videoTrace[ii].qid == i))||
+						((videoTrace[ii].qid >= ps.Ks.size()) && (i == ps.Ks.size()-1))) {
+						//std::vector<char> slice;
+						std::vector<char> slice = readByteFromFile("dataset/"+streamName+".264",videoTrace[ii].startPos,videoTrace[ii].len);
+						if (!writeCharVecToFile(streamN,slice)) {
+							std::cout << "error in writing file\n";
+						}
+						//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
+					}
+					ii++;	
 				}
 			}
-		} else {
-			currInd += 2*Ls;
-			rfmReal = 0;
-			rflReal = 0;
-			efReal = 0;
 		}
-		file.seekg (currInd, std::ios::beg);
-		char * memblock;
-		memblock = new char [Ls];
-		file.read (memblock, Ls);
-		packet p;
-		p.resize(Ls);
-		p.assign(memblock, Ls+memblock);
-		/*for (int i=0; i < Ls; i++) {
-			p[i] = memblock[i];
-		}*/
-		return p;
+	
+		for (uint8_t i=0; i<Ks.size(); i++) {
+			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
+			files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
+			if (!files[i].is_open()) throw std::runtime_error("Failed opening file");
+		}
+
+	}
+
+	fountain_packet next_packet() {
+		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
+		if (efReal<ef) {
+			if (currQid < Ks.size()) {
+				if (currRep[currQid]<rfs[currQid]) {
+					currRep[currQid]++;
+				} else {
+					currRep[currQid] = 0;
+					currQid++;
+				}		
+			} else {
+				currRep[currQid] = 0;
+				efReal++;
+				currQid = 0;
+			}
+		} else {
+			currQid = 0;
+			efReal = 0;
+			for (uint i=0; i<Ks.size(); i++) {
+				currRep[i] = 0;
+				currInd[i] += Ks[i];
+			}
+		}
+		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
+		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
+		fountain_packet fp(read);
+		fp.setPriority(currQid);
+		return fp;
 	}
 
 	explicit operator bool() const {
-		return currInd < max_count;
+		bool out = true;
+		for (uint i=0; i<currInd.size(); i++) {
+			out = out && (currInd[i] < max_count);
+		}
+		return out;
 	}
 
 	bool operator!() const { return !static_cast<bool>(*this); }
-
+	
 	boost::random::mt19937 gen;
 };
 
@@ -419,44 +431,15 @@ private:
 			secondMessage.set_ack(ps.ack);
 			secondMessage.set_filesize(ps.fileSize);
 
-			//uint8_t * head = new uint8_t[headerTo - *header + 1];
-			//uint16_t * head2 = new uint16_t[(headerTo - *header)/2+1];
-			//uint32_t * head4 = new uint32_t[(headerTo - *header)/4+1];
-
-			//auto iter2 = header;
-			//std::cout << "Header:\n";
-			//for (int i=0; i<headerSize; i++) {
-				//head[i] = (uint8_t)*iter2;
-				//std::string st = std::to_string(header[i]);
-				//iter2 = iter2 + 1;
-				//std::string s = std::to_string((uint8_t)header[i]);
-				//secondMessage.add_header(s);
-				//secondMessage.add_header(std::to_string(header[i]));
-			//}
-			/*
-			for (int i=0; i<(headerTo - *header); i+=2) {
-				head2[i/2] = head[i] | (head[i+1] << 8);
+			for (int i=0; i<headerSize; i++) {
+				secondMessage.add_header(std::to_string(header[i]));
 			}
-			for (int i=0; i<(headerTo - *header); i+=4) {
-				head4[i/4] = head2[i/2] | (head2[i/2+1] << 16);
-			}
-			for (int i=0; i<(headerTo - *header); i+=4) {
-				secondMessage.add_header(head4[i/4]);
-			}
-			*/
-
-
-			std::cout << "\n" << secondMessage.header_size() << std::endl;
-			std::cout << "\n8 bit:\n";
-			for (int i=0; i< secondMessage.header_size(); i++)
-				std::cout <<  secondMessage.header(i) << ",";
-			std::cout << std::endl;
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
-				/*	Call boost::asio::async_write() to serve the data to the client.
-					We are using boost::asio::async_write(),
-					rather than ip::tcp::socket::async_write_some(),
+				/*	Call boost::asio::async_write() to serve the data to the client. 
+					We are using boost::asio::async_write(), 
+					rather than ip::tcp::socket::async_write_some(), 
 					to ensure that the entire block of data is sent.*/
 				boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
 					&tcp_connection::handle_write,
@@ -468,13 +451,13 @@ private:
 				socket_.async_read_some(boost::asio::buffer(buf), std::bind(
 					&tcp_connection::secondHandler,
 					shared_from_this(),
-					std::placeholders::_1,
+					std::placeholders::_1, 
 					std::placeholders::_2));
 				if (error == boost::asio::error::eof)
 					std::cout.write("error",5); // Connection closed cleanly by peer.
 				else if (error)
 					throw boost::system::system_error(error); // Some other error.
-			}
+			}			
 		}
 
 		void secondHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
@@ -624,7 +607,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-
-// Local Variables:
-// tab-width: 2
-// End:

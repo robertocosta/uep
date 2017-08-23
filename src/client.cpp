@@ -26,24 +26,24 @@ typedef all_parameter_set<dec_type::parameter_set> all_params;
 
 // MEMORY SINK
 struct memory_sink {
-	typedef all_params parameter_set;
-	explicit memory_sink(const parameter_set&) {}
+  typedef all_params parameter_set;
+  explicit memory_sink(const parameter_set&) {}
 
-	std::vector<packet> received;
+  std::vector<packet> received;
 
-	void push(const packet &p) {
-		packet p_copy(p);
-		using std::move;
-		push(move(p));
-	}
+  void push(const packet &p) {
+    packet p_copy(p);
+    using std::move;
+    push(move(p));
+  }
 
-	void push(packet &&p) {
-		using std::move;
-		received.push_back(move(p));
-	}
+  void push(packet &&p) {
+    using std::move;
+    received.push_back(move(p));
+  }
 
-	explicit operator bool() const { return true; }
-	bool operator!() const { return false; }
+  explicit operator bool() const { return true; }
+  bool operator!() const { return false; }
 };
 
 const std::string default_udp_port = "12345";
@@ -189,7 +189,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-
-// Local Variables:
-// tab-width: 2
-// End:
