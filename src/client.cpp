@@ -3,21 +3,22 @@
 #include <boost/asio.hpp>
 #include "controlMessage.pb.h"
 #include "data_client_server.hpp"
-#include "decoder.hpp"
+//#include "decoder.hpp"
+#include "uep_decoder.hpp"
+#include <vector>
 
 using boost::asio::ip::tcp;
 using namespace uep;
 using namespace uep::net;
 
 // DEFAULT PARAMETER SET
-struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
+struct all_params: /*public robust_lt_parameter_set, */public lt_uep_parameter_set {
 	all_params() {
-		K = 8;
+		EF = 2;	
+		Ks = {2, 4};
+		RFs = {2, 1}; 
 		c = 0.1;
-		delta = 0.01;
-		RFM = 3;
-		RFL = 1;
-		EF = 2;
+		delta = 0.5;
 	}
 	std::string tcp_port_num = "12312";
 	uint32_t udp_port_num = 12345;
@@ -26,8 +27,6 @@ struct all_params: public robust_lt_parameter_set, public lt_uep_parameter_set {
 	int sendRate = 10240;
 	size_t fileSize = 20480;
 
-	/* PARAMETERS CHOICE */ 
-	int Ls = 64;
 };
 
 // MEMORY SINK
@@ -52,7 +51,7 @@ struct memory_sink {
   bool operator!() const { return false; }
 };
 
-typedef uep::net::data_client<lt_decoder,memory_sink> dc_type;
+typedef uep::net::data_client<uep_decoder,memory_sink> dc_type;
 all_params ps;
 boost::asio::io_service io;
 std::unique_ptr<dc_type> dc_p;
@@ -72,7 +71,7 @@ int main(int argc, char* argv[]) {
 		tcp::socket socket(io);
 		boost::asio::connect(socket, endpoint_iterator);
 		
-		boost::array<char, 128> buf;
+		boost::array<char, 2048> buf;
 		boost::system::error_code error;
 		
 		
@@ -93,40 +92,48 @@ int main(int argc, char* argv[]) {
 			size_t len = socket.read_some(boost::asio::buffer(buf), error);
 			s = std::string(buf.data(), len);
 			
-			if (error == boost::asio::error::eof)
+			if (error == boost::asio::error::eof) {
 				break; // Connection closed cleanly by peer.
-			else if (error)
+			}
+			else if (error) {
 				throw boost::system::system_error(error); // Some other error.
+			}
 			
 			//std::cout.write(buf.data(), len);
 			controlMessage::TXParam secondMessage;
-			
+			//std::cout << "\nasd\n" << s << std::endl;
 			// std::streambuf::setg()
 			if (secondMessage.ParseFromString(s)) {
 				std::cout << "Message received from server:\n";
-				std::cout << "K="<<secondMessage.k()<<"; ";
+				for (uint16_t i=0; i<secondMessage.ks_size(); i++) {
+					std::cout << "k_" << i << ":" << secondMessage.ks(i) << ",";
+				}
 				std::cout << "c="<<secondMessage.c()<<"; ";
 				std::cout << "Delta="<<secondMessage.delta()<<"; ";
-				std::cout << "RFM="<<secondMessage.rfm()<<"; ";
-				std::cout << "RFL="<<secondMessage.rfl()<<"; ";
+				for (uint16_t i=0; i<secondMessage.rfs_size(); i++) {
+					std::cout << "RF_" << i << ":" << secondMessage.rfs(i) << ",";
+				}
 				std::cout << "EF="<<secondMessage.ef()<<"; ";
 				std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
-				std::cout << "fileSize="<<secondMessage.filesize()<<";";
-				uint32_t * head = new uint32_t[secondMessage.header_size()];
+				std::cout << "fileSize="<<secondMessage.filesize()<<"; ";
+				
+				std::vector<std::string> head;
 				//header = secondMessage.header();
 				std::cout <<  "headerLength="<<secondMessage.header_size() << "\n";
 				for (uint16_t i=0; i<secondMessage.header_size(); i++) {
-					head[i] = secondMessage.header(i);
-					std::cout << secondMessage.header(i);
+					head.push_back(secondMessage.header(i));
+					//std::cout << secondMessage.header(i);
 				}
-				std::cout << "Creation of decoder...\n";
+				
+				std::cout << "\nCreation of decoder...\n";
 
 				// CREATION OF DECODER
-				ps.K = secondMessage.k();
+				ps.Ks[0] = secondMessage.ks(0);
+				ps.Ks[1] = secondMessage.ks(1);
 				ps.c = secondMessage.c();
 				ps.delta = secondMessage.delta();
-				ps.RFM = secondMessage.rfm();
-				ps.RFL = secondMessage.rfl();
+				ps.RFs[0] = secondMessage.rfs(0);
+				ps.RFs[1] = secondMessage.rfs(1);
 				ps.EF = secondMessage.ef();
 				char portStr[10];
 				sprintf(portStr, "%u", ps.udp_port_num);

@@ -83,6 +83,7 @@ target_link_libraries(client
   controlMessage.pb
   decoder
   packets_rw
+  uep_decoder
   ${Boost_LIBRARIES}
 )
 
