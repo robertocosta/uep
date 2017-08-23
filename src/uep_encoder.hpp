@@ -116,7 +116,12 @@ private:
 					      *   different priority
 					      *   classes.
 					      */
-  lt_encoder<Gen> std_enc; /**< The standard LT encoder. */
+  std::unique_ptr<lt_encoder<Gen>> std_enc; /**< The standard LT
+					     *	 encoder. Use a
+					     *	 pointer to allow
+					     *	 non-movable seed
+					     *	 generators.
+					     */
 
   /** Check whether the queues have enough packets to build a block. */
   void check_has_block();
@@ -128,8 +133,7 @@ template <class Gen>
 uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF),
-  std_enc(1, ps.c, ps.delta) { // Wait until two-level check
+  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF) {
   if (RFs.empty()) { // Using two-level UEP
     RFs = {ps.RFM, ps.RFL};
   }
@@ -142,7 +146,7 @@ uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
     inp_queues.emplace_back(s);
   }
 
-  std_enc = lt_encoder<Gen>(block_size_out(), ps.c, ps.delta);
+  std_enc = std::make_unique<lt_encoder<Gen>>(block_size_out(), ps.c, ps.delta);
 }
 
 template <class Gen>
@@ -177,18 +181,18 @@ void uep_encoder<Gen>::push(const packet &p) {
 
 template <class Gen>
 fountain_packet uep_encoder<Gen>::next_coded() {
-  return std_enc.next_coded();
+  return std_enc->next_coded();
 }
 
 template <class Gen>
 void uep_encoder<Gen>::next_block() {
-  std_enc.next_block();
+  std_enc->next_block();
   check_has_block();
 }
 
 template <class Gen>
 void uep_encoder<Gen>::next_block(std::size_t bn) {
-  auto curr_bnc = std_enc.block_number_counter();
+  auto curr_bnc = std_enc->block_number_counter();
   auto wanted_bnc(curr_bnc);
   wanted_bnc.set(bn);
   // Ignore if not in the comp. window
@@ -204,16 +208,16 @@ void uep_encoder<Gen>::next_block(std::size_t bn) {
 
   // Push `dist-1` empty blocks
   for (std::size_t i = 0; i < block_size_out() * (dist - 1); ++i) {
-    std_enc.push(packet());
+    std_enc->push(packet());
   }
 
-  std_enc.next_block(bn);
+  std_enc->next_block(bn);
   check_has_block();
 }
 
 template <class Gen>
 bool uep_encoder<Gen>::has_block() const {
-  return std_enc.has_block();
+  return std_enc->has_block();
 }
 
 template <class Gen>
@@ -244,22 +248,22 @@ const std::vector<std::size_t> &uep_encoder<Gen>::block_sizes() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::blockno() const {
-  return std_enc.blockno();
+  return std_enc->blockno();
 }
 
 template <class Gen>
 circular_counter<std::size_t> uep_encoder<Gen>::block_number_counter() const {
-  return std_enc.block_number_counter();
+  return std_enc->block_number_counter();
 }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::seqno() const {
-  return std_enc.seqno();
+  return std_enc->seqno();
 }
 
 template <class Gen>
 block_encoder::seed_t uep_encoder<Gen>::block_seed() const {
-  return std_enc.block_seed();
+  return std_enc->block_seed();
 }
 
 template <class Gen>
@@ -275,41 +279,41 @@ std::size_t uep_encoder<Gen>::queue_size() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::size() const {
-  std::size_t enc_size = std_enc.size() / block_size_out() * block_size_in();
+  std::size_t enc_size = std_enc->size() / block_size_out() * block_size_in();
   return queue_size() + enc_size;
 }
 
 template <class Gen>
 lt_row_generator uep_encoder<Gen>::row_generator() const {
-  return std_enc.row_generator();
+  return std_enc->row_generator();
 }
 
 template <class Gen>
 typename uep_encoder<Gen>::seed_generator_type
 uep_encoder<Gen>::seed_generator() const {
-  return std_enc.seed_generator();
+  return std_enc->seed_generator();
 }
 
 // template <class Gen>
 // typename uep_encoder<Gen>::const_block_iterator
 // uep_encoder<Gen>::current_block_begin() const {
-//   return std_enc.current_block_begin();
+//   return std_enc->current_block_begin();
 // }
 
 // template <class Gen>
 // typename uep_encoder<Gen>::const_block_iterator
 // uep_encoder<Gen>::current_block_end() const {
-//   return std_enc.current_block_end();
+//   return std_enc->current_block_end();
 // }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::coded_count() const {
-  return std_enc.coded_count();
+  return std_enc->coded_count();
 }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::total_coded_count() const {
-  return std_enc.total_coded_count();
+  return std_enc->total_coded_count();
 }
 
 template <class Gen>
@@ -357,7 +361,7 @@ void uep_encoder<Gen>::check_has_block() {
 
     // Pass to the standard encoder
     for (auto i = the_block.begin(); i != the_block.end(); ++i) {
-      std_enc.push(std::move(*i));
+      std_enc->push(std::move(*i));
     }
   }
 }

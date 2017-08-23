@@ -126,7 +126,10 @@ private:
 					    packets with their
 					    original priority
 					    level. */
-  lt_decoder std_dec; /**< The standard LT decoder. */
+  std::unique_ptr<lt_decoder> std_dec; /**< The standard LT
+					*    decoder. Use a pointer to
+					*    delay the construction.
+					*/
 
   std::size_t tot_dec_count;
   std::size_t tot_fail_count;
@@ -143,7 +146,7 @@ private:
 
 template <class Iter>
 void uep_decoder::push(Iter first, Iter last) {
-  std_dec.push(first, last);
+  std_dec->push(first, last);
   deduplicate_queued();
 }
 
