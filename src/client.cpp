@@ -15,7 +15,7 @@ using namespace uep::net;
 struct all_params: /*public robust_lt_parameter_set, */public lt_uep_parameter_set {
 	all_params() {
 		EF = 2;	
-		Ks = {2, 4};
+		Ks = {256, 512};
 		RFs = {2, 1}; 
 		c = 0.1;
 		delta = 0.5;

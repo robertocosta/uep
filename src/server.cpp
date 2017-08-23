@@ -111,7 +111,7 @@ struct streamTrace {
 struct all_params: /*public robust_lt_parameter_set,*/ public lt_uep_parameter_set {
 	all_params() {
 		EF = 2;	
-		Ks = {2, 4};
+		Ks = {256, 512};
 		RFs = {2, 1}; 
 		c = 0.1;
 		delta = 0.5;
@@ -338,12 +338,14 @@ struct packet_source {
 					currRep[currQid] = 0;
 					currQid++;
 				}		
-			} else {
+			}
+			if (currQid == Ks.size()) {
 				currRep[currQid] = 0;
 				efReal++;
 				currQid = 0;
 			}
-		} else {
+		}
+		if (efReal == ef) {
 			currQid = 0;
 			efReal = 0;
 			for (uint i=0; i<Ks.size(); i++) {
@@ -353,12 +355,15 @@ struct packet_source {
 		}
 		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
 		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
+		std::cout << streamN << ": from " << std::to_string(currInd[currQid]) << ", length: " << std::to_string(Ks[currQid]) << std::endl;
+		/*
 		std::cout << "next_packet():" << std::endl;
 		for (uint i=0; i < read.size(); i++) {
 			std::cout << read[i];
 		}
-		std::cout << std::endl;
+		std::cout << std::endl;*/
 		fountain_packet fp(read);
+		//std::cout << "currQid: " << std::to_string(currQid) << "; Ks.size(): " << std::to_string(Ks.size()) << std::endl;
 		fp.setPriority(currQid);
 		return fp;
 	}
