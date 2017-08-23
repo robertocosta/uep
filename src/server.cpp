@@ -5,6 +5,7 @@
 #include <sstream>
 #include <fstream>
 #include <codecvt>
+#include <set>
 
 //#include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -26,7 +27,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "data_client_server.hpp"
-/*	
+/*
 	1: client to server: streamName
 	2: server to client: TXParam
 		2.1 decoder parameters
@@ -48,7 +49,7 @@
 */
 
 inline bool file_exists (const std::string& name) {
-    std::ifstream f(name.c_str());
+		std::ifstream f(name.c_str());
 	bool out = f.good();
 	f.close();
 	return out;
@@ -81,7 +82,7 @@ bool writeCharVecToFile(std::string filename, std::vector<char> v) {
 	std::ofstream newFile;
 	newFile.open(filename, std::ios_base::app); // append mode
 	bool out = false;
-	if (newFile.is_open()) { 
+	if (newFile.is_open()) {
 		for (uint i=0; i<v.size(); i++) {
 			newFile << v[i];
 		}
@@ -151,7 +152,7 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 				int n = whiteSpacesTrimmed.find(" ");
 				std::string s = whiteSpacesTrimmed.substr(0,n);
 				int nn;
-				
+
 				//std::cout << i << std::endl;
 				switch (i) {
 				case (0):
@@ -227,7 +228,7 @@ struct packet_source {
 	uint efReal;
 	std::string streamName;
 	std::vector<std::ifstream> files;
-	
+
 	explicit packet_source(const parameter_set &ps) {
 		Ks = ps.Ks;
 		rfs = ps.RFs;
@@ -246,7 +247,7 @@ struct packet_source {
 		int fileSize = max_count; // file size = fileSize * Ls;
 		std::ofstream newFile (streamName+".txt");
 		//std::cout << streamName << ".txt\n";
-		if (newFile.is_open()) { 
+		if (newFile.is_open()) {
 			for (int ii = 0; ii<fileSize; ii++) {
 				if (!textFile) {
 					boost::random::uniform_int_distribution<> dist(0, 255);
@@ -272,7 +273,7 @@ struct packet_source {
 		sliceDataInd = toHead;
 		toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
 		// int fromSliceData = toHead + 1;
-		
+
 		header = readByteFromFile("dataset/"+streamName+".264",fromHead,headerSize);
 
 		for (uint8_t i=0; i<Ks.size(); i++) {
@@ -291,11 +292,11 @@ struct packet_source {
 						}
 						//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
 					}
-					ii++;	
+					ii++;
 				}
 			}
 		}
-	
+
 		for (uint8_t i=0; i<Ks.size(); i++) {
 			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
 			files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
@@ -313,7 +314,7 @@ struct packet_source {
 				} else {
 					currRep[currQid] = 0;
 					currQid++;
-				}		
+				}
 			} else {
 				currRep[currQid] = 0;
 				efReal++;
@@ -343,7 +344,7 @@ struct packet_source {
 	}
 
 	bool operator!() const { return !static_cast<bool>(*this); }
-	
+
 	boost::random::mt19937 gen;
 };
 
@@ -437,9 +438,9 @@ private:
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
-				/*	Call boost::asio::async_write() to serve the data to the client. 
-					We are using boost::asio::async_write(), 
-					rather than ip::tcp::socket::async_write_some(), 
+				/*	Call boost::asio::async_write() to serve the data to the client.
+					We are using boost::asio::async_write(),
+					rather than ip::tcp::socket::async_write_some(),
 					to ensure that the entire block of data is sent.*/
 				boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
 					&tcp_connection::handle_write,
@@ -451,13 +452,13 @@ private:
 				socket_.async_read_some(boost::asio::buffer(buf), std::bind(
 					&tcp_connection::secondHandler,
 					shared_from_this(),
-					std::placeholders::_1, 
+					std::placeholders::_1,
 					std::placeholders::_2));
 				if (error == boost::asio::error::eof)
 					std::cout.write("error",5); // Connection closed cleanly by peer.
 				else if (error)
 					throw boost::system::system_error(error); // Some other error.
-			}			
+			}
 		}
 
 		void secondHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
@@ -524,12 +525,15 @@ private:
 class tcp_server {
 public:
 	// Constructor: initialises an acceptor to listen on TCP port tcp_port_num.
-	tcp_server(boost::asio::io_service& io_service, const std::string &port):
-		acceptor_(io_service, tcp::v4()) {
+	tcp_server(boost::asio::io_service& io_service, const std::string &port) :
+		acceptor_(io_service) {
 		tcp::resolver resolver(io_service);
 		tcp::resolver::query listen_q(port);
-		tcp::endpoint ep = *resolver.resolve(listen_q);
-		acceptor_.bind(ep); // Take the first one
+		tcp::endpoint ep = *resolver.resolve(listen_q); // Take the first one
+
+		acceptor_.open(tcp::v4());
+		acceptor_.bind(ep);
+		acceptor_.listen();
 
 		// start_accept() creates a socket and
 		// initiates an asynchronous accept operation
@@ -539,13 +543,12 @@ public:
 
 private:
 	tcp::acceptor acceptor_;
-	std::set<boost::shared_ptr<tcp_connection>> active_conns;
+	std::set<tcp_connection::pointer> active_conns;
 
 	void start_accept() {
 		// creates a socket
 		tcp_connection::pointer new_connection =
 			tcp_connection::create(acceptor_.get_io_service());
-		active_conns.insert(new_connection);
 
 		// initiates an asynchronous accept operation
 		// to wait for a new connection.
@@ -556,17 +559,19 @@ private:
 																		 std::placeholders::_1));
 	}
 
-		// handle_accept() is called when the asynchronous accept operation
-		// initiated by start_accept() finishes. It services the client request
-		void handle_accept(tcp_connection::pointer new_connection,const boost::system::error_code& error) {
-			if (!error) {
-				new_connection->start();
-			}
-			// Call start_accept() to initiate the next accept operation.
-			start_accept();
-
+	// handle_accept() is called when the asynchronous accept operation
+	// initiated by start_accept() finishes. It services the client request
+	void handle_accept(tcp_connection::pointer new_connection, const boost::system::error_code& error) {
+		if (!error) {
+			active_conns.insert(new_connection);
+			new_connection->start();
 		}
-
+		else {
+			cerr << "Error on async_accept: " << error.message() << endl;
+		}
+		// Call start_accept() to initiate the next accept operation.
+		start_accept();
+	}
 };
 
 const string default_tcp_port = "12312";
@@ -603,7 +608,13 @@ int main(int argc, char **argv) {
 	tcp_server server(io_service, tcp_port);
 
 	// Run the io_service object to perform asynchronous operations.
+	BOOST_LOG_SEV(basic_lg, info) << "Run";
 	io_service.run();
+	BOOST_LOG_SEV(basic_lg, info) << "Stopped";
 
 	return 0;
 }
+
+// Local Variables:
+// tab-width: 2
+// End:
