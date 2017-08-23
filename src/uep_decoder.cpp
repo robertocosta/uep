@@ -78,7 +78,7 @@ circular_counter<std::size_t> uep_decoder::block_number_counter() const {
   return std_dec->block_number_counter();
 }
 
- block_decoder::seed_t uep_decoder::block_seed() const {
+int uep_decoder::block_seed() const {
   return std_dec->block_seed();
 }
 

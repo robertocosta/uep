@@ -75,7 +75,7 @@ public:
   /** The sequence number of the last generated packet. */
   std::size_t seqno() const;
   /** The seed used in the current block. */
-  block_encoder::seed_t block_seed() const;
+  int block_seed() const;
   /** The number of queued packets, excluding the current block. */
   std::size_t queue_size() const;
   /** Total number of (input) packets held by the encoder. */
@@ -262,7 +262,7 @@ std::size_t uep_encoder<Gen>::seqno() const {
 }
 
 template <class Gen>
-block_encoder::seed_t uep_encoder<Gen>::block_seed() const {
+int uep_encoder<Gen>::block_seed() const {
   return std_enc->block_seed();
 }
 
@@ -328,7 +328,7 @@ bool uep_encoder<Gen>::operator!() const {
 
 template <class Gen>
 void uep_encoder<Gen>::check_has_block() {
-  if (std_enc) return; // Already has a block
+  if (*std_enc) return; // Already has a block
   if (std::all_of(inp_queues.cbegin(),
 		  inp_queues.cend(),
 		  utils::to_bool<input_block_queue>())) {

@@ -166,7 +166,7 @@ public:
   /** The sequence number of the last generated packet. */
   std::size_t seqno() const { return seqno_counter.last(); }
   /** The seed used in the current block. */
-  block_encoder::seed_t block_seed() const { return the_block_encoder.seed(); }
+  int block_seed() const { return the_block_encoder.seed(); }
   /** The number of queued packets, excluding the current block. */
   std::size_t queue_size() const { return the_input_queue.queue_size(); }
   /** Total number of packets held by the encoder. */
