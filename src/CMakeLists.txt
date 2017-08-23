@@ -94,6 +94,13 @@ target_link_libraries(mp_plots
   log
 )
 
+add_executable(uep_mp_plots uep_mp_plots.cpp)
+target_link_libraries(uep_mp_plots
+  uep_decoder
+  block_encoder
+  log
+)
+
 add_executable(corrupt corrupt.cpp)
 target_link_libraries(corrupt
   svc_segmenter

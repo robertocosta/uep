@@ -5,6 +5,7 @@
 #include <utility>
 
 using namespace std;
+using namespace uep;
 
 namespace uep {
 
@@ -45,6 +46,12 @@ buffer_type operator^(const buffer_type &lhs, const buffer_type &rhs) {
 
 packet::packet() :
   shared_data(new vector<char>()) {}
+
+packet::packet(const buffer_type &b) : shared_data(new buffer_type(b)) {
+}
+
+packet::packet(buffer_type &&b) : shared_data(new buffer_type(std::move(b))) {
+}
 
 packet::packet(size_t size, char value) :
   shared_data(new vector<char>(size, value)) {}

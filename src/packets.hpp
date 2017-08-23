@@ -53,6 +53,10 @@ public:
   typedef std::vector<char>::const_reverse_iterator const_reverse_iterator;
 
   packet();
+
+  packet(const uep::buffer_type &b);
+  packet(uep::buffer_type &&b);
+
   explicit packet(size_t size, char value = 0);
   /** Copy-construct a packet.
    *  This constructor duplicates the packet data.
