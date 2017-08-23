@@ -1,6 +1,8 @@
 #ifndef UEP_LT_PARAM_SET_HPP
 #define UEP_LT_PARAM_SET_HPP
 
+#include <limits>
+
 namespace uep {
 
 /** Parameter set used to construct the LT encoders and decoders.
@@ -39,6 +41,46 @@ struct lt_uep_parameter_set {
   double delta; /**< Failure prob bound of the robust soliton
 		 *   distribution.
 		 */
+};
+
+struct streamTrace {
+	unsigned int startPos;
+	int len;
+	int lid;
+	int tid;
+	int qid;
+	int packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
+	bool discardable;
+	bool truncatable;
+};
+
+/** Parameters used to setup the control and data connections between
+ *  the client and server.
+ */
+struct net_parameter_set {
+  /** The value to set sendRate to in order to allow an unlimited
+   *  rate.
+   */
+  static constexpr double unlimited_send_rate =
+    std::numeric_limits<double>::infinity();
+  /** The value to set fileSize to in order to send an unlimited stream. */
+  static constexpr std::size_t unlimited_file_size = 0;
+
+  std::string streamName; /**< The name of the file to stream. */
+  bool ack; /**< Whether to enable the ACKs. */
+  double sendRate; /**< The send rate for UDP packets from the serrver. */
+  std::size_t fileSize; /**< The size of the file being streamed. */
+  std::string tcp_port_num; /**< The TCP port where the control server listens. */
+  std::string udp_port_num; /**< The UDP port where the data client listens. */
+  std::vector<streamTrace> videoTraceAr;
+};
+
+/** Complete set of parameters that is exchanged between the server
+ *  and the client.
+ */
+template <class EncPar>
+struct all_parameter_set: public net_parameter_set,
+			  public EncPar {
 };
 
 }

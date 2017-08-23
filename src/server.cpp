@@ -26,7 +26,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include "data_client_server.hpp"
-/*	
+/*
 	1: client to server: streamName
 	2: server to client: TXParam
 		2.1 decoder parameters
@@ -48,61 +48,35 @@
 */
 
 //std::vector<unsigned char> readByteFromFile(const char* filename, int from, int len) {
-char * readByteFromFile(std::string filename, int from, int len) {
+std::vector<char> readByteFromFile(std::string filename, int from, int len) {
 	std::ifstream ifs(filename, std::ifstream::binary);
 	//std::vector<unsigned char> vec;
+	std::vector<char> content;
 	if (ifs) {
+		content.resize(len);
 		ifs.seekg (from, std::ios::beg);
-		char * buffer = new char [len];
-		ifs.read(buffer, len);
+		ifs.read(&content[0], len);
 		ifs.close();
-		return buffer;
-	} else 
-		return NULL;	
+	}
+	return content;
 }
 
-
+using namespace std;
 using boost::asio::ip::tcp;
 using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
 
-struct streamTrace {
-	unsigned int startPos;
-	int len;
-	int lid;
-	int tid;
-	int qid;
-	int packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
-	bool discardable;
-	bool truncatable;
-};
-
 // DEFAULT PARAMETER SET
-struct all_params: /*public robust_lt_parameter_set,*/ public lt_uep_parameter_set {
-	all_params() {
-		EF = 2;	
-		Ks = {2, 4};
-		RFs = {2, 1}; 
-		c = 0.1;
-		delta = 0.5;
-	}
-	std::string streamName;
-	bool ack = true;
-	double sendRate = 10240;
-	size_t fileSize = 20480;
-	int tcp_port_num = 12312;
-	std::vector<streamTrace> videoTraceAr;
-};
+typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
 all_params ps;
 
-streamTrace *videoTrace = &(ps.videoTraceAr[0]);
+std::vector<streamTrace> videoTrace;
 
-streamTrace* loadTrace(std::string streamName) {
+std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::ifstream file;
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios_base::in);
 	if (!file.is_open()) throw std::runtime_error("Failed opening file");
-	file.seekg (0, std::ios::beg);
 	std::string line;
 	std::string header;
 	//std::regex regex("^0x\\([0-9]+\\)=[0-9]+No$");
@@ -116,17 +90,17 @@ streamTrace* loadTrace(std::string streamName) {
 	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
 	if (!file.is_open()) throw std::runtime_error("Failed opening file");
 	file.seekg (0, std::ios::beg);
-	streamTrace saved[nRows-3];
-	streamTrace *sTp;
-	sTp = saved;
+
+	std::vector<streamTrace> sTp;
 	//std::cout << nRows << std::endl;
 	while (!file.eof()) {
-		std::getline(file,line);
+		std::getline(file, line);
 		//std::cout << line << std::endl;
 		if (line.length()==0) {
 			break;
 		}
 		lineN++;
+
 		std::istringstream iss(line);
 		if (lineN>2) {
 			std::string whiteSpacesTrimmed;
@@ -142,14 +116,16 @@ streamTrace* loadTrace(std::string streamName) {
 				n = s.find(" ");
 			}
 			whiteSpacesTrimmed += s;
+			streamTrace elem;
 			for (int i=0; i<8; i++) {
 				int n = whiteSpacesTrimmed.find(" ");
 				std::string s = whiteSpacesTrimmed.substr(0,n);
 				int nn;
+
 				//std::cout << i << std::endl;
 				switch (i) {
 				case (0):
-					saved[lineN-3].startPos = strtoul(s.substr(s.find("x")+1,s.length()).c_str(), NULL, 16);
+					elem.startPos = strtoul(s.substr(s.find("x")+1,s.length()).c_str(), NULL, 16);
 					break;
 				case (1): case (2): case(3): case (4):
 					if (s == "0") {
@@ -160,44 +136,45 @@ streamTrace* loadTrace(std::string streamName) {
 					break;
 				case (5):
 					if (s == "StreamHeader") {
-						saved[lineN-3].packetType = 1;
+						elem.packetType = 1;
 					} else if (s == "ParameterSet") {
-						saved[lineN-3].packetType = 2;
+						elem.packetType = 2;
 					} else if (s == "SliceData") {
-						saved[lineN-3].packetType = 3;
+						elem.packetType = 3;
 					}
 					break;
 				case (6):
 					if (s == "Yes") {
-						saved[lineN-3].discardable = true;
+						elem.discardable = true;
 					} else if (s == "No") {
-						saved[lineN-3].discardable = false;
+						elem.discardable = false;
 					}
 					break;
 				case (7):
 					if (s == "Yes") {
-						saved[lineN-3].truncatable = true;
+						elem.truncatable = true;
 					} else if (s == "No") {
-						saved[lineN-3].truncatable = false;
+						elem.truncatable = false;
 					}
 				break;
 				}
 				switch (i) {
 				case (1):
-					saved[lineN-3].len = nn;
+					elem.len = nn;
 					break;
 				case (2):
-					saved[lineN-3].lid = nn;
+					elem.lid = nn;
 					break;
 				case (3):
-					saved[lineN-3].tid = nn;
+					elem.tid = nn;
 					break;
 				case (4):
-					saved[lineN-3].qid = nn;
+					elem.qid = nn;
 					break;
 				}
 				whiteSpacesTrimmed = whiteSpacesTrimmed.substr(n+1,whiteSpacesTrimmed.length());
 			}
+			sTp.push_back(elem);
 		}
 	}
 	file.close();
@@ -205,8 +182,9 @@ streamTrace* loadTrace(std::string streamName) {
 }
 
 // PACKET SOURCE
-char * header;
-int headerTo;
+std::vector<char> header;
+int headerSize;
+int sliceDataInd;
 struct packet_source {
 	typedef all_params parameter_set;
 	int Ls;
@@ -220,7 +198,7 @@ struct packet_source {
 	int efReal;
 	std::string streamName;
 	std::ifstream file;
-	
+
 	explicit packet_source(const parameter_set &ps) {
 		Ls = ps.Ks[0];
 		rfm = ps.RFM;
@@ -238,7 +216,7 @@ struct packet_source {
 		int fileSize = max_count; // file size = fileSize * Ls;
 		std::ofstream newFile (streamName+".txt");
 		//std::cout << streamName << ".txt\n";
-		if (newFile.is_open()) { 
+		if (newFile.is_open()) {
 			for (int ii = 0; ii<fileSize; ii++) {
 				if (!textFile) {
 					boost::random::uniform_int_distribution<> dist(0, 255);
@@ -254,27 +232,35 @@ struct packet_source {
 		*/
 		videoTrace = loadTrace(streamName);
 		/*
-		for (int i=5; i<10; i++) {
+		for (int i=0; i<10; i++) {
 			std::cout << videoTrace[i].startPos << "," << videoTrace[i].len << "," << videoTrace[i].lid<< "," << videoTrace[i].tid<< ",";
 			std::cout << videoTrace[i].qid << "," << videoTrace[i].packetType << "," << videoTrace[i].discardable<< "," << videoTrace[i].truncatable<< ";\n";
 		}
 		*/
 		// parse .trace to produce a txt with parts repeated
 		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
-		int from = videoTrace[0].startPos;
-		int to;
-		for (to = from; videoTrace[to].packetType < 3; ++to) { }
-		int sliceDataInd = to-1;
-		to = videoTrace[to-1].startPos + videoTrace[to-1].len;
-		header = readByteFromFile("dataset/"+streamName+".264",videoTrace[sliceDataInd].startPos,videoTrace[sliceDataInd].len);
-		headerTo = *header + to-from;
+		int fromHead = videoTrace[0].startPos;
+		int toHead;
+		headerSize = 0;
+		for (toHead = fromHead; videoTrace[toHead].packetType < 3; toHead++) { headerSize += videoTrace[toHead].len; }
+		//int fromSliceData = videoTrace[toHead].startPos;
+		sliceDataInd = toHead;
+		toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
+		// int fromSliceData = toHead + 1;
+		//int toSliceData = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
+
+		header = readByteFromFile("dataset/"+streamName+".264",fromHead,headerSize);
+		/*
+		std::cout << "header: from " << fromHead << " , for " << headerSize << " to " << toHead << std::endl;
+		std::cout << "sliceData: from " << fromSliceData << " , for " << toSliceData-fromSliceData << " , to " << toSliceData << std::endl;
+		*/
 		file = std::ifstream("dataset/"+streamName+".264", std::ios::in|std::ios::binary|std::ios::ate);
 		if (!file.is_open()) throw std::runtime_error("Failed opening file");
 		else max_count = file.tellg();
 
 
 			//file.seekg (from, std::ios::beg);
-			//wchar_t mDataBuffer[to-from]; 
+			//wchar_t mDataBuffer[to-from];
 		//std::vector<unsigned char> mDataBuffer;
 		//mDataBuffer.resize( to-from );
 		//file.read( (char*)( &mDataBuffer[0]), to-from );
@@ -290,9 +276,9 @@ struct packet_source {
 		/*
 		std::string videoParams;
 		videoParams.resize(to-from);
-		
+
 		std::ostringstream out;
-		
+
 		//videoParams.reserve(to-from);
 		//videoParams.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>(from,to));
 		file.read (&videoParams[0], videoParams.size()); */
@@ -312,7 +298,7 @@ struct packet_source {
 				if (rfmReal==rfm) {
 					rfmReal++;
 					currInd += Ls;
-				} 
+				}
 				if (rflReal<rfl) rflReal++;
 				else {
 					rfmReal = 0;
@@ -320,7 +306,7 @@ struct packet_source {
 					efReal++;
 					currInd -= Ls;
 				}
-			}	
+			}
 		} else {
 			currInd += 2*Ls;
 			rfmReal = 0;
@@ -336,7 +322,7 @@ struct packet_source {
 		p.assign(memblock, Ls+memblock);
 		/*for (int i=0; i < Ls; i++) {
 			p[i] = memblock[i];
-		}*/	
+		}*/
 		return p;
 	}
 
@@ -345,17 +331,20 @@ struct packet_source {
 	}
 
 	bool operator!() const { return !static_cast<bool>(*this); }
-	
+
 	boost::random::mt19937 gen;
 };
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
-	/* 	Using shared_ptr and enable_shared_from_this 
-		because we want to keep the tcp_connection object alive 
-		as long as there is an operation that refers to it.*/
-	public:
-		typedef boost::shared_ptr<tcp_connection> pointer;
-		typedef uep::net::data_server<uep_encoder<std::mt19937>,packet_source> ds_type;
+	/*	Using shared_ptr and enable_shared_from_this
+			because we want to keep the tcp_connection object alive
+			as long as there is an operation that refers to it.*/
+public:
+	typedef boost::shared_ptr<tcp_connection> pointer;
+	typedef uep_encoder<> enc_t;
+	typedef packet_source src_t;
+	typedef uep::net::data_server<enc_t,src_t> ds_type;
+
 		static pointer create(boost::asio::io_service& io_service) {
 			return pointer(new tcp_connection(io_service));
 		}
@@ -364,27 +353,61 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			return socket_;
 		}
 
+	void start() {
+		boost::system::error_code error;
+		socket_.async_read_some(boost::asio::buffer(buf),
+														std::bind(&tcp_connection::firstHandler,
+																			shared_from_this(),
+																			std::placeholders::_1,
+																			std::placeholders::_2));
+
+		if (error == boost::asio::error::eof)
+			std::cerr << "error" << std::endl; // Connection closed cleanly by peer.
+		else if (error)
+			throw boost::system::system_error(error); // Some other error.
+		//std::cout << buf.data() << std::endl;
+	}
+
+private:
+	boost::asio::io_service& io;
+	tcp::socket socket_;
+	ds_type ds;
+
+	all_params ps;
+
+	std::array<char,4096> buf;
+
+	tcp_connection(boost::asio::io_service& io_service) :
+		io(io_service), socket_(io_service), ds(io_service) {
+		// set default values from global ps
+		ps = ::ps;
+	}
+
 		void firstHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
 			std::string s = std::string(buf.data(), bytes_transferred);
+			// Protobuf messages are not delimited: this works when a single
+			// message is received in one segment
 			controlMessage::StreamName firstMessage;
 			if (firstMessage.ParseFromString(s)) {
 				s = firstMessage.streamname();
 			}
 			std::cout << "Stream name received from client: \"" << s << "\"\n";
 			ps.streamName = s;
-			
+
 			/* CREATION OF DATA SERVER */
 			//BOOST_LOG_SEV(basic_lg, debug) << "Creation of encoder...\n";
 			std::cout << "Creation of encoder...\n";
-			ds_type *ds = new ds_type(io);
-			ds_p.reset(ds);
-			ds->setup_encoder(ps); // setup the encoder inside the data_server
-			ds->setup_source(ps); // setup the source  inside the data_server
-			ds->target_send_rate(ps.sendRate); // Set a target send rate of 10240 byte/s = 10 pkt/s
-			ds->enable_ack(ps.ack);
-			
+			enc_t::parameter_set enc_ps(ps); // extract only the encoder params
+			src_t::parameter_set src_ps(ps); // extract only the source params
+			ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
+			ds.setup_source(src_ps); // setup the source  inside the data_server
+
+			ds.target_send_rate(ps.sendRate);
+			ds.enable_ack(ps.ack);
+
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
+			assert(ps.Ks.size() == 2);
 			secondMessage.add_ks(ps.Ks[0]);
 			secondMessage.add_ks(ps.Ks[1]);
 			secondMessage.set_c(ps.c);
@@ -396,17 +419,20 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			secondMessage.set_ack(ps.ack);
 			secondMessage.set_filesize(ps.fileSize);
 
-			uint8_t * head = new uint8_t[headerTo - *header + 1];
+			//uint8_t * head = new uint8_t[headerTo - *header + 1];
 			//uint16_t * head2 = new uint16_t[(headerTo - *header)/2+1];
 			//uint32_t * head4 = new uint32_t[(headerTo - *header)/4+1];
 
-			auto iter2 = header;
-			for (int i=0; i<headerTo - *header; i++) {
-				head[i] = (uint8_t)*iter2;
-				std::string st = std::to_string(head[i]);
-				iter2 = iter2 + 1;
-				secondMessage.add_header(st);
-			}
+			//auto iter2 = header;
+			//std::cout << "Header:\n";
+			//for (int i=0; i<headerSize; i++) {
+				//head[i] = (uint8_t)*iter2;
+				//std::string st = std::to_string(header[i]);
+				//iter2 = iter2 + 1;
+				//std::string s = std::to_string((uint8_t)header[i]);
+				//secondMessage.add_header(s);
+				//secondMessage.add_header(std::to_string(header[i]));
+			//}
 			/*
 			for (int i=0; i<(headerTo - *header); i+=2) {
 				head2[i/2] = head[i] | (head[i+1] << 8);
@@ -420,17 +446,17 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			*/
 
 
-			std::cout << secondMessage.header_size() << std::endl;
+			std::cout << "\n" << secondMessage.header_size() << std::endl;
 			std::cout << "\n8 bit:\n";
-			for (int i=0; i<headerTo - *header; i++)
-				std::cout << head[i]<<",";
-	
-				
+			for (int i=0; i< secondMessage.header_size(); i++)
+				std::cout <<  secondMessage.header(i) << ",";
+			std::cout << std::endl;
+
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
-				/*	Call boost::asio::async_write() to serve the data to the client. 
-					We are using boost::asio::async_write(), 
-					rather than ip::tcp::socket::async_write_some(), 
+				/*	Call boost::asio::async_write() to serve the data to the client.
+					We are using boost::asio::async_write(),
+					rather than ip::tcp::socket::async_write_some(),
 					to ensure that the entire block of data is sent.*/
 				boost::asio::async_write(socket_, boost::asio::buffer(s),std::bind(
 					&tcp_connection::handle_write,
@@ -442,13 +468,13 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 				socket_.async_read_some(boost::asio::buffer(buf), std::bind(
 					&tcp_connection::secondHandler,
 					shared_from_this(),
-					std::placeholders::_1, 
+					std::placeholders::_1,
 					std::placeholders::_2));
 				if (error == boost::asio::error::eof)
 					std::cout.write("error",5); // Connection closed cleanly by peer.
 				else if (error)
 					throw boost::system::system_error(error); // Some other error.
-			}			
+			}
 		}
 
 		void secondHandler(const boost::system::error_code& error, std::size_t bytes_transferred ) {
@@ -472,9 +498,9 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			// GET REMOTE ADDRESS FROM TCP CONNECTION
 			std::string remAddr = socket_.remote_endpoint().address().to_string();
 			std::cout << "Binding of data server to "<<remAddr<<":"<<port<<"\n";
-			ds_p->open(remAddr, portStr);
+			ds.open(remAddr, portStr);
 			//boost::asio::ip::udp::endpoint udpEndpoint = ds_p->server_endpoint();
-			uint32_t udpPort = ds_p->server_endpoint().port(); // =(udp port for ACK to server)
+			uint32_t udpPort = ds.server_endpoint().port(); // =(udp port for ACK to server)
 			std::cout << "UDP port for ACKs: "<< udpPort << std::endl;
 			std::cout << "Sending to client..." << std::endl;
 			controlMessage::ConnACK connACKMessage;
@@ -500,38 +526,11 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			std::string s = std::string(buf.data(), bytes_transferred);
 			// s should be empty
 			std::cout << "PLAY.\n";
-			ds_p->start();
+			ds.start();
 			std::cout << "Called start" << std::endl;
 		}
 
-		void start() {	
-			boost::system::error_code error;
-			socket_.async_read_some(boost::asio::buffer(buf), std::bind(
-				&tcp_connection::firstHandler,
-				shared_from_this(),
-				std::placeholders::_1, std::placeholders::_2));
-
-			if (error == boost::asio::error::eof)
-				std::cout.write("error",5); // Connection closed cleanly by peer.
-			else if (error)
-				throw boost::system::system_error(error); // Some other error.
-			//std::cout << buf.data() << std::endl;
-
-		}
-
-	private:
-		boost::array<char,128> buf;
-		std::unique_ptr<ds_type> ds_p;
-		tcp::socket socket_;
-		boost::asio::io_service& io;
-		
-		//uep::lt_encoder<std::mt19937> enc;
-		//uep::net::data_server<lt_encoder<std::mt19937>,random_packet_source> ds;
-		//boost::asio::io_service io;
-		tcp_connection(boost::asio::io_service& io_service): socket_(io_service), io(io_service) {
-			
-		}
-		// handle_write() is responsible for any further actions 
+		// handle_write() is responsible for any further actions
 		// for this client connection.
 		void handle_write(const boost::system::error_code& /*error*/,size_t /*bytes_transferred*/) {
 
@@ -540,30 +539,41 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 };
 
 class tcp_server {
-	public:
-		// Constructor: initialises an acceptor to listen on TCP port tcp_port_num.
-		tcp_server(boost::asio::io_service& io_service): 
-			acceptor_(io_service, tcp::endpoint(tcp::v4(), ps.tcp_port_num)) {
-			// start_accept() creates a socket and 
-			// initiates an asynchronous accept operation 
-			// to wait for a new connection.
-			start_accept();
-		}
+public:
+	// Constructor: initialises an acceptor to listen on TCP port tcp_port_num.
+	tcp_server(boost::asio::io_service& io_service, const std::string &port):
+		acceptor_(io_service, tcp::v4()) {
+		tcp::resolver resolver(io_service);
+		tcp::resolver::query listen_q(port);
+		tcp::endpoint ep = *resolver.resolve(listen_q);
+		acceptor_.bind(ep); // Take the first one
 
-	private:
-		void start_accept() {
-			// creates a socket
-			tcp_connection::pointer new_connection =
-				tcp_connection::create(acceptor_.get_io_service());
-			active_conns.push_front(new_connection);
+		// start_accept() creates a socket and
+		// initiates an asynchronous accept operation
+		// to wait for a new connection.
+		start_accept();
+	}
 
-			// initiates an asynchronous accept operation 
-			// to wait for a new connection. 
-			acceptor_.async_accept(new_connection->socket(),
-				std::bind(&tcp_server::handle_accept, this, new_connection,std::placeholders::_1));
-		}
+private:
+	tcp::acceptor acceptor_;
+	std::set<boost::shared_ptr<tcp_connection>> active_conns;
 
-		// handle_accept() is called when the asynchronous accept operation 
+	void start_accept() {
+		// creates a socket
+		tcp_connection::pointer new_connection =
+			tcp_connection::create(acceptor_.get_io_service());
+		active_conns.insert(new_connection);
+
+		// initiates an asynchronous accept operation
+		// to wait for a new connection.
+		acceptor_.async_accept(new_connection->socket(),
+													 std::bind(&tcp_server::handle_accept,
+																		 this,
+																		 new_connection,
+																		 std::placeholders::_1));
+	}
+
+		// handle_accept() is called when the asynchronous accept operation
 		// initiated by start_accept() finishes. It services the client request
 		void handle_accept(tcp_connection::pointer new_connection,const boost::system::error_code& error) {
 			if (!error) {
@@ -571,32 +581,50 @@ class tcp_server {
 			}
 			// Call start_accept() to initiate the next accept operation.
 			start_accept();
-	
+
 		}
 
-		tcp::acceptor acceptor_;
-
-	std::list<boost::shared_ptr<tcp_connection>> active_conns;
 };
 
-int main() {
-	/*
-	log::init("demo_ds.log");
+const string default_tcp_port = "12312";
+
+int main(int argc, char **argv) {
+	log::init("server.log");
 	default_logger basic_lg(boost::log::keywords::channel = basic);
 	default_logger perf_lg(boost::log::keywords::channel = performance);
-	*/
-	try {
-		// We need to create a server object to accept incoming client connections.
-		boost::asio::io_service io_service;
 
-		// The io_service object provides I/O services, such as sockets, 
-		// that the server object will use.
-		tcp_server server(io_service);
+	ps.EF = 2;
+	ps.Ks = {2,4};
+	ps.RFs = {2,1};
+	ps.c = 0.1;
+	ps.delta = 0.5;
+	ps.ack = true;
+	ps.sendRate = 10240;
+	ps.fileSize = 20480;
+	ps.tcp_port_num = default_tcp_port;
 
-		// Run the io_service object to perform asynchronous operations.
-		io_service.run();
-	} catch (std::exception& e) {
-		std::cerr << e.what() << std::endl;
+	string tcp_port = default_tcp_port;
+	if (argc > 1) {
+		tcp_port = argv[1];
 	}
+	if (argc > 2) {
+		std::cerr << "Too many args" << std::endl;
+		return 1;
+	}
+
+	// We need to create a server object to accept incoming client connections.
+	boost::asio::io_service io_service;
+
+	// The io_service object provides I/O services, such as sockets,
+	// that the server object will use.
+	tcp_server server(io_service, tcp_port);
+
+	// Run the io_service object to perform asynchronous operations.
+	io_service.run();
+
 	return 0;
 }
+
+// Local Variables:
+// tab-width: 2
+// End:

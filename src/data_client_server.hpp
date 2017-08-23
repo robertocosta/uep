@@ -361,10 +361,10 @@ private:
 				     *   each block before skipping to
 				     *   the next.
 				     */
-  std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
+  buffer_type last_pkt; /**< Last _raw_ coded packet generated
 			       *   by the encoder.
 			       */
-  std::vector<char> last_ack; /**< Last _raw_ ack packet received. */
+  buffer_type last_ack; /**< Last _raw_ ack packet received. */
   std::chrono::steady_clock::time_point last_sent_time;
   boost::asio::steady_timer pkt_timer; /**< Timer used to schedule the
 					*   packet transmissions.
