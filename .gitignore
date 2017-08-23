@@ -29,5 +29,5 @@ Makefile
 /src/*.pb.cc
 /lib/
 /bin/
-/dataset/
+/dataset/CREW_352x288_30_orig_01.*.264
 jsvm-prefix/

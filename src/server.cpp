@@ -129,7 +129,7 @@ std::vector<streamTrace> videoTrace;
 
 std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::ifstream file;
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
+	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary);
 	if (!file.is_open()) throw std::runtime_error("Failed opening file");
 	file.seekg (0, std::ios::beg);
 	std::string line;
@@ -285,7 +285,8 @@ struct packet_source {
 		newFile.close();
 		*/
 		videoTrace = loadTrace(streamName);
-		max_count = videoTrace[videoTrace.size()].startPos + videoTrace[videoTrace.size()].len;
+		max_count = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
+		std::cout << "max_count: " << std::to_string(max_count) << std::endl;
 		// parse .trace to produce a txt with parts repeated
 		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
 		int fromHead = videoTrace[0].startPos;
@@ -319,13 +320,12 @@ struct packet_source {
 				}
 			}
 		}
-	
 		for (uint8_t i=0; i<Ks.size(); i++) {
 			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
 			files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
 			if (!files[i].is_open()) throw std::runtime_error("Failed opening file");
 		}
-
+		
 	}
 
 	fountain_packet next_packet() {
@@ -353,6 +353,11 @@ struct packet_source {
 		}
 		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
 		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
+		std::cout << "next_packet():" << std::endl;
+		for (uint i=0; i < read.size(); i++) {
+			std::cout << read[i];
+		}
+		std::cout << std::endl;
 		fountain_packet fp(read);
 		fp.setPriority(currQid);
 		return fp;
