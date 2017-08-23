@@ -42,16 +42,16 @@ target_link_libraries(log
   ${Boost_LIBRARIES}
 )
 
-add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
-target_link_libraries(svc_segmenter
-  AvcRewriterLibStatic
-  H264AVCCommonLibStatic
-  H264AVCDecoderLibStatic
-  H264AVCEncoderLibStatic
-  H264AVCVideoIoLibStatic
-  log
-  packets
-)
+# add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
+# target_link_libraries(svc_segmenter
+#   AvcRewriterLibStatic
+#   H264AVCCommonLibStatic
+#   H264AVCDecoderLibStatic
+#   H264AVCEncoderLibStatic
+#   H264AVCVideoIoLibStatic
+#   log
+#   packets
+# )
 
 add_executable(demo_ds demo_ds.cpp)
 target_link_libraries(demo_ds
@@ -102,10 +102,10 @@ target_link_libraries(uep_mp_plots
   log
 )
 
-add_executable(corrupt corrupt.cpp)
-target_link_libraries(corrupt
-  svc_segmenter
-)
+# add_executable(corrupt corrupt.cpp)
+# target_link_libraries(corrupt
+#   svc_segmenter
+# )
 
 set(python_files
   plot_decodeable
