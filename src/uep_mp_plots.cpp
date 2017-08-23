@@ -7,8 +7,8 @@ extern "C" {
 }
 
 #include "cmake_defines.hpp"
-#include "decoder.hpp"
-#include "encoder.hpp"
+#include "uep_decoder.hpp"
+#include "uep_encoder.hpp"
 
 using namespace std;
 using namespace uep;
@@ -28,33 +28,47 @@ pid_t run_forked(const Func &f) {
   }
 }
 
-packet random_pkt(size_t size) {
+fountain_packet random_pkt(size_t size, size_t priority) {
   static std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> g;
-  packet p;
+  fountain_packet p;
   p.resize(size);
   for (size_t i=0; i < size; i++) {
     p[i] = g();
   }
+  p.setPriority(priority);
   return p;
 }
 
-void run_enc_dec(size_t K, double c, double delta,
+void run_enc_dec(initializer_list<size_t> Ks,
+		 initializer_list<size_t> RFs,
+		 size_t EF,
+		 double c, double delta,
 		 size_t nblocks, size_t L, size_t max_size) {
   log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
 
-  BOOST_LOG(perf_lg) << "run_enc_dec K=" << K
+  lt_uep_parameter_set ps{0,0,EF,Ks,RFs,c,delta};
+
+  BOOST_LOG(perf_lg) << "run_enc_dec Ks=" << ps.Ks
+		     << " RFs=" << ps.RFs
+		     << " EF=" << EF
 		     << " c=" << c
 		     << " delta=" << delta
 		     << " nblocks=" << nblocks
 		     << " L=" << L
 		     << " max_size=" << max_size;
-
-  lt_encoder<mt19937> enc(K,c,delta);
-  lt_decoder dec(K,c,delta);
+  
+  uep_encoder<mt19937> enc(ps);
+  uep_decoder dec(ps);
 
   // Load the encoder
-  for (size_t i = 0; i < nblocks*K; ++i) {
-    enc.push(random_pkt(L));
+  for (size_t i = 0; i < nblocks; ++i) {
+    auto K_i = Ks.begin();
+    for (size_t j = 0; j < Ks.size(); ++j) {
+      size_t K = *K_i++;
+      for (size_t l = 0; l < K; ++l) {
+	enc.push(random_pkt(L, j));
+      }
+    }
   }
 
   // Decode all the packets
@@ -80,29 +94,29 @@ int main(int,char**) {
   constexpr size_t max_size = 1;
 
   pid = run_forked([]{
-      log::init("mp_plots_A.log");
+      log::init("uep_mp_plots_A.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE A";
       BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-      run_enc_dec(1000, 0.01, 0.5, nblocks, L, max_size);
+      run_enc_dec({100,300}, {2,1}, 2, 0.01, 0.5, nblocks, L, max_size);
       BOOST_LOG(perf_lg) << "DONE A";
     });
   children_pids.push_back(pid);
   pid = run_forked([]{
-      log::init("mp_plots_B.log");
+      log::init("uep_mp_plots_B.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE B";
       BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-      run_enc_dec(1000, 0.03, 0.5, nblocks, L, max_size);
+      run_enc_dec({100,300}, {2,1}, 2, 0.03, 0.5, nblocks, L, max_size);
       BOOST_LOG(perf_lg) << "DONE B";
     });
   children_pids.push_back(pid);
   pid = run_forked([]{
-      log::init("mp_plots_C.log");
+      log::init("uep_mp_plots_C.log");
       log::default_logger perf_lg(boost::log::keywords::channel = log::performance);
       BOOST_LOG(perf_lg) << "RUN CASE C";
       BOOST_LOG(perf_lg) << "Git commit: " << GIT_COMMIT_SHA1;
-      run_enc_dec(1000, 0.1, 0.5, nblocks, L, max_size);
+      run_enc_dec({100,300}, {2,1}, 2, 0.1, 0.5, nblocks, L, max_size);
       BOOST_LOG(perf_lg) << "DONE C";
     });
   children_pids.push_back(pid);

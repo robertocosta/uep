@@ -63,16 +63,6 @@ public:
   }
 };
 
-template <class T>
-std::ostream &operator<<(std::ostream &out, const std::vector<T> &v) {
-  out << '[';
-  for (auto i = v.cbegin(); i != v.cend(); ++i) {
-    out << *i << ", ";
-  }
-  out << "\b\b]";
-  return out;
-}
-
 /** Integer hashing function. */
 template <class T>
 struct knuth_mul_hasher {
@@ -86,5 +76,20 @@ struct knuth_mul_hasher {
 };
 
 }}
+
+namespace std {
+
+/** Write a text representation of a vector. */
+template <class T>
+ostream &operator<<(ostream &out, const vector<T> &v) {
+  out << '[';
+  for (auto i = v.cbegin(); i != v.cend(); ++i) {
+    out << *i << ", ";
+  }
+  out << "\b\b]";
+  return out;
+}
+
+}
 
 #endif
