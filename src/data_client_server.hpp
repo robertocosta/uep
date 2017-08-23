@@ -389,6 +389,8 @@ private:
 
     // Empty encoder and no more data: stop
     if (!*encoder_) {
+      BOOST_LOG_SEV(basic_lg, log::info) <<
+	"Data server out of data to send";
       stop();
       return;
     }
@@ -397,6 +399,8 @@ private:
     if (max_per_block <= encoder_->coded_count()) {
       encoder_->next_block();
       if (!*encoder_) { // The source did not have 2 blocks
+	BOOST_LOG_SEV(basic_lg, log::info) <<
+	  "Data server out of data to send after reaching max_per_block";
 	stop();
 	return;
       }
@@ -784,6 +788,7 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
     async_receive_pkt();
   }
   else {
+    BOOST_LOG_SEV(basic_lg, log::info) << "Data client reached expected_count";
     stop();
   }
 }
@@ -818,6 +823,7 @@ void data_client<Decoder, Sink>::handle_timeout(const boost::system::error_code&
     }
   }
 
+  BOOST_LOG_SEV(basic_lg, log::warning) << "Data client timed out";
   stop();
 }
 
