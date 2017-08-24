@@ -4,6 +4,12 @@
 #include <stdexcept>
 #include <utility>
 
+#include <boost/numeric/conversion/cast.hpp>
+
+extern "C" {
+#include <arpa/inet.h>
+}
+
 using namespace std;
 using namespace uep;
 
@@ -371,4 +377,97 @@ bool operator==(const fountain_packet &lhs, const fountain_packet &rhs ) {
 
 bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs ) {
   return !(lhs == rhs);
+}
+
+namespace uep {
+
+uep_packet uep_packet::from_packet(const packet &p) {
+  uep_packet up;
+  buffer_type &upb = up.buffer();
+  const buffer_type &pb = p.buffer();
+
+  upb.resize(pb.size() - sizeof(seqno_type));
+  std::copy(pb.cbegin() + sizeof(seqno_type), pb.cend(),
+	    upb.begin());
+
+  const char *pb_first = &pb.front();
+  const seqno_type *raw_sn = reinterpret_cast<const seqno_type*>(pb_first);
+  up.seqno = boost::numeric_cast<std::size_t>(ntohl(*raw_sn));
+
+  return up;
+}
+
+uep_packet uep_packet::from_fountain_packet(const fountain_packet &fp) {
+  uep_packet up = from_packet(fp);
+  up.priority_lvl = fp.getPriority();
+  return up;
+}
+
+uep_packet::uep_packet() : shared_buf(new buffer_type()),
+			   priority_lvl(0),
+			   seqno(0) {
+}
+
+uep_packet::uep_packet(buffer_type &&b) : uep_packet() {
+  *shared_buf = std::move(b);
+}
+
+uep_packet::uep_packet(const buffer_type &b) : uep_packet() {
+  *shared_buf = b;
+}
+
+packet uep_packet::to_packet() const {
+  packet p;
+  const buffer_type &upb = buffer();
+  buffer_type &pb = p.buffer();
+
+  pb.resize(upb.size() + sizeof(seqno_type));
+  std::copy(upb.cbegin(), upb.cend(), pb.begin() + sizeof(seqno_type));
+
+  seqno_type *raw_sn = reinterpret_cast<seqno_type*>(&(pb.front()));
+  *raw_sn = htonl(boost::numeric_cast<seqno_type>(seqno));
+ 
+  return p;
+}
+
+fountain_packet uep_packet::to_fountain_packet() const {
+  packet p = to_packet();
+  fountain_packet fp(std::move(p));
+  fp.setPriority(priority_lvl);
+  return fp;
+}
+
+
+buffer_type &uep_packet::buffer() {
+  return *shared_buf;
+}
+
+const buffer_type &uep_packet::buffer() const {
+  return *shared_buf;
+}
+
+std::shared_ptr<buffer_type> uep_packet::shared_buffer() {
+  return shared_buf;
+}
+
+std::shared_ptr<const buffer_type> uep_packet::shared_buffer() const {
+  return shared_buf;
+}
+
+std::size_t uep_packet::priority() const {
+  return priority_lvl;
+}
+
+void uep_packet::priority(std::size_t p) {
+  priority_lvl = p;
+}
+
+std::size_t uep_packet::sequence_number() const {
+  return seqno;
+}
+
+void uep_packet::sequence_number(std::size_t sn) {
+  seqno = sn;
+}
+
 }
