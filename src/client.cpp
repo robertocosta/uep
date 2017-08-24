@@ -1,15 +1,21 @@
 #include <iostream>
-#include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include "controlMessage.pb.h"
-#include "data_client_server.hpp"
-//#include "decoder.hpp"
-#include "uep_decoder.hpp"
 #include <vector>
 
-using boost::asio::ip::tcp;
-using namespace uep;
+#include <boost/asio.hpp>
+
+#include "controlMessage.pb.h"
+#include "data_client_server.hpp"
+#include "log.hpp"
+#include "uep_decoder.hpp"
+
+using namespace boost::asio;
+using namespace std;
+using namespace uep::log;
 using namespace uep::net;
+using namespace uep;
+
+using boost::asio::ip::tcp;
+using boost::asio::ip::udp;
 
 // DEFAULT PARAMETER SET
 struct all_params: /*public robust_lt_parameter_set, */public lt_uep_parameter_set {

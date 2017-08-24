@@ -121,7 +121,7 @@ using boost::asio::ip::tcp;
 using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
-
+typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
 struct streamTrace {
 	unsigned int startPos;
 	int len;
@@ -398,6 +398,9 @@ struct packet_source {
 		}
 		fountain_packet fp(read);
 		fp.setPriority(currQid);
+		cerr << "packet_source::next_packet size=" << fp.size()
+			<< " priority=" << static_cast<size_t>(fp.getPriority())
+			<< endl;
 		if (currInd[currQid] % Ks[currQid] == 0) {
 			currQid++;
 			std::cout << "changing Qid\n";
