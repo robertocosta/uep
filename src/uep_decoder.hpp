@@ -85,7 +85,7 @@ public:
   /** Return a copy of the current block number counter. */
   circular_counter<std::size_t> block_number_counter() const;
   /** Return the current block seed. */
-  block_decoder::seed_t block_seed() const;
+  int block_seed() const;
   /** Number of unique packets received for the current block. */
   std::size_t received_count() const;
   /** Number of packets decoded for the current block. */
@@ -126,7 +126,10 @@ private:
 					    packets with their
 					    original priority
 					    level. */
-  lt_decoder std_dec; /**< The standard LT decoder. */
+  std::unique_ptr<lt_decoder> std_dec; /**< The standard LT
+					*    decoder. Use a pointer to
+					*    delay the construction.
+					*/
 
   std::size_t tot_dec_count;
   std::size_t tot_fail_count;
@@ -143,7 +146,7 @@ private:
 
 template <class Iter>
 void uep_decoder::push(Iter first, Iter last) {
-  std_dec.push(first, last);
+  std_dec->push(first, last);
   deduplicate_queued();
 }
 

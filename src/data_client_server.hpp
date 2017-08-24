@@ -361,10 +361,10 @@ private:
 				     *   each block before skipping to
 				     *   the next.
 				     */
-  std::vector<char> last_pkt; /**< Last _raw_ coded packet generated
+  buffer_type last_pkt; /**< Last _raw_ coded packet generated
 			       *   by the encoder.
 			       */
-  std::vector<char> last_ack; /**< Last _raw_ ack packet received. */
+  buffer_type last_ack; /**< Last _raw_ ack packet received. */
   std::chrono::steady_clock::time_point last_sent_time;
   boost::asio::steady_timer pkt_timer; /**< Timer used to schedule the
 					*   packet transmissions.
@@ -389,6 +389,8 @@ private:
 
     // Empty encoder and no more data: stop
     if (!*encoder_) {
+      BOOST_LOG_SEV(basic_lg, log::info) <<
+	"Data server out of data to send";
       stop();
       return;
     }
@@ -397,6 +399,8 @@ private:
     if (max_per_block <= encoder_->coded_count()) {
       encoder_->next_block();
       if (!*encoder_) { // The source did not have 2 blocks
+	BOOST_LOG_SEV(basic_lg, log::info) <<
+	  "Data server out of data to send after reaching max_per_block";
 	stop();
 	return;
       }
@@ -784,6 +788,7 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
     async_receive_pkt();
   }
   else {
+    BOOST_LOG_SEV(basic_lg, log::info) << "Data client reached expected_count";
     stop();
   }
 }
@@ -818,6 +823,7 @@ void data_client<Decoder, Sink>::handle_timeout(const boost::system::error_code&
     }
   }
 
+  BOOST_LOG_SEV(basic_lg, log::warning) << "Data client timed out";
   stop();
 }
 

@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 package controlMessage;
 
 message StreamName {
@@ -13,7 +15,6 @@ message TXParam {
 	required bool ACK = 6;
 	required uint64 fileSize = 7;
 	repeated bytes header = 8;
-	
 }
 
 message Connect {

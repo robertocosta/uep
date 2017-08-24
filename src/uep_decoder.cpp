@@ -6,7 +6,6 @@ uep_decoder::uep_decoder(const parameter_set &ps) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
   Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF),
-  std_dec(1, ps.c, ps.delta), // wait after two-level check
   tot_dec_count(0),
   tot_fail_count(0) {
   if (RFs.empty()) { // Using two-level UEP
@@ -16,16 +15,16 @@ uep_decoder::uep_decoder(const parameter_set &ps) :
     throw std::invalid_argument("Ks, RFs sizes do not match");
   }
 
-  std_dec = lt_decoder(block_size_in(), ps.c, ps.delta);
+  std_dec = std::make_unique<lt_decoder>(block_size_in(), ps.c, ps.delta);
 }
 
 void uep_decoder::push(const fountain_packet &p) {
-  std_dec.push(p);
+  std_dec->push(p);
   deduplicate_queued();
 }
 
 void uep_decoder::push(fountain_packet &&p) {
-  std_dec.push(std::move(p));
+  std_dec->push(std::move(p));
   deduplicate_queued();
 }
 
@@ -36,22 +35,22 @@ fountain_packet uep_decoder::next_decoded() {
 }
 
 void uep_decoder::flush() {
-  std_dec.flush();
+  std_dec->flush();
   deduplicate_queued();
 }
 
 void uep_decoder::flush(std::size_t blockno_) {
-  std_dec.flush(blockno_);
+  std_dec->flush(blockno_);
   deduplicate_queued();
 }
 
 void uep_decoder::flush_n_blocks(std::size_t n) {
-  std_dec.flush_n_blocks(n);
+  std_dec->flush_n_blocks(n);
   deduplicate_queued();
 }
 
 bool uep_decoder::has_decoded() const {
-  return std_dec.has_decoded();
+  return std_dec->has_decoded();
 }
 
 std::size_t uep_decoder::block_size() const {
@@ -72,19 +71,19 @@ std::size_t uep_decoder::K() const {
 }
 
 std::size_t uep_decoder::blockno() const {
-  return std_dec.blockno();
+  return std_dec->blockno();
 }
 
 circular_counter<std::size_t> uep_decoder::block_number_counter() const {
-  return std_dec.block_number_counter();
+  return std_dec->block_number_counter();
 }
 
- block_decoder::seed_t uep_decoder::block_seed() const {
-  return std_dec.block_seed();
+int uep_decoder::block_seed() const {
+  return std_dec->block_seed();
 }
 
 std::size_t uep_decoder::received_count() const {
-  return std_dec.received_count();
+  return std_dec->received_count();
 }
 
 std::size_t uep_decoder::queue_size() const {
@@ -96,7 +95,7 @@ bool uep_decoder::has_queued_packets() const {
 }
 
 std::size_t uep_decoder::total_received_count() const {
-  return std_dec.total_received_count();
+  return std_dec->total_received_count();
 }
 
 std::size_t uep_decoder::total_decoded_count() const {
@@ -108,7 +107,7 @@ std::size_t uep_decoder::total_failed_count() const {
 }
 
 double uep_decoder::average_push_time() const {
-  return std_dec.average_push_time();
+  return std_dec->average_push_time();
 }
 
 uep_decoder::operator bool() const {
@@ -134,11 +133,11 @@ std::pair<std::size_t,std::size_t> uep_decoder::map_in2out(std::size_t i) {
 }
 
 void uep_decoder::deduplicate_queued() {
-  while (std_dec.has_queued_packets()) {
+  while (std_dec->has_queued_packets()) {
     std::vector<fountain_packet> out_block(block_size_out());
     std::size_t decoded = 0;
     for (std::size_t i = 0; i != block_size_in(); ++i) {
-      fountain_packet p(std_dec.next_decoded());
+      fountain_packet p(std_dec->next_decoded());
       if (p.empty()) continue;
       if (decoded == out_block.size()) continue;
 

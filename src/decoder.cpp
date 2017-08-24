@@ -146,7 +146,7 @@ circular_counter<std::size_t> lt_decoder::block_number_counter() const {
   return blockno_counter;
 }
 
-block_decoder::seed_t lt_decoder::block_seed() const {
+int lt_decoder::block_seed() const {
   return the_block_decoder.seed();
 }
 

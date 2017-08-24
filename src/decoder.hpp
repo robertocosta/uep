@@ -98,7 +98,7 @@ public:
   /** Return a copy of the current block number counter. */
   circular_counter<std::size_t> block_number_counter() const;
   /** Return the current block seed. */
-  block_decoder::seed_t block_seed() const;
+  int block_seed() const;
   /** Number of unique packets received for the current block. */
   std::size_t received_count() const;
   /** Number of packets decoded for the current block. */
