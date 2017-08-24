@@ -121,7 +121,7 @@ using boost::asio::ip::tcp;
 using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
-typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
+typedef all_parameter_set<uep_encoder<>::parameter_set> all_params; /*
 struct streamTrace {
 	unsigned int startPos;
 	int len;
@@ -131,7 +131,7 @@ struct streamTrace {
 	int packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
 	bool discardable;
 	bool truncatable;
-};
+};*/
 
 // DEFAULT PARAMETER SET
 struct all_params: /*public robust_lt_parameter_set,*/ public lt_uep_parameter_set {
@@ -401,6 +401,7 @@ struct packet_source {
 		cerr << "packet_source::next_packet size=" << fp.size()
 			<< " priority=" << static_cast<size_t>(fp.getPriority())
 			<< endl;
+		/*
 		if (currInd[currQid] % Ks[currQid] == 0) {
 			currQid++;
 			std::cout << "changing Qid\n";
@@ -408,7 +409,7 @@ struct packet_source {
 		if (currQid == Ks.size()) {
 			currQid = 0;
 			std::cout << "resetting Qid\n";
-		}
+		}*/
 		return fp;
 	}
 
