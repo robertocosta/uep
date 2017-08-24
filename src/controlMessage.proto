@@ -25,5 +25,5 @@ message ConnACK {
 }
 
 message Play {
-	
+	optional uint32 dummy = 1;
 }

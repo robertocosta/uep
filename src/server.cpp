@@ -67,6 +67,32 @@ std::vector<char> readByteFromFile(std::string filename, int from, int len) {
 	}
 	return content;
 }
+
+std::vector<char> readByteFromFile(std::string filename, int from, int len, bool * ok) {
+	*ok = false;
+	std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
+	std::vector<char> content;
+	if (!ifs.is_open()) {
+		return content;
+	}
+	ifs.seekg(0, std::ios::end);
+	int fileSize = ifs.tellg();
+	if (fileSize<from+len) {
+		if (from>=fileSize)
+			return content;
+		else {
+			*ok = true;
+			len = fileSize-from;
+		}
+	} else *ok = true;
+	if (ifs && *ok) {
+		content.resize(len);
+		ifs.seekg (from, std::ios::beg);
+		ifs.read(&content[0], len);
+		ifs.close();
+	}
+	return content;
+}
 std::vector<char> readByteFromFileOpened(std::ifstream ifs, int from, int len) {
 	std::vector<char> content;
 	if (ifs) {
@@ -111,7 +137,7 @@ struct streamTrace {
 struct all_params: /*public robust_lt_parameter_set,*/ public lt_uep_parameter_set {
 	all_params() {
 		EF = 2;	
-		Ks = {256, 512};
+		Ks = {32, 64};
 		RFs = {2, 1}; 
 		c = 0.1;
 		delta = 0.5;
@@ -245,6 +271,7 @@ struct packet_source {
 	std::vector<size_t> rfs;
 	std::vector<size_t> currInd;
 	std::vector<uint8_t> currRep;
+	size_t Ls;
 	uint ef;
 	size_t max_count;
 	uint currQid;
@@ -263,7 +290,7 @@ struct packet_source {
 		currQid = 0;
 		efReal = 0;
 		streamName = ps.streamName;
-
+		Ls = 64;
 		/* RANDOM GENERATION OF FILE */
 		/*
 		bool textFile = true;
@@ -328,7 +355,7 @@ struct packet_source {
 		
 	}
 
-	fountain_packet next_packet() {
+	/*fountain_packet next_packet() { // next_packet using le_encoder
 		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
 		if (efReal<ef) {
 			if (currQid < Ks.size()) {
@@ -337,7 +364,7 @@ struct packet_source {
 				} else {
 					currRep[currQid] = 0;
 					currQid++;
-				}		
+				}
 			}
 			if (currQid == Ks.size()) {
 				currRep[currQid] = 0;
@@ -355,16 +382,30 @@ struct packet_source {
 		}
 		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
 		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
-		std::cout << streamN << ": from " << std::to_string(currInd[currQid]) << ", length: " << std::to_string(Ks[currQid]) << std::endl;
-		/*
-		std::cout << "next_packet():" << std::endl;
-		for (uint i=0; i < read.size(); i++) {
-			std::cout << read[i];
-		}
-		std::cout << std::endl;*/
 		fountain_packet fp(read);
-		//std::cout << "currQid: " << std::to_string(currQid) << "; Ks.size(): " << std::to_string(Ks.size()) << std::endl;
 		fp.setPriority(currQid);
+		return fp;
+	}*/
+	fountain_packet next_packet() { // using uep_encoder
+		if (currInd[currQid]*Ls >= max_count) throw std::runtime_error("Max packet count");
+		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
+		bool readingOk;
+		std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
+		currInd[currQid]++;
+		if (!readingOk) throw std::runtime_error("Impossible to read source file");
+		if (read.size() < Ls) { // last bit
+			for (uint i=0; i<Ls-read.size(); i++) read.push_back(';');
+		}
+		fountain_packet fp(read);
+		fp.setPriority(currQid);
+		if (currInd[currQid] % Ks[currQid] == 0) {
+			currQid++;
+			std::cout << "changing Qid\n";
+		}
+		if (currQid == Ks.size()) {
+			currQid = 0;
+			std::cout << "resetting Qid\n";
+		}
 		return fp;
 	}
 

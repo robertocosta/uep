@@ -176,6 +176,7 @@ int main(int argc, char* argv[]) {
 						dc->start_receive(remAddr, connACKMessage.port());
 						std::cout << "Sending PLAY command\n";
 						controlMessage::Play playMessage;
+						playMessage.set_dummy(1);
 						if (playMessage.SerializeToOstream(output)) {
 							s = st.str();
 							written = socket.write_some(boost::asio::buffer(s));
