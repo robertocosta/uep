@@ -4,6 +4,7 @@ set(cpp_files
   block_queues
   decoder
   log
+  nal_reader
   packets
   packets_rw
   rng
@@ -41,6 +42,11 @@ target_link_libraries(uep_decoder
 target_link_libraries(log
   ${Boost_LIBRARIES}
 )
+target_link_libraries(nal_reader
+  log
+  packets
+  ${Boost_LIBRARIES}
+)
 
 # add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
 # target_link_libraries(svc_segmenter
@@ -76,6 +82,7 @@ target_link_libraries(server
   block_queues
   packets_rw
   uep_decoder
+  nal_reader
   ${Boost_LIBRARIES}
 )
 
