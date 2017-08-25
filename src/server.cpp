@@ -1,32 +1,30 @@
-#include <ctime>
-#include <iostream>
-#include <string>
-#include<boost/algorithm/string.hpp>
-#include <sstream>
-#include <fstream>
 #include <codecvt>
-#include <set>
-
-//#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/asio.hpp>
-#include "controlMessage.pb.h"
-#include <boost/array.hpp>
-//#include "encoder.hpp"
-#include "uep_encoder.hpp"
-#include "log.hpp"
-#include <ostream>
-#include <boost/iostreams/device/file.hpp>
+#include <ctime>
 #include <fstream>
-#include <boost/iostreams/stream.hpp>
+#include <fstream>
+#include <iostream>
+#include <ostream>
+#include <set>
+#include <sstream>
+#include <string>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/random/mersenne_twister.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-
-#include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include "controlMessage.pb.h"
 #include "data_client_server.hpp"
+#include "log.hpp"
+#include "uep_encoder.hpp"
+
 /*
 	1: client to server: streamName
 	2: server to client: TXParam
