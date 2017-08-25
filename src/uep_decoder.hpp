@@ -13,6 +13,8 @@ namespace uep {
  *  following the structure defined by the Ks, RFs and EF parameters.
  */
 class uep_decoder {
+  typedef std::queue<uep_packet> queue_type;
+
 public:
   /** The collection of parameters required to setup the decoder. */
   typedef lt_uep_parameter_set parameter_set;
@@ -122,10 +124,16 @@ private:
   std::vector<std::size_t> RFs; /**< Array of repetition factors. */
   std::size_t EF; /**< Expansion factor. */
 
-  std::queue<fountain_packet> out_queue; /**< Hold the deduplicated
-					    packets with their
-					    original priority
-					    level. */
+  std::vector<queue_type> out_queues; /**< Hold the deduplicated
+					 packets with their
+					 original priority
+					 level. */
+  std::size_t empty_queued_count; /**< Count separately the empty
+				   *   packets: their aeqno is lost.
+				   */
+  circular_counter<> seqno_ctr; /**< Counter for the sequence number
+				 *   of the UEP packets.
+				 */
   std::unique_ptr<lt_decoder> std_dec; /**< The standard LT
 					*    decoder. Use a pointer to
 					*    delay the construction.
@@ -136,10 +144,10 @@ private:
 
   /** Check if there are new decoded blocks and deduplicate them. */
   void deduplicate_queued();
-  /** Map an index in the expanded block to an (index, priority) in
-   *  the original block.
+  /** Map an index in the expanded block to an index in the original
+   *  block.
    */
-  std::pair<std::size_t,std::size_t> map_in2out(std::size_t i);
+  std::size_t map_in2out(std::size_t i);
 };
 
 //		   uep_decoder template definitions
