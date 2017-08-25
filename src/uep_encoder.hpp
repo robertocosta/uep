@@ -15,6 +15,8 @@ namespace uep {
  */
 template <class Gen = std::random_device>
 class uep_encoder {
+  typedef block_queue<uep_packet> queue_type;
+
 public:
   /** The collection of parameters required to setup the encoder. */
   typedef lt_uep_parameter_set parameter_set;
@@ -110,12 +112,15 @@ private:
   std::vector<std::size_t> Ks; /**< Array of sub-block sizes. */
   std::vector<std::size_t> RFs; /**< Array of repetition factors. */
   std::size_t EF; /**< Expansion factor. */
-  std::vector<input_block_queue> inp_queues; /**< The queues that
-					      *   store the packets
-					      *   belonging to
-					      *   different priority
-					      *   classes.
-					      */
+  std::vector<queue_type> inp_queues; /**< The queues that
+				       *   store the packets
+				       *   belonging to
+				       *   different priority
+				       *   classes.
+				       */
+  circular_counter<> seqno_ctr; /**< Circular counter for the UEP
+				 *   sequence numbers.
+				 */
   std::unique_ptr<lt_encoder<Gen>> std_enc; /**< The standard LT
 					     *	 encoder. Use a
 					     *	 pointer to allow
@@ -133,7 +138,8 @@ template <class Gen>
 uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF) {
+  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF),
+  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()) {
   if (RFs.empty()) { // Using two-level UEP
     RFs = {ps.RFM, ps.RFL};
   }
@@ -147,6 +153,8 @@ uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
   }
 
   std_enc = std::make_unique<lt_encoder<Gen>>(block_size_out(), ps.c, ps.delta);
+
+  seqno_ctr.set(0);
 }
 
 template <class Gen>
@@ -158,10 +166,14 @@ void uep_encoder<Gen>::push(const fountain_packet &p) {
 
 template <class Gen>
 void uep_encoder<Gen>::push(fountain_packet &&p) {
-  std::size_t priority = p.getPriority();
-  if (inp_queues.size() <= priority)
+  uep_packet up(std::move(p.buffer()));
+  up.priority(p.getPriority());
+  up.sequence_number(seqno_ctr.value());
+
+  if (inp_queues.size() <= up.priority())
     throw std::runtime_error("Priority is out of range");
-  inp_queues[priority].push(std::move(p));
+  inp_queues[up.priority()].push(std::move(up));
+  seqno_ctr.next();
 
   check_has_block();
 }
@@ -201,7 +213,7 @@ void uep_encoder<Gen>::next_block(std::size_t bn) {
 
   // Drop `dist-1` blocks from the queues
   for (std::size_t i = 0; i < dist - 1; ++i) {
-    for (input_block_queue &iq : inp_queues) {
+    for (queue_type &iq : inp_queues) {
       iq.pop_block();
     }
   }
@@ -272,7 +284,7 @@ std::size_t uep_encoder<Gen>::queue_size() const {
 			 inp_queues.cend(),
 			 0,
 			 [](std::size_t sum,
-			    const input_block_queue &iq) -> std::size_t {
+			    const queue_type &iq) -> std::size_t {
 			   return sum + iq.size();
 			 });
 }
@@ -331,7 +343,7 @@ void uep_encoder<Gen>::check_has_block() {
   if (*std_enc) return; // Already has a block
   if (std::all_of(inp_queues.cbegin(),
 		  inp_queues.cend(),
-		  utils::to_bool<input_block_queue>())) {
+		  utils::to_bool<queue_type>())) {
     std::vector<packet> the_block;
     the_block.reserve(block_size_out());
     // Iterate over all queues
@@ -342,7 +354,7 @@ void uep_encoder<Gen>::check_has_block() {
 	for (auto l = inp_queues[i].block_begin();
 	     l != inp_queues[i].block_end();
 	     ++l) {
-	  the_block.push_back(l->shallow_copy());
+	  the_block.push_back(l->to_packet());
 	}
       }
       inp_queues[i].pop_block();

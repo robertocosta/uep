@@ -251,6 +251,75 @@ std::ostream &operator<<(std::ostream &out, const fountain_packet &p);
 bool operator==(const fountain_packet &lhs, const fountain_packet &rhs );
 bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs );
 
+namespace uep {
+
+/** Packet class used to handle the UEP packets. Each packet carries,
+ *  in addition to a shared buffer, a circular seqno and a priority
+ *  level.
+ */
+class uep_packet {
+public:
+  /** The type used to store the seqno inside the packet payload. */
+  typedef std::uint32_t seqno_type;
+
+  /** Convert a packet into a uep_packet. Read the seqno stored in the
+   *  payload. \sa to_packet
+   */
+  static uep_packet from_packet(const packet &p);
+
+  /** Convert a packet into a uep_packet. Read the seqno stored in the
+   *  payload and copy the priority from the fountain_packet.
+   *  \sa to_packet
+   */
+  static uep_packet from_fountain_packet(const fountain_packet &fp);
+
+  /** Construct a uep_packet with an empty buffer, seqno 0 and priority 0. */
+  uep_packet();
+
+  /** Construct a uep_packet with the given buffer and default seqno
+   *  and priority.
+   */
+  explicit uep_packet(buffer_type &&b);
+  /** Construct a uep_packet with a copy of the given buffer and
+   *  default seqno and priority.
+   */
+  explicit uep_packet(const buffer_type &b);
+
+  /** Convert to packet. Insert the seqno into the payload. */
+  packet to_packet() const;
+  /** Convert to packet. Insert the seqno into the payload and copy
+   *  the priority.
+   */
+  fountain_packet to_fountain_packet() const;
+
+  /** Return a reference to the shared buffer. */
+  buffer_type &buffer();
+  /** Return a const reference to the shared buffer. */
+  const buffer_type &buffer() const;
+
+  /** Return a shared pointer to the buffer. */
+  std::shared_ptr<buffer_type> shared_buffer();
+  /** Return a shared pointer to the const buffer. */
+  std::shared_ptr<const buffer_type> shared_buffer() const;
+
+  /** Return the priority level. */
+  std::size_t priority() const;
+  /** Set the priority level. */
+  void priority(std::size_t p);
+
+  /** Return the sequence number. */
+  std::size_t sequence_number() const;
+  /** Set the sequence number. */
+  void sequence_number(std::size_t sn);
+
+private:
+  std::shared_ptr<buffer_type> shared_buf;
+  std::size_t priority_lvl;
+  std::size_t seqno;
+};
+
+}
+
 // Template definitions
 
 template <class InputIter>
