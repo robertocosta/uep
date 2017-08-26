@@ -347,7 +347,7 @@ struct packet_source {
 
 	}
 
-	/*fountain_packet next_packet() { // next_packet using le_encoder
+	/*fountain_packet next_packet() { // next_packet using lt_encoder
 		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
 		if (efReal<ef) {
 			if (currQid < Ks.size()) {
@@ -378,9 +378,9 @@ struct packet_source {
 		fp.setPriority(currQid);
 		return fp;
 	}*/
-	fountain_packet next_packet() { // using uep_encoder
+  fountain_packet next_packet() { // using uep_encoder
 		if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
-		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
+		string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
 		bool readingOk;
 		std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
 		currInd[currQid]++;
@@ -390,9 +390,11 @@ struct packet_source {
 		}
 		fountain_packet fp(read);
 		fp.setPriority(currQid);
-		cerr << "packet_source::next_packet size=" << fp.size()
+    /*
+    cerr << "packet_source::next_packet size=" << fp.size()
       << " priority=" << static_cast<size_t>(fp.getPriority())
       << endl;
+    */
     if (currInd[currQid] % Ks[currQid] == 0) {
 			currQid++;
 			std::cout << "changing Qid\n";
