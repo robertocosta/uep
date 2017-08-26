@@ -1,32 +1,32 @@
-#include <ctime>
-#include <iostream>
-#include <string>
-#include<boost/algorithm/string.hpp>
-#include <sstream>
-#include <fstream>
+#include <cassert>
 #include <codecvt>
-#include <set>
-
-//#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/asio.hpp>
-#include "controlMessage.pb.h"
-#include <boost/array.hpp>
-//#include "encoder.hpp"
-#include "uep_encoder.hpp"
-#include "log.hpp"
-#include <ostream>
-#include <boost/iostreams/device/file.hpp>
+#include <ctime>
 #include <fstream>
-#include <boost/iostreams/stream.hpp>
+#include <fstream>
+#include <iostream>
+#include <ostream>
+#include <set>
+#include <sstream>
+#include <string>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/array.hpp>
+#include <boost/asio.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/random/mersenne_twister.hpp>
 #include <boost/random/random_device.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
-
-#include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include "controlMessage.pb.h"
 #include "data_client_server.hpp"
+#include "log.hpp"
+#include "nal_reader.hpp"
+#include "uep_encoder.hpp"
+
 /*
 	1: client to server: streamName
 	2: server to client: TXParam
@@ -48,86 +48,6 @@
 		DataServer.start
 */
 
-inline bool file_exists (const std::string& name) {
-  std::ifstream f(name.c_str());
-	bool out = f.good();
-	f.close();
-	return out;
-}
-inline bool file_exists (const std::string& name, size_t *length) {
-  using namespace std;
-  ifstream f(name.c_str());
-  bool out = f.good();
-  if (f.is_open()) {
-    f.seekg(0, ios::end);
-    *length = f.tellg();
-  }
-  f.close();
-  return out;
-}
-
-//std::vector<unsigned char> readByteFromFile(const char* filename, int from, int len) {
-std::vector<char> readByteFromFile(std::string filename, int from, int len) {
-	std::ifstream ifs(filename, std::ifstream::binary);
-	//std::vector<unsigned char> vec;
-	std::vector<char> content;
-	if (ifs) {
-		content.resize(len);
-		ifs.seekg (from, std::ios::beg);
-		ifs.read(&content[0], len);
-		ifs.close();
-	}
-	return content;
-}
-std::vector<char> readByteFromFile(std::string filename, int from, int len, bool * ok) {
-	*ok = false;
-	std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
-	std::vector<char> content;
-	if (!ifs.is_open()) {
-		return content;
-	}
-	ifs.seekg(0, std::ios::end);
-	int fileSize = ifs.tellg();
-	if (fileSize<from+len) {
-		if (from>=fileSize)
-			return content;
-		else {
-			*ok = true;
-			len = fileSize-from;
-		}
-	} else *ok = true;
-	if (ifs && *ok) {
-		content.resize(len);
-		ifs.seekg (from, std::ios::beg);
-		ifs.read(&content[0], len);
-		ifs.close();
-	}
-	return content;
-}
-std::vector<char> readByteFromFileOpened(std::ifstream ifs, int from, int len) {
-	std::vector<char> content;
-	if (ifs) {
-		content.resize(len);
-		ifs.seekg (from, std::ios::beg);
-		ifs.read(&content[0], len);
-	}
-	return content;
-}
-
-bool writeCharVecToFile(std::string filename, std::vector<char> v) {
-	std::ofstream newFile;
-	newFile.open(filename, std::ios_base::app); // append mode
-	bool out = false;
-	if (newFile.is_open()) {
-		for (uint i=0; i<v.size(); i++) {
-			newFile << v[i];
-		}
-		out = true;
-	}
-	newFile.close();
-	return out;
-}
-
 using namespace std;
 using boost::asio::ip::tcp;
 using namespace uep;
@@ -138,287 +58,6 @@ using namespace uep::log;
 typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
 all_params ps;
 
-std::vector<streamTrace> videoTrace;
-
-std::vector<streamTrace> loadTrace(std::string streamName) {
-	std::ifstream file;
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary);
-	if (!file.is_open()) throw std::runtime_error("Failed opening file");
-	file.seekg (0, std::ios::beg);
-	std::string line;
-	std::string header;
-	//std::regex regex("^0x\\([0-9]+\\)=[0-9]+No$");
-	uint16_t lineN = 0;
-	uint16_t nRows = 0;
-	while (!file.eof()) {
-		std::getline(file,line);
-		nRows++;
-	}
-	file.close();
-	file = std::ifstream("dataset/"+streamName+".trace", std::ios::in|std::ios::binary|std::ios::ate);
-	if (!file.is_open()) throw std::runtime_error("Failed opening file");
-	file.seekg (0, std::ios::beg);
-
-	std::vector<streamTrace> sTp;
-	//std::cout << nRows << std::endl;
-	while (!file.eof()) {
-		std::getline(file,line);
-		//std::cout << line << std::endl;
-		if (line.length()==0) {
-			break;
-		}
-		lineN++;
-		std::istringstream iss(line);
-		if (lineN>2) {
-			std::string whiteSpacesTrimmed;
-			int n = line.find(" ");
-			std::string s = line;
-			while (n>=0) {
-				if (n==0) {
-					s = s.substr(1,s.length());
-				} else if (n>0) {
-					whiteSpacesTrimmed += s.substr(0,n) + " ";
-					s = s.substr(n,s.length());
-				}
-				n = s.find(" ");
-			}
-			whiteSpacesTrimmed += s;
-			streamTrace elem;
-			for (int i=0; i<8; i++) {
-				int n = whiteSpacesTrimmed.find(" ");
-				std::string s = whiteSpacesTrimmed.substr(0,n);
-				int nn;
-
-				//std::cout << i << std::endl;
-				switch (i) {
-				case (0):
-					elem.startPos = strtoul(s.substr(s.find("x")+1,s.length()).c_str(), NULL, 16);
-					break;
-				case (1): case (2): case(3): case (4):
-					if (s == "0") {
-						nn = 0;
-					} else {
-						nn = stoi( s );
-					}
-					break;
-				case (5):
-					if (s == "StreamHeader") {
-						elem.packetType = 1;
-					} else if (s == "ParameterSet") {
-						elem.packetType = 2;
-					} else if (s == "SliceData") {
-						elem.packetType = 3;
-					}
-					break;
-				case (6):
-					if (s == "Yes") {
-						elem.discardable = true;
-					} else if (s == "No") {
-						elem.discardable = false;
-					}
-					break;
-				case (7):
-					if (s == "Yes") {
-						elem.truncatable = true;
-					} else if (s == "No") {
-						elem.truncatable = false;
-					}
-				break;
-				}
-				switch (i) {
-				case (1):
-					elem.len = nn;
-					break;
-				case (2):
-					elem.lid = nn;
-					break;
-				case (3):
-					elem.tid = nn;
-					break;
-				case (4):
-					elem.qid = (uint16_t)nn;
-					break;
-				}
-				whiteSpacesTrimmed = whiteSpacesTrimmed.substr(n+1,whiteSpacesTrimmed.length());
-			}
-			sTp.push_back(elem);
-		}
-	}
-	file.close();
-	return (sTp);
-}
-
-// PACKET SOURCE
-std::vector<char> header;
-int headerSize;
-int sliceDataInd;
-struct packet_source {
-	typedef all_params parameter_set;
-	std::vector<size_t> Ks;
-	std::vector<size_t> rfs;
-	std::vector<size_t> currInd;
-  std::vector<uint8_t> currRep;
-  size_t Ls;
-	uint ef;
-	std::vector<size_t> max_count;
-	uint currQid;
-	uint efReal;
-	std::string streamName;
-	std::vector<std::ifstream> files;
-
-	explicit packet_source(const parameter_set &ps) {
-		Ks = ps.Ks;
-		rfs = ps.RFs;
-		ef = ps.EF;
-		currInd.resize(Ks.size());
-		currRep.resize(Ks.size());
-    files.resize(Ks.size());
-    max_count.resize(Ks.size());
-		for (uint i=0; i<currInd.size(); i++) { currInd[i]=0; currRep[i]=0; max_count[i] = 0;}
-		currQid = 0;
-		efReal = 0;
-		streamName = ps.streamName;
-    Ls = 64;
-		/* RANDOM GENERATION OF FILE */
-		/*
-		bool textFile = true;
-		int fileSize = max_count; // file size = fileSize * Ls;
-		std::ofstream newFile (streamName+".txt");
-		//std::cout << streamName << ".txt\n";
-		if (newFile.is_open()) {
-			for (int ii = 0; ii<fileSize; ii++) {
-				if (!textFile) {
-					boost::random::uniform_int_distribution<> dist(0, 255);
-					newFile << ((char) dist(gen));
-				} else {
-					boost::random::uniform_int_distribution<> dist(65, 90);
-					int randN = dist(gen);
-					newFile << ((char) randN);
-				}
-			}
-		}
-		newFile.close();
-		*/
-		videoTrace = loadTrace(streamName);
-		//max_count = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
-		//std::cout << "max_count: " << std::to_string(max_count) << std::endl;
-		// parse .trace to produce a txt with parts repeated
-		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
-		int fromHead = videoTrace[0].startPos;
-		int toHead;
-		headerSize = 0;
-		for (toHead = fromHead; videoTrace[toHead].packetType < 3; toHead++) { headerSize += videoTrace[toHead].len; }
-		//int fromSliceData = videoTrace[toHead].startPos;
-		sliceDataInd = toHead;
-		toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
-		// int fromSliceData = toHead + 1;
-
-		header = readByteFromFile("dataset/"+streamName+".264",fromHead,headerSize);
-
-		for (uint8_t i=0; i<Ks.size(); i++) {
-      std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
-      size_t leng=0;
-			if (file_exists(streamN, &leng)) {
-        std::cout << streamN << " already created. Length: "<< leng <<"\n";
-			} else {
-        uint ii=sliceDataInd;
-				while (ii<videoTrace.size()) {
-					if (((videoTrace[ii].packetType == 3) && (videoTrace[ii].qid == i))||
-						((uint(videoTrace[ii].qid) >= ps.Ks.size()) && (i == ps.Ks.size()-1))) {
-						//std::vector<char> slice;
-            std::vector<char> slice = readByteFromFile("dataset/"+streamName+".264",videoTrace[ii].startPos,videoTrace[ii].len);
-            leng += videoTrace[ii].len;
-						if (!writeCharVecToFile(streamN,slice)) {
-							std::cout << "error in writing file\n";
-						}
-						//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
-					}
-					ii++;
-        }
-      }
-      max_count[i] = leng;
-		}
-
-		for (uint8_t i=0; i<Ks.size(); i++) {
-			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
-			files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
-			if (!files[i].is_open()) throw std::runtime_error("Failed opening file");
-		}
-
-	}
-
-	/*fountain_packet next_packet() { // next_packet using lt_encoder
-		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
-		if (efReal<ef) {
-			if (currQid < Ks.size()) {
-				if (currRep[currQid]<rfs[currQid]) {
-					currRep[currQid]++;
-				} else {
-					currRep[currQid] = 0;
-					currQid++;
-				}
-			}
-			if (currQid == Ks.size()) {
-				currRep[currQid] = 0;
-				efReal++;
-				currQid = 0;
-			}
-		}
-		if (efReal == ef) {
-			currQid = 0;
-			efReal = 0;
-			for (uint i=0; i<Ks.size(); i++) {
-				currRep[i] = 0;
-				currInd[i] += Ks[i];
-			}
-		}
-		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
-		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
-		fountain_packet fp(read);
-		fp.setPriority(currQid);
-		return fp;
-	}*/
-  fountain_packet next_packet() { // using uep_encoder
-		if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
-		string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
-		bool readingOk;
-		std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
-		currInd[currQid]++;
-		if (!readingOk) throw std::runtime_error("Impossible to read source file");
-		if (read.size() < Ls) { // last bits
-			for (uint i=0; i<Ls-read.size(); i++) read.push_back(' ');
-		}
-		fountain_packet fp(read);
-		fp.setPriority(currQid);
-    /*
-    cerr << "packet_source::next_packet size=" << fp.size()
-      << " priority=" << static_cast<size_t>(fp.getPriority())
-      << endl;
-    */
-    if (currInd[currQid] % Ks[currQid] == 0) {
-			currQid++;
-			std::cout << "changing Qid\n";
-		}
-		if (currQid == Ks.size()) {
-			currQid = 0;
-			std::cout << "resetting Qid\n";
-		}
-		return fp;
-  } 
-
-	explicit operator bool() const {
-		bool out = true;
-		for (uint i=0; i<currInd.size(); i++) {
-			out = out && (currInd[i] < max_count[i]);
-		}
-		return out;
-	}
-
-	bool operator!() const { return !static_cast<bool>(*this); }
-
-	boost::random::mt19937 gen;
-};
-
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 	/*	Using shared_ptr and enable_shared_from_this
 			because we want to keep the tcp_connection object alive
@@ -426,7 +65,7 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
 	typedef uep_encoder<> enc_t;
-	typedef packet_source src_t;
+	typedef nal_reader src_t;
 	typedef uep::net::data_server<enc_t,src_t> ds_type;
 
 		static pointer create(boost::asio::io_service& io_service) {
@@ -502,9 +141,8 @@ private:
 			secondMessage.set_ack(ps.ack);
 			secondMessage.set_filesize(ps.fileSize);
 
-			for (int i=0; i<headerSize; i++) {
-				secondMessage.add_header(std::to_string(header[i]));
-			}
+			const buffer_type &hdr = ds.source().header();
+			secondMessage.add_header(hdr.data(), hdr.size());
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
