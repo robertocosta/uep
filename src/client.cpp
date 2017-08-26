@@ -7,6 +7,7 @@
 #include "data_client_server.hpp"
 #include "log.hpp"
 #include "uep_decoder.hpp"
+#include <fstream>
 
 using namespace boost::asio;
 using namespace std;
@@ -48,7 +49,19 @@ struct memory_sink {
 
 const std::string default_udp_port = "12345";
 const std::string default_tcp_port = "12312";
-
+bool writeCharVecToFile(std::string filename, std::vector<char> v) {
+	std::ofstream newFile;
+	newFile.open(filename, std::ios_base::app); // append mode
+	bool out = false;
+	if (newFile.is_open()) {
+		for (uint i=0; i<v.size(); i++) {
+			newFile << v[i];
+		}
+		out = true;
+	}
+	newFile.close();
+	return out;
+}
 int main(int argc, char* argv[]) {
 	log::init("client.log");
 	default_logger basic_lg(boost::log::keywords::channel = basic);
@@ -124,24 +137,32 @@ int main(int argc, char* argv[]) {
 	std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
 	std::cout << "fileSize="<<secondMessage.filesize()<<";";
 
-	std::vector<std::string> head;
+	//std::vector<std::string> head;
 	//header = secondMessage.header();
-	std::cout <<  "headerLength="<<secondMessage.header_size() << "\n";
-	for (int i=0; i<secondMessage.header_size(); i++) {
-		head.push_back(secondMessage.header(i));
-		//std::cout << head[i] << ",";
-	}
+	size_t headSize = secondMessage.headersize();
+	std::cout <<  "headerLength="<<headSize << "\n";
+	const string& head_ptr = secondMessage.header(0);
+	vector<char> headerVec;
+	headerVec.resize(headSize);
+	for (uint i = 0; i<headSize; i++) { headerVec[i] = head_ptr[i]; }
+	cout << "header pointer: " << head_ptr << "\nheader:\n";
+	for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
+	cout << endl;
+	
+	if (!writeCharVecToFile( "dataset_client/"+ps.streamName+".264",headerVec)) cout << "error in writing stream file.\n"
+		"Make sure the directory 'dataset_client' is present.\n";
 
 	std::cout << "\nCreation of decoder...\n";
 	// CREATION OF DECODER
-	ps.Ks.resize(secondMessage.ks_size());
-	ps.Ks[0] = secondMessage.ks(0);
-	ps.Ks[1] = secondMessage.ks(1);
+	uint ks_size = secondMessage.ks_size();
+	ps.Ks.resize(ks_size);
+	ps.RFs.resize(ks_size);
+	for (uint i=0; i<ks_size; i++) {
+		ps.Ks[i] = secondMessage.ks(i);
+		ps.RFs[i] = secondMessage.rfs(i);
+	}
 	ps.c = secondMessage.c();
 	ps.delta = secondMessage.delta();
-	ps.RFs.resize(secondMessage.rfs_size());
-	ps.RFs[0] = secondMessage.rfs(0);
-	ps.RFs[1] = secondMessage.rfs(1);
 	ps.EF = secondMessage.ef();
 
 	dc.setup_decoder(ps);

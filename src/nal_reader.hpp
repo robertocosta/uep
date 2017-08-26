@@ -30,7 +30,10 @@ public:
 
   /** Return true when the reader is able to produce a packet. */
   bool has_packet() const;
-
+  
+  /** Return the size of the original stream. */
+  size_t totLength() const;
+  
   /** Return true when the reader is able to produce a packet. */
   explicit operator bool() const;
   /** Return true when the reader cannot produce a packet. */

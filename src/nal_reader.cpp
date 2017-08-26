@@ -296,22 +296,22 @@ struct packet_source {
       std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
       size_t leng=0;
 			if (file_exists(streamN, &leng)) {
-	std::cout << streamN << " already created. Length: "<< leng <<"\n";
+				std::cout << streamN << " already created. Length: "<< leng <<"\n";
 			} else {
-	uint ii=sliceDataInd;
+				uint ii=sliceDataInd;
 				while (ii<videoTrace.size()) {
 					if (((videoTrace[ii].packetType == 3) && (videoTrace[ii].qid == i))||
 						((uint(videoTrace[ii].qid) >= ps.Ks.size()) && (i == ps.Ks.size()-1))) {
 						//std::vector<char> slice;
-	    std::vector<char> slice = readByteFromFile("dataset/"+streamName+".264",videoTrace[ii].startPos,videoTrace[ii].len);
-	    leng += videoTrace[ii].len;
+	    			std::vector<char> slice = readByteFromFile("dataset/"+streamName+".264",videoTrace[ii].startPos,videoTrace[ii].len);
+	   				leng += videoTrace[ii].len;
 						if (!writeCharVecToFile(streamN,slice)) {
 							std::cout << "error in writing file\n";
 						}
 						//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
 					}
 					ii++;
-	}
+				}
       }
       max_count[i] = leng;
 		}
@@ -324,7 +324,7 @@ struct packet_source {
 
 	}
 
-	/*fountain_packet next_packet() { // next_packet using le_encoder
+	/*fountain_packet next_packet() { // next_packet using lt_encoder
 		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
 		if (efReal<ef) {
 			if (currQid < Ks.size()) {
@@ -396,14 +396,17 @@ struct packet_source {
 
 
 namespace uep {
-
+size_t totalLength=0;
 nal_reader::nal_reader(const parameter_set &ps) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance) {
   stream_name = ps.streamName;
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for \""
 				      << stream_name << "\"";
-  file.open("dataset/"+stream_name+".264", ios_base::in|ios_base::binary);
+	file.open("dataset/"+stream_name+".264", ios_base::in|ios_base::binary);
+	file.seekg(0, ios::end);
+	totalLength = file.tellg();
+	file.seekg(0, ios::beg);
   trace.open("dataset/"+stream_name+".trace", ios_base::in);
   BOOST_LOG_SEV(basic_lg, log::trace) << "Opened stream and trace files";
 
@@ -578,6 +581,10 @@ bool nal_reader::has_packet() const {
 
 nal_reader::operator bool() const {
   return has_packet();
+}
+
+size_t nal_reader::totLength() const {
+	return totalLength;
 }
 
 bool nal_reader::operator!() const {

@@ -1,0 +1,6 @@
+#ifndef CMAKE_DEFINES_HPP
+#define CMAKE_DEFINES_HPP
+
+#define GIT_COMMIT_SHA1 "d1d8689137b2dc3fda31c2617703c596d68f71a8"
+
+#endif

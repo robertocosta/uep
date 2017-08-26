@@ -139,10 +139,10 @@ private:
 
 			secondMessage.set_ef(ps.EF);
 			secondMessage.set_ack(ps.ack);
-			secondMessage.set_filesize(ps.fileSize);
-
 			const buffer_type &hdr = ds.source().header();
 			secondMessage.add_header(hdr.data(), hdr.size());
+			secondMessage.set_headersize(hdr.size());
+			secondMessage.set_filesize(ds.source().totLength());
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";
