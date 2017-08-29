@@ -195,8 +195,8 @@ void uep_decoder::deduplicate_queued() {
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
       for (std::size_t i = 0; i < Ks[subblock]; ++i) {
 	uep_packet up;
-	swap(up, *j++); // Make *i empty
-	up.priority(subblock); // Set correct priority even on empty pacekts
+	swap(up, *j++); // Make *j empty
+	up.priority(subblock);
 	if (!up.buffer().empty()) // Do not insert empty packets: wrong seqno
 	  out_queues[subblock].push(std::move(up));
 	else
