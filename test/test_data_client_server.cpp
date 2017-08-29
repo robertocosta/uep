@@ -4,6 +4,8 @@
 #include "data_client_server.hpp"
 #include "decoder.hpp"
 #include "encoder.hpp"
+#include "uep_decoder.hpp"
+#include "uep_encoder.hpp"
 
 // Set globally the log severity level
 struct global_fixture {
@@ -676,6 +678,108 @@ BOOST_AUTO_TEST_CASE(client_timeout) {
       ++count_fail;
     }
     ++i;;
+    ++j;
+  }
+
+  count_fail += recv.size() - orig.size();
+
+  BOOST_CHECK_EQUAL(count_fail, dc.decoder().total_failed_count());
+  BOOST_CHECK_EQUAL(count_ok, dc.decoder().total_decoded_count());
+}
+
+BOOST_AUTO_TEST_CASE(uep_recv_all) {
+  using namespace std;
+
+  io_service io; // Global io_service object
+
+  const size_t L = 1000; // pkt size
+  //const vector<size_t> Ks = {16,32,64,128}; // block size
+  const vector<size_t> Ks = {16,32,64}; // block size
+  const vector<size_t> RFs = {4,2,1};
+  const size_t EF = 2;
+  //const size_t K = 1024; // Total blocksize
+  const size_t Kuep = 64*3*2;
+  const double c = 0.01;
+  const double delta = 0.5;
+  const size_t nblocks = 10; // blocks to send
+  const mt19937::result_type src_seed = 0x42;
+
+  uep_encoder<std::mt19937>::parameter_set enc_ps{0,0,EF,Ks,RFs,c,delta};
+  uep_decoder::parameter_set dec_ps = enc_ps;
+  random_packet_source::parameter_set src_ps{src_seed,L,nblocks*Kuep,Ks};
+  memory_sink::parameter_set sink_ps;
+
+  data_server<uep_encoder<std::mt19937>,random_packet_source> ds(io);
+  data_client<uep_decoder,memory_sink> dc(io);
+
+  ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
+  ds.setup_source(src_ps); // setup the source  inside the data_server
+  //ds.target_send_rate(L*2); // Set a target send rate of 2 pkt/s
+  ds.enable_ack(true);
+  //ds.max_sequence_number(140);
+  ds.open("127.0.0.1", "9999"); // Setup the data_server socket:
+				// random_port -> 127.0.0.1:9999
+
+  dc.setup_decoder(dec_ps); // setup the decoder inside the data_client
+  dc.setup_sink(sink_ps); // setup the sink inside the data_client
+  dc.enable_ack(false);
+  dc.expected_count(nblocks*Kuep);
+  dc.timeout(1);
+  dc.bind("9999"); // bind the data_client to the port 9999
+
+  auto srv_ep = ds.server_endpoint(); // get the random source port
+				      // used by the data_server
+  dc.start_receive(srv_ep); // schdule the data_client to listen on
+			    // its bound port for packets from the
+			    // server's ip:port
+
+  ds.start(); // start the periodic tx of packets
+  // schedule a stop after some time
+  boost::asio::steady_timer end_timer(io, std::chrono::seconds(600));
+  end_timer.async_wait([&ds,&dc]
+		       (const boost::system::error_code&) -> void {
+			 if (!ds.is_stopped()) {
+			   ds.stop();
+			   BOOST_ERROR("data_server did not stop");
+			 }
+			 if (!dc.is_stopped()) {
+			   dc.stop();
+			   BOOST_ERROR("data_client did not stop");
+			 }
+		       });
+    io.run(); // enter the io_service loop: process both the server and
+	    // the client scheduled actions until they stop (empty
+	    // action queue)
+
+  const std::vector<fountain_packet> &orig = ds.source().original_fp;
+  const std::vector<fountain_packet> &recv = dc.sink().received_fp;
+
+  // verify number of packets
+  BOOST_CHECK_EQUAL(orig.size(), nblocks*Kuep); // all pkts were extracted
+  BOOST_CHECK_EQUAL(recv.size(), nblocks*Kuep); // all pkts were flushed
+
+  BOOST_CHECK_EQUAL(dc.decoder().blockno(), nblocks+1); // synced on the right block
+  BOOST_CHECK_EQUAL(dc.decoder().received_count(), 0); // past the last block
+
+  // Flushed count
+  BOOST_CHECK_EQUAL(dc.decoder().total_decoded_count(), nblocks*Kuep);
+  BOOST_CHECK_EQUAL(dc.decoder().total_failed_count(), 0);
+
+  // Check correctness
+  std::size_t count_ok = 0;
+  std::size_t count_fail = 0;
+  auto i = recv.cbegin();
+  auto j = orig.cbegin();
+  while (i != recv.cend() && j != orig.cend()) {
+    if (*i) {
+      BOOST_CHECK(i->buffer() == j->buffer());
+      BOOST_CHECK(i->getPriority() == j->getPriority());
+      ++count_ok;
+    }
+    else {
+      ++count_fail;
+    }
+    ++i;
     ++j;
   }
 

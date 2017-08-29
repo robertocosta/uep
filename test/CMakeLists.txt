@@ -7,10 +7,11 @@ add_test(test_rng ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_rng)
 
 add_executable(test_data_client_server test_data_client_server.cpp)
 target_link_libraries(test_data_client_server
-  decoder
   block_encoder
-  packets_rw
+  decoder
   log
+  packets_rw
+  uep_decoder
 )
 add_test(test_data_client_server ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_data_client_server)
 
