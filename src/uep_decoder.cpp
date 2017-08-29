@@ -40,21 +40,24 @@ void uep_decoder::push(fountain_packet &&p) {
 
 fountain_packet uep_decoder::next_decoded() {
   std::size_t next_seqno = seqno_ctr.value();
-  seqno_ctr.next();
   auto i = std::find_if(out_queues.begin(), out_queues.end(),
 			[next_seqno](const queue_type &q){
-			  return q.front().sequence_number() == next_seqno;
+			  return !q.empty() &&
+			  q.front().sequence_number() == next_seqno;
 			});
   fountain_packet p;
   if (i != out_queues.end()) { // Otherwise empty fountain_packet
-    uep_packet up = std::move(i->front());
-    i->pop();
+    uep_packet &up = i->front();
     p.buffer() = std::move(up.buffer());
     p.setPriority(up.priority());
+    i->pop();
   }
   else {
+    if (empty_queued_count == 0)
+      throw std::runtime_error("Extracting from empty UEP decoder");
     --empty_queued_count;
   }
+  seqno_ctr.next();
   return p;
 }
 
