@@ -112,6 +112,10 @@ private:
   std::vector<std::size_t> Ks; /**< Array of sub-block sizes. */
   std::vector<std::size_t> RFs; /**< Array of repetition factors. */
   std::size_t EF; /**< Expansion factor. */
+
+  std::size_t K_in; /**< Block-size at the input of the UEP encoder. */
+  std::size_t K_out; /**< Block-size at the output of the UEP encoder. */
+
   std::vector<queue_type> inp_queues; /**< The queues that
 				       *   store the packets
 				       *   belonging to
@@ -152,7 +156,11 @@ uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
     inp_queues.emplace_back(s);
   }
 
-  std_enc = std::make_unique<lt_encoder<Gen>>(block_size_out(), ps.c, ps.delta);
+  K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
+				  RFs.cbegin(), 0);
+  K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
+
+  std_enc = std::make_unique<lt_encoder<Gen>>(K_out, ps.c, ps.delta);
 
   seqno_ctr.set(0);
 }
@@ -234,13 +242,12 @@ bool uep_encoder<Gen>::has_block() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::block_size_out() const {
-  return EF * std::inner_product(Ks.cbegin(), Ks.cend(),
-				 RFs.cbegin(), 0);
+  return K_out;
 }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::block_size() const {
-  return std::accumulate(Ks.cbegin(), Ks.cend(), 0);
+  return K_in;
 }
 
 template <class Gen>
@@ -341,40 +348,45 @@ bool uep_encoder<Gen>::operator!() const {
 template <class Gen>
 void uep_encoder<Gen>::check_has_block() {
   if (*std_enc) return; // Already has a block
-  if (std::all_of(inp_queues.cbegin(),
+  if (std::any_of(inp_queues.cbegin(),
 		  inp_queues.cend(),
-		  utils::to_bool<queue_type>())) {
-    std::vector<packet> the_block;
-    the_block.reserve(block_size_out());
-    // Iterate over all queues
-    for (std::size_t i = 0; i < inp_queues.size(); ++i) {
-      // Repeat each sub-block RF times
-      for (std::size_t j = 0; j < RFs[i]; ++j) {
-	// Shallow-copy the sub-block
-	for (auto l = inp_queues[i].block_begin();
-	     l != inp_queues[i].block_end();
-	     ++l) {
-	  the_block.push_back(l->to_packet());
-	}
-      }
-      inp_queues[i].pop_block();
-    }
+		  [](const queue_type &q){
+		    return !q.has_block();
+		  })) {
+    return; // Not all sub-blocks are available
+  }
 
-    // Expand EF times
-    std::size_t orig_size = the_block.size();
-    for (std::size_t i = 0; i < EF-1; ++i) {
-      // Shallow-copy the first repetition
-      for (auto j = the_block.cbegin();
-	   j != the_block.cbegin() + orig_size;
-	   ++j) {
-	the_block.push_back(j->shallow_copy());
+  std::vector<packet> the_block;
+  the_block.reserve(block_size_out());
+
+  // Iterate over all queues
+  for (std::size_t i = 0; i < inp_queues.size(); ++i) {
+    queue_type &q = inp_queues[i];
+    std::size_t RF = RFs[i];
+    // Repeat each sub-block RF times
+    for (std::size_t j = 0; j < RF; ++j) {
+      // Shallow-copy the sub-block
+      for (auto l = q.block_begin(); l != q.block_end(); ++l) {
+	the_block.push_back(l->to_packet());
       }
     }
+    q.pop_block();
+  }
 
-    // Pass to the standard encoder
-    for (auto i = the_block.begin(); i != the_block.end(); ++i) {
-      std_enc->push(std::move(*i));
+  // Expand EF times
+  std::size_t orig_size = the_block.size();
+  for (std::size_t i = 0; i < EF-1; ++i) {
+    // Shallow-copy the first repetition
+    for (auto j = the_block.cbegin();
+	 j != the_block.cbegin() + orig_size;
+	 ++j) {
+      the_block.push_back(j->shallow_copy());
     }
+  }
+
+  // Pass to the standard encoder
+  for (auto i = the_block.begin(); i != the_block.end(); ++i) {
+    std_enc->push(std::move(*i));
   }
 }
 
