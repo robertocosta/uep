@@ -916,7 +916,7 @@ BOOST_AUTO_TEST_CASE(uep_random_order) {
   while (dec.has_queued_packets()) {
     fountain_packet fp = dec.next_decoded();
     BOOST_CHECK(fp.buffer() == i->buffer());
-    BOOST_CHECK(fp.sequence_number() == i->sequence_number());
+    BOOST_CHECK(fp.getPriority() == i->getPriority());
     ++i;
   }
 }
@@ -972,7 +972,7 @@ BOOST_AUTO_TEST_CASE(uep_random_order_drop) {
     fountain_packet fp = dec.next_decoded();
     if (!fp.buffer().empty()) {
       BOOST_CHECK(fp.buffer() == i->buffer());
-      BOOST_CHECK(fp.sequence_number() == i->sequence_number());
+      BOOST_CHECK(fp.getPriority() == i->getPriority());
     }
     ++i;
   }
