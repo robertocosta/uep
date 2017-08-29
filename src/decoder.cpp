@@ -46,8 +46,8 @@ void lt_decoder::push(const fountain_packet &p) {
   push(move(p_copy));
 }
 
-packet lt_decoder::next_decoded() {
-  packet p = the_output_queue.front().shallow_copy();
+fountain_packet lt_decoder::next_decoded() {
+  fountain_packet p(std::move(the_output_queue.front()));
   the_output_queue.pop();
   return p;
 }

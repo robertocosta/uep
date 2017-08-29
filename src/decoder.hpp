@@ -60,7 +60,7 @@ public:
   void push(Iter first, Iter last);
 
   /** Extract the oldest decoded packet from the FIFO queue. */
-  packet next_decoded();
+  fountain_packet next_decoded();
 
   /** Const iterator pointing to the start of the last decoded block.
    *  This can become invalid after a call to push().
