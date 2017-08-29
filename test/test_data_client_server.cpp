@@ -19,35 +19,58 @@ struct global_fixture {
 };
 BOOST_GLOBAL_FIXTURE(global_fixture);
 
-/* Produce random packets of fixed size.
- * Parameters: rng seed, pkt size, stop after max_count pkts
+/* Produce random packets of fixed size following the given subblock
+ * configuration.  Parameters: rng seed, pkt size, stop after
+ * max_count pkts
  */
 struct random_packet_source {
   struct parameter_set {
     std::mt19937::result_type seed;
     std::size_t size;
     std::size_t max_count;
+    std::vector<std::size_t> Ks;
   };
 
   std::independent_bits_engine<std::mt19937, CHAR_BIT, unsigned char> rng;
   std::size_t size;
   std::size_t max_count;
   std::size_t count;
+  std::vector<std::size_t> Ks;
 
   std::vector<packet> original;
+  std::vector<fountain_packet> original_fp;
 
   explicit random_packet_source(const parameter_set &ps) :
-    rng(ps.seed), size(ps.size), max_count(ps.max_count), count(0) {};
+    rng(ps.seed), size(ps.size), max_count(ps.max_count), count(0),
+    Ks(ps.Ks) {
+    if (Ks.empty()) {
+      Ks = {1};
+    }
+  }
 
-  packet next_packet() {
+  std::size_t subblock(std::size_t cnt) {
+    cnt %= std::accumulate(Ks.begin(), Ks.end(), 0);
+    std::size_t sb = 0;
+    std::size_t cum_K = 0;
+    while (cum_K + Ks[sb] <= cnt) {
+      cum_K += Ks[sb];
+      ++sb;
+    }
+    return sb;
+  }
+
+  fountain_packet next_packet() {
     if (count == max_count) throw std::runtime_error("Max packet count");
-    else ++count;
-    packet p;
+
+    fountain_packet p;
     p.resize(size);
     for (std::size_t i=0; i < size; i++) {
       p[i] = rng();
     }
+    p.setPriority(subblock(count));
     original.push_back(p);
+    original_fp.push_back(p);
+    ++count;
     return p;
   }
 
@@ -67,16 +90,11 @@ struct memory_sink {
   explicit memory_sink(const parameter_set&) {}
 
   std::vector<packet> received;
+  std::vector<fountain_packet> received_fp;
 
-  void push(const packet &p) {
-    packet p_copy(p);
-    using std::move;
-    push(move(p));
-  }
-
-  void push(packet &&p) {
-    using std::move;
-    received.push_back(move(p));
+  void push(const fountain_packet &p) {
+    received.push_back(p);
+    received_fp.push_back(p);
   }
 
   explicit operator bool() const { return true; }
