@@ -180,8 +180,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Connecting now...\n";
 	// waiting for ConnACK
 	parse_buf.resize(recv_size);
-	len = socket.read_some(boost::asio::buffer(&parse_buf.front(),
-																						 parse_buf.size()));
+	len = socket.read_some(boost::asio::buffer(&parse_buf.front(),parse_buf.size()));
 	parse_buf.resize(len);
 
 	//std::cout.write(buf.data(), len);
