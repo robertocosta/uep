@@ -7,6 +7,7 @@
 #include "data_client_server.hpp"
 #include "log.hpp"
 #include "uep_decoder.hpp"
+#include "nal_reader.hpp"
 #include <fstream>
 
 using namespace boost::asio;
@@ -24,23 +25,27 @@ typedef uep_decoder dec_type;
 typedef memory_sink sink_type;
 typedef data_client<dec_type,sink_type> dc_type;
 typedef all_parameter_set<dec_type::parameter_set> all_params;
-
+std::string streamN;
 // MEMORY SINK
 struct memory_sink {
   typedef all_params parameter_set;
   explicit memory_sink(const parameter_set&) {}
 
-  std::vector<packet> received;
+  vector<fountain_packet> received;
 
-  void push(const packet &p) {
+  void push(const fountain_packet &p) {
     packet p_copy(p);
     using std::move;
     push(move(p));
   }
 
-  void push(packet &&p) {
+  void push(fountain_packet &&p) {
     using std::move;
-    received.push_back(move(p));
+	received.push_back(move(p));
+	/*
+	if (!writeCharVecToFile( streamN,received[received.size()-1]))
+		cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
+	*/
   }
 
   explicit operator bool() const { return true; }
@@ -49,6 +54,8 @@ struct memory_sink {
 
 const std::string default_udp_port = "12345";
 const std::string default_tcp_port = "12312";
+
+/*
 bool writeCharVecToFile(std::string filename, std::vector<char> v) {
 	std::ofstream newFile;
 	newFile.open(filename, std::ios_base::app); // append mode
@@ -62,6 +69,7 @@ bool writeCharVecToFile(std::string filename, std::vector<char> v) {
 	newFile.close();
 	return out;
 }
+*/
 int main(int argc, char* argv[]) {
 	log::init("client.log");
 	default_logger basic_lg(boost::log::keywords::channel = basic);
@@ -104,7 +112,7 @@ int main(int argc, char* argv[]) {
 	std::string serialize_buf;
 	boost::system::error_code error;
 	std::size_t written;
-
+	// send stream name to server
 	controlMessage::StreamName firstMessage;
 	firstMessage.set_streamname(ps.streamName);
 	if (!firstMessage.SerializeToString(&serialize_buf)) {
@@ -145,13 +153,17 @@ int main(int argc, char* argv[]) {
 	vector<char> headerVec;
 	headerVec.resize(headSize);
 	for (uint i = 0; i<headSize; i++) { headerVec[i] = head_ptr[i]; }
-	cout << "header pointer: " << head_ptr << "\nheader:\n";
-	for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
-	cout << endl;
-	
-	if (!writeCharVecToFile( "dataset_client/"+ps.streamName+".264",headerVec)) cout << "error in writing stream file.\n"
-		"Make sure the directory 'dataset_client' is present.\n";
-
+	//cout << "header pointer: " << head_ptr << "\nheader:\n";
+	//for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
+	//cout << endl;
+	streamN = "dataset_client/"+ps.streamName+".264";
+	if (file_exists(streamN)) {
+		if (!overwriteCharVecToFile( streamN,headerVec))
+			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
+	} else {
+		if (!writeCharVecToFile( streamN,headerVec))
+			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
+	}
 	std::cout << "\nCreation of decoder...\n";
 	// CREATION OF DECODER
 	uint ks_size = secondMessage.ks_size();
