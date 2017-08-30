@@ -29,18 +29,16 @@ struct memory_sink {
   typedef all_params parameter_set;
   explicit memory_sink(const parameter_set&) {}
 
-  std::vector<packet> received;
+  std::vector<fountain_packet> received;
 
-  void push(const packet &p) {
-    packet p_copy(p);
-    using std::move;
-    push(move(p));
+  void push(const fountain_packet &p) {
+    received.push_back(p);
   }
 
-  void push(packet &&p) {
-    using std::move;
-    received.push_back(move(p));
-  }
+  // void push(fountain_packet &&p) {
+  //   using std::move;
+  //   received.push_back(move(p));
+  // }
 
   explicit operator bool() const { return true; }
   bool operator!() const { return false; }
