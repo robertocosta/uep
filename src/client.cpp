@@ -14,6 +14,7 @@ using namespace uep::log;
 using namespace uep::net;
 using namespace uep;
 
+
 using boost::asio::ip::tcp;
 using boost::asio::ip::udp;
 
@@ -122,12 +123,12 @@ int main(int argc, char* argv[]) {
 	std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
 	std::cout << "fileSize="<<secondMessage.filesize()<<";";
 
-	std::vector<std::string> head;
-	//header = secondMessage.header();
+	buffer_type head;
 	std::cout <<  "headerLength="<<secondMessage.header_size() << "\n";
+	assert(secondMessage.header_size() > 0);
 	for (int i=0; i<secondMessage.header_size(); i++) {
-		head.push_back(secondMessage.header(i));
-		//std::cout << head[i] << ",";
+	  const string &h = secondMessage.header(i);
+	  head.insert(head.end(), h.begin(), h.end());
 	}
 
 	std::cout << "\nCreation of decoder...\n";
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
 	// waiting for ConnACK
 	parse_buf.resize(recv_size);
 	len = socket.read_some(boost::asio::buffer(&parse_buf.front(),
-																						 parse_buf.size()));
+						   parse_buf.size()));
 	parse_buf.resize(len);
 
 	//std::cout.write(buf.data(), len);
