@@ -40,7 +40,8 @@ struct lt_uep_parameter_set {
   double c; /**< Coefficient c of the robust soltion distribution. */
   double delta; /**< Failure prob bound of the robust soliton
 		 *   distribution.
-		 */
+     */
+  //std::string streamName;
 };
 
 struct streamTrace {

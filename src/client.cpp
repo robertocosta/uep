@@ -7,13 +7,14 @@
 #include "data_client_server.hpp"
 #include "log.hpp"
 #include "uep_decoder.hpp"
+#include "nal_reader.hpp"
+#include <fstream>
 
 using namespace boost::asio;
 using namespace std;
 using namespace uep::log;
 using namespace uep::net;
 using namespace uep;
-
 
 using boost::asio::ip::tcp;
 using boost::asio::ip::udp;
@@ -24,7 +25,7 @@ typedef uep_decoder dec_type;
 typedef memory_sink sink_type;
 typedef data_client<dec_type,sink_type> dc_type;
 typedef all_parameter_set<dec_type::parameter_set> all_params;
-
+std::string streamN;
 // MEMORY SINK
 struct memory_sink {
   typedef all_params parameter_set;
@@ -34,6 +35,10 @@ struct memory_sink {
 
   void push(const fountain_packet &p) {
     received.push_back(p);
+    /*
+      if (!writeCharVecToFile( streamN,received[received.size()-1]))
+        cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
+    */
   }
 
   // void push(fountain_packet &&p) {
@@ -48,6 +53,21 @@ struct memory_sink {
 const std::string default_udp_port = "12345";
 const std::string default_tcp_port = "12312";
 
+/*
+bool writeCharVecToFile(std::string filename, std::vector<char> v) {
+	std::ofstream newFile;
+	newFile.open(filename, std::ios_base::app); // append mode
+	bool out = false;
+	if (newFile.is_open()) {
+		for (uint i=0; i<v.size(); i++) {
+			newFile << v[i];
+		}
+		out = true;
+	}
+	newFile.close();
+	return out;
+}
+*/
 int main(int argc, char* argv[]) {
 	log::init("client.log");
 	default_logger basic_lg(boost::log::keywords::channel = basic);
@@ -90,7 +110,7 @@ int main(int argc, char* argv[]) {
 	std::string serialize_buf;
 	boost::system::error_code error;
 	std::size_t written;
-
+	// send stream name to server
 	controlMessage::StreamName firstMessage;
 	firstMessage.set_streamname(ps.streamName);
 	if (!firstMessage.SerializeToString(&serialize_buf)) {
@@ -123,24 +143,36 @@ int main(int argc, char* argv[]) {
 	std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
 	std::cout << "fileSize="<<secondMessage.filesize()<<";";
 
-	buffer_type head;
-	std::cout <<  "headerLength="<<secondMessage.header_size() << "\n";
-	assert(secondMessage.header_size() > 0);
-	for (int i=0; i<secondMessage.header_size(); i++) {
-	  const string &h = secondMessage.header(i);
-	  head.insert(head.end(), h.begin(), h.end());
+	//std::vector<std::string> head;
+	//header = secondMessage.header();
+	size_t headSize = secondMessage.headersize();
+	std::cout <<  "headerLength="<<headSize << "\n";
+	const string& head_ptr = secondMessage.header(0);
+	vector<char> headerVec;
+	headerVec.resize(headSize);
+	for (uint i = 0; i<headSize; i++) { headerVec[i] = head_ptr[i]; }
+	//cout << "header pointer: " << head_ptr << "\nheader:\n";
+	//for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
+	//cout << endl;
+	streamN = "dataset_client/"+ps.streamName+".264";
+	if (file_exists(streamN)) {
+		if (!overwriteCharVecToFile( streamN,headerVec))
+			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
+	} else {
+		if (!writeCharVecToFile( streamN,headerVec))
+			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
 	}
-
 	std::cout << "\nCreation of decoder...\n";
 	// CREATION OF DECODER
-	ps.Ks.resize(secondMessage.ks_size());
-	ps.Ks[0] = secondMessage.ks(0);
-	ps.Ks[1] = secondMessage.ks(1);
+	uint ks_size = secondMessage.ks_size();
+	ps.Ks.resize(ks_size);
+	ps.RFs.resize(ks_size);
+	for (uint i=0; i<ks_size; i++) {
+		ps.Ks[i] = secondMessage.ks(i);
+		ps.RFs[i] = secondMessage.rfs(i);
+	}
 	ps.c = secondMessage.c();
 	ps.delta = secondMessage.delta();
-	ps.RFs.resize(secondMessage.rfs_size());
-	ps.RFs[0] = secondMessage.rfs(0);
-	ps.RFs[1] = secondMessage.rfs(1);
 	ps.EF = secondMessage.ef();
 
 	dc.setup_decoder(ps);

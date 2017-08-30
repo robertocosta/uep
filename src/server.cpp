@@ -55,7 +55,8 @@ using namespace uep::net;
 using namespace uep::log;
 
 // DEFAULT PARAMETER SET
-typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
+//typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
+//typedef lt_uep_parameter_set all_params;
 all_params ps;
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
@@ -65,7 +66,8 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
 	typedef uep_encoder<> enc_t;
-	typedef nal_reader src_t;
+	typedef packet_source src_t;
+	//typedef nal_reader src_t;
 	typedef uep::net::data_server<enc_t,src_t> ds_type;
 
 		static pointer create(boost::asio::io_service& io_service) {
@@ -139,10 +141,10 @@ private:
 
 			secondMessage.set_ef(ps.EF);
 			secondMessage.set_ack(ps.ack);
-			secondMessage.set_filesize(ps.fileSize);
-
-			const buffer_type &hdr = ds.source().header();
+			const buffer_type &hdr = ds.source().header;
 			secondMessage.add_header(hdr.data(), hdr.size());
+			secondMessage.set_headersize(hdr.size());
+			secondMessage.set_filesize(ds.source().totLength());
 
 			if (secondMessage.SerializeToString(&s)) {
 				std::cout << "Sending encoder's parameters to client...\n";

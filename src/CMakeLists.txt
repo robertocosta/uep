@@ -91,6 +91,7 @@ target_link_libraries(client
   controlMessage.pb
   decoder
   uep_decoder
+  nal_reader
   packets_rw
   ${Boost_LIBRARIES}
 )

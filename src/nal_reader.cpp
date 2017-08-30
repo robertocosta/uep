@@ -31,17 +31,17 @@
 using namespace std;
 using namespace uep;
 
-typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
-all_params parset;
+//typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
+//all_params parset;
 
 
-inline bool file_exists (const std::string& name) {
+bool file_exists (const std::string& name) {
   std::ifstream f(name.c_str());
 	bool out = f.good();
 	f.close();
 	return out;
 }
-inline bool file_exists (const std::string& name, size_t *length) {
+bool file_exists (const std::string& name, size_t *length) {
   using namespace std;
   ifstream f(name.c_str());
   bool out = f.good();
@@ -115,7 +115,19 @@ bool writeCharVecToFile(std::string filename, std::vector<char> v) {
 	return out;
 }
 
-std::vector<streamTrace> videoTrace;
+bool overwriteCharVecToFile(std::string filename, std::vector<char> v) {
+	std::ofstream newFile;
+	newFile.open(filename, std::ofstream::out); // writing mode
+	bool out = false;
+	if (newFile.is_open()) {
+		for (uint i=0; i<v.size(); i++) {
+			newFile << v[i];
+		}
+		out = true;
+	}
+	newFile.close();
+	return out;
+}
 
 std::vector<streamTrace> loadTrace(std::string streamName) {
 	std::ifstream file;
@@ -226,173 +238,133 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 }
 
 // PACKET SOURCE
-std::vector<char> header;
-int headerSize;
+
 int sliceDataInd;
-struct packet_source {
-	typedef all_params parameter_set;
-	std::vector<size_t> Ks;
-	std::vector<size_t> rfs;
-	std::vector<size_t> currInd;
-  std::vector<uint8_t> currRep;
-  size_t Ls;
-	uint ef;
-	std::vector<size_t> max_count;
-	uint currQid;
-	uint efReal;
-	std::string streamName;
-	std::vector<std::ifstream> files;
 
-	explicit packet_source(const parameter_set &ps) {
-		Ks = ps.Ks;
-		rfs = ps.RFs;
-		ef = ps.EF;
-		currInd.resize(Ks.size());
-		currRep.resize(Ks.size());
-    files.resize(Ks.size());
-    max_count.resize(Ks.size());
-		for (uint i=0; i<currInd.size(); i++) { currInd[i]=0; currRep[i]=0; max_count[i] = 0;}
-		currQid = 0;
-		efReal = 0;
-		streamName = ps.streamName;
-    Ls = 64;
-		/* RANDOM GENERATION OF FILE */
-		/*
-		bool textFile = true;
-		int fileSize = max_count; // file size = fileSize * Ls;
-		std::ofstream newFile (streamName+".txt");
-		//std::cout << streamName << ".txt\n";
-		if (newFile.is_open()) {
-			for (int ii = 0; ii<fileSize; ii++) {
-				if (!textFile) {
-					boost::random::uniform_int_distribution<> dist(0, 255);
-					newFile << ((char) dist(gen));
-				} else {
-					boost::random::uniform_int_distribution<> dist(65, 90);
-					int randN = dist(gen);
-					newFile << ((char) randN);
-				}
-			}
-		}
-		newFile.close();
-		*/
-		videoTrace = loadTrace(streamName);
-		//max_count = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
-		//std::cout << "max_count: " << std::to_string(max_count) << std::endl;
-		// parse .trace to produce a txt with parts repeated
-		// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
-		int fromHead = videoTrace[0].startPos;
-		int toHead;
-		headerSize = 0;
-		for (toHead = fromHead; videoTrace[toHead].packetType < 3; toHead++) { headerSize += videoTrace[toHead].len; }
-		//int fromSliceData = videoTrace[toHead].startPos;
-		sliceDataInd = toHead;
-		toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
-		// int fromSliceData = toHead + 1;
+bool packet_source::operator!() const { return !static_cast<bool>(*this); }
 
-		header = readByteFromFile("dataset/"+streamName+".264",fromHead,headerSize);
+packet_source::operator bool() const {
+	bool out = true;
+	for (uint i=0; i<currInd.size(); i++) {
+		out = out && (currInd[i] < max_count[i]);
+	}
+	return out;
+}
 
-		for (uint8_t i=0; i<Ks.size(); i++) {
-      std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
-      size_t leng=0;
-			if (file_exists(streamN, &leng)) {
-	std::cout << streamN << " already created. Length: "<< leng <<"\n";
+packet_source::packet_source(const parameter_set &ps) {
+	//paramSet = ps;
+	Ks = ps.Ks;
+	rfs = ps.RFs;
+	ef = ps.EF;
+	nomeStream = ps.streamName;
+	size_t leng = 0;
+	if (file_exists("dataset/"+nomeStream+".264", &leng)) totalLength = leng;
+	else throw std::runtime_error("Failed opening file");
+	currInd.resize(Ks.size());
+	currRep.resize(Ks.size());
+	files.resize(Ks.size());
+	max_count.resize(Ks.size());
+	for (uint i=0; i<currInd.size(); i++) { currInd[i]=0; currRep[i]=0; max_count[i] = 0;}
+	currQid = 0;
+	efReal = 0;
+	//streamName = ps.streamName;
+	Ls = 64;
+	/* RANDOM GENERATION OF FILE */
+	/*
+	bool textFile = true;
+	int fileSize = max_count; // file size = fileSize * Ls;
+	std::ofstream newFile (streamName+".txt");
+	//std::cout << streamName << ".txt\n";
+	if (newFile.is_open()) {
+		for (int ii = 0; ii<fileSize; ii++) {
+			if (!textFile) {
+				boost::random::uniform_int_distribution<> dist(0, 255);
+				newFile << ((char) dist(gen));
 			} else {
-	uint ii=sliceDataInd;
-				while (ii<videoTrace.size()) {
-					if (((videoTrace[ii].packetType == 3) && (videoTrace[ii].qid == i))||
-						((uint(videoTrace[ii].qid) >= ps.Ks.size()) && (i == ps.Ks.size()-1))) {
-						//std::vector<char> slice;
-	    std::vector<char> slice = readByteFromFile("dataset/"+streamName+".264",videoTrace[ii].startPos,videoTrace[ii].len);
-	    leng += videoTrace[ii].len;
-						if (!writeCharVecToFile(streamN,slice)) {
-							std::cout << "error in writing file\n";
-						}
-						//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
+				boost::random::uniform_int_distribution<> dist(65, 90);
+				int randN = dist(gen);
+				newFile << ((char) randN);
+			}
+		}
+	}
+	newFile.close();
+	*/
+	videoTrace = loadTrace(nomeStream);
+	//max_count = videoTrace[videoTrace.size()-1].startPos + videoTrace[videoTrace.size()-1].len;
+	//std::cout << "max_count: " << std::to_string(max_count) << std::endl;
+	// parse .trace to produce a txt with parts repeated
+	// first rows of videoTrace are: stream header and parameter set. must be passed through TCP
+	int fromHead = videoTrace[0].startPos;
+	int toHead;
+	headerLength = 0;
+	for (toHead = fromHead; videoTrace[toHead].packetType < 3; toHead++) { headerLength += videoTrace[toHead].len; }
+	//int fromSliceData = videoTrace[toHead].startPos;
+	sliceDataInd = toHead;
+	toHead = videoTrace[toHead-1].startPos + videoTrace[toHead-1].len;
+	// int fromSliceData = toHead + 1;
+
+	header = readByteFromFile("dataset/"+nomeStream+".264",fromHead,headerLength);
+
+	for (uint8_t i=0; i<Ks.size(); i++) {
+		std::string streamN = "dataset/"+nomeStream+"."+std::to_string(i)+".264";
+		size_t leng=0;
+		if (file_exists(streamN, &leng)) {
+			std::cout << streamN << " already created. Length: "<< leng <<"\n";
+		} else {
+			uint ii=sliceDataInd;
+			while (ii<videoTrace.size()) {
+				if (((videoTrace[ii].packetType == 3) && (videoTrace[ii].qid == i))||
+					((uint(videoTrace[ii].qid) >= ps.Ks.size()) && (i == ps.Ks.size()-1))) {
+					//std::vector<char> slice;
+					std::vector<char> slice = readByteFromFile("dataset/"+nomeStream+".264",videoTrace[ii].startPos,videoTrace[ii].len);
+					 leng += videoTrace[ii].len;
+					if (!writeCharVecToFile(streamN,slice)) {
+						std::cout << "error in writing file\n";
 					}
-					ii++;
-	}
-      }
-      max_count[i] = leng;
-		}
-
-		for (uint8_t i=0; i<Ks.size(); i++) {
-			std::string streamN = "dataset/"+streamName+"."+std::to_string(i)+".264";
-			files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
-			if (!files[i].is_open()) throw std::runtime_error("Failed opening file");
-		}
-
-	}
-
-	/*fountain_packet next_packet() { // next_packet using le_encoder
-		if (currInd[currQid] >= max_count) throw std::runtime_error("Max packet count");
-		if (efReal<ef) {
-			if (currQid < Ks.size()) {
-				if (currRep[currQid]<rfs[currQid]) {
-					currRep[currQid]++;
-				} else {
-					currRep[currQid] = 0;
-					currQid++;
+					//std::cout << "read " << ii << "th row - qid: " << std::to_string(i) << " -> " << streamN << std::endl;
 				}
-			}
-			if (currQid == Ks.size()) {
-				currRep[currQid] = 0;
-				efReal++;
-				currQid = 0;
+				ii++;
 			}
 		}
-		if (efReal == ef) {
-			currQid = 0;
-			efReal = 0;
-			for (uint i=0; i<Ks.size(); i++) {
-				currRep[i] = 0;
-				currInd[i] += Ks[i];
-			}
-		}
-		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
-		std::vector<char> read = readByteFromFile(streamN,currInd[currQid],Ks[currQid]);
-		fountain_packet fp(read);
-		fp.setPriority(currQid);
-		return fp;
-	}*/
-	fountain_packet next_packet() { // using uep_encoder
-		if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
-		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
-		bool readingOk;
-		std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
-		currInd[currQid]++;
-		if (!readingOk) throw std::runtime_error("Impossible to read source file");
-		if (read.size() < Ls) { // last bits
-			for (uint i=0; i<Ls-read.size(); i++) read.push_back(' ');
-		}
-		fountain_packet fp(read);
-		fp.setPriority(currQid);
-		cerr << "packet_source::next_packet size=" << fp.size()
-      << " priority=" << static_cast<size_t>(fp.getPriority())
-      << endl;
-    if (currInd[currQid] % Ks[currQid] == 0) {
-			currQid++;
-			std::cout << "changing Qid\n";
-		}
-		if (currQid == Ks.size()) {
-			currQid = 0;
-			std::cout << "resetting Qid\n";
-		}
-		return fp;
-  }
-
-	explicit operator bool() const {
-		bool out = true;
-		for (uint i=0; i<currInd.size(); i++) {
-			out = out && (currInd[i] < max_count[i]);
-		}
-		return out;
+		max_count[i] = leng;
 	}
 
-	bool operator!() const { return !static_cast<bool>(*this); }
+	for (uint8_t i=0; i<Ks.size(); i++) {
+		std::string streamN = "dataset/"+nomeStream+"."+std::to_string(i)+".264";
+		files[i] = std::ifstream(streamN, std::ios::in|std::ios::binary);
+		if (!files[i].is_open()) throw std::runtime_error("Failed opening file");
+	}
+}
 
-	boost::random::mt19937 gen;
-};
+fountain_packet packet_source::next_packet() { // using uep_encoder
+	if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
+	std::string streamN = "dataset/"+nomeStream+"."+std::to_string(currQid)+".264";
+	bool readingOk;
+	std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
+	currInd[currQid]++;
+	if (!readingOk) throw std::runtime_error("Impossible to read source file");
+	if (read.size() < Ls) { // last bits
+		for (uint i=0; i<Ls-read.size(); i++) read.push_back(' ');
+	}
+	fountain_packet fp(read);
+	fp.setPriority(currQid);
+	cerr << "packet_source::next_packet size=" << fp.size()
+		<< " priority=" << static_cast<size_t>(fp.getPriority())
+		<< endl;
+	if (currInd[currQid] % Ks[currQid] == 0) {
+		currQid++;
+		std::cout << "changing Qid\n";
+	}
+	if (currQid == Ks.size()) {
+		currQid = 0;
+		std::cout << "resetting Qid\n";
+	}
+	return fp;
+}
+
+size_t packet_source::totLength() const {
+	return totalLength;
+}
 
 
 namespace uep {
@@ -403,7 +375,10 @@ nal_reader::nal_reader(const parameter_set &ps) :
   stream_name = ps.streamName;
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for \""
 				      << stream_name << "\"";
-  file.open("dataset/"+stream_name+".264", ios_base::in|ios_base::binary);
+	file.open("dataset/"+stream_name+".264", ios_base::in|ios_base::binary);
+	file.seekg(0, ios::end);
+	totalLength = file.tellg();
+	file.seekg(0, ios::beg);
   trace.open("dataset/"+stream_name+".trace", ios_base::in);
   BOOST_LOG_SEV(basic_lg, log::trace) << "Opened stream and trace files";
 
@@ -567,6 +542,33 @@ fountain_packet nal_reader::next_packet() {
   fp.buffer().resize(pkt_size, 0); // Pad with zeros
   return fp;
 }
+/*
+	fountain_packet next_packet() { // using uep_encoder
+		if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
+		std::string streamN = "dataset/"+streamName+"."+std::to_string(currQid)+".264";
+		bool readingOk;
+		std::vector<char> read = readByteFromFile(streamN,currInd[currQid]*Ls,Ls, &readingOk);
+		currInd[currQid]++;
+		if (!readingOk) throw std::runtime_error("Impossible to read source file");
+		if (read.size() < Ls) { // last bits
+			for (uint i=0; i<Ls-read.size(); i++) read.push_back(' ');
+		}
+		fountain_packet fp(read);
+		fp.setPriority(currQid);
+		cerr << "packet_source::next_packet size=" << fp.size()
+      << " priority=" << static_cast<size_t>(fp.getPriority())
+      << endl;
+    if (currInd[currQid] % Ks[currQid] == 0) {
+			currQid++;
+			std::cout << "changing Qid\n";
+		}
+		if (currQid == Ks.size()) {
+			currQid = 0;
+			std::cout << "resetting Qid\n";
+		}
+		return fp;
+	}
+	*/
 
 const buffer_type &nal_reader::header() const {
   return hdr;
@@ -578,6 +580,10 @@ bool nal_reader::has_packet() const {
 
 nal_reader::operator bool() const {
   return has_packet();
+}
+
+size_t nal_reader::totLength() const {
+	return totalLength;
 }
 
 bool nal_reader::operator!() const {
