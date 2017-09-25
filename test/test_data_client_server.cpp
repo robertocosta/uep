@@ -693,12 +693,11 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
   io_service io; // Global io_service object
 
   const size_t L = 1000; // pkt size
-  //const vector<size_t> Ks = {16,32,64,128}; // block size
   const vector<size_t> Ks = {16,32,64}; // block size
   const vector<size_t> RFs = {4,2,1};
   const size_t EF = 2;
-  //const size_t K = 1024; // Total blocksize
-  const size_t Kuep = 64*3*2;
+  //const size_t K = 64*3*2; // Total blocksize after expansion
+  const size_t Kuep = 64+32+16; // Total blocksize before expansion
   const double c = 0.01;
   const double delta = 0.5;
   const size_t nblocks = 10; // blocks to send
@@ -714,7 +713,7 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
 
   ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
   ds.setup_source(src_ps); // setup the source  inside the data_server
-  //ds.target_send_rate(L*2); // Set a target send rate of 2 pkt/s
+  //ds.target_send_rate(L*5); // Set a target send rate of 5 pkt/s
   ds.enable_ack(true);
   //ds.max_sequence_number(140);
   ds.open("127.0.0.1", "9999"); // Setup the data_server socket:
@@ -722,7 +721,7 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
 
   dc.setup_decoder(dec_ps); // setup the decoder inside the data_client
   dc.setup_sink(sink_ps); // setup the sink inside the data_client
-  dc.enable_ack(false);
+  dc.enable_ack(true);
   dc.expected_count(nblocks*Kuep);
   dc.timeout(1);
   dc.bind("9999"); // bind the data_client to the port 9999
@@ -735,19 +734,24 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
 
   ds.start(); // start the periodic tx of packets
   // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(600));
-  end_timer.async_wait([&ds,&dc]
-		       (const boost::system::error_code&) -> void {
-			 if (!ds.is_stopped()) {
-			   ds.stop();
-			   BOOST_ERROR("data_server did not stop");
-			 }
-			 if (!dc.is_stopped()) {
-			   dc.stop();
-			   BOOST_ERROR("data_client did not stop");
-			 }
-		       });
-    io.run(); // enter the io_service loop: process both the server and
+  boost::asio::steady_timer end_timer(io, std::chrono::seconds(60));
+  end_timer.async_wait([&ds] (const boost::system::error_code &ec) -> void {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!ds.is_stopped()) {
+	ds.stop();
+	BOOST_ERROR("data_server did not stop");
+      }
+    });
+  end_timer.async_wait([&dc] (const boost::system::error_code &ec) -> void {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!dc.is_stopped()) {
+	dc.stop();
+	BOOST_ERROR("data_client did not stop");
+      }
+    });
+  io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
 
@@ -758,8 +762,8 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
   BOOST_CHECK_EQUAL(orig.size(), nblocks*Kuep); // all pkts were extracted
   BOOST_CHECK_EQUAL(recv.size(), nblocks*Kuep); // all pkts were flushed
 
-  BOOST_CHECK_EQUAL(dc.decoder().blockno(), nblocks+1); // synced on the right block
-  BOOST_CHECK_EQUAL(dc.decoder().received_count(), 0); // past the last block
+  BOOST_CHECK_EQUAL(dc.decoder().blockno(), nblocks-1); // synced on the last block
+  BOOST_CHECK_GE(dc.decoder().received_count(), Kuep); // min to decode fully
 
   // Flushed count
   BOOST_CHECK_EQUAL(dc.decoder().total_decoded_count(), nblocks*Kuep);
