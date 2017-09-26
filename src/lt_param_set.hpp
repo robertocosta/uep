@@ -45,14 +45,20 @@ struct lt_uep_parameter_set {
 };
 
 struct streamTrace {
-	unsigned int startPos;
-	int len;
-	int lid;
-	int tid;
-	int qid;
-	int packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
-	bool discardable;
-	bool truncatable;
+  enum packet_type_t {
+    stream_header = 1,
+    parameter_set = 2,
+    slice_data = 3
+  };
+
+  unsigned int startPos;
+  int len;
+  int lid;
+  int tid;
+  int qid;
+  packet_type_t packetType; // 1: StreamHeader, 2: ParameterSet, 3: SliceData
+  bool discardable;
+  bool truncatable;
 };
 
 /** Parameters used to setup the control and data connections between
@@ -73,6 +79,7 @@ struct net_parameter_set {
   std::size_t fileSize; /**< The size of the file being streamed. */
   std::string tcp_port_num; /**< The TCP port where the control server listens. */
   std::string udp_port_num; /**< The UDP port where the data client listens. */
+  std::size_t packet_size; /**< The size of the packets to pass to the encoder. */
   std::vector<streamTrace> videoTraceAr;
 };
 

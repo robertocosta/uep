@@ -56,3 +56,10 @@ target_link_libraries(test_uep_encdec
   uep_decoder
 )
 add_test(test_uep_encdec ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_uep_encdec)
+
+add_executable(test_nal_rw test_nal_rw.cpp)
+target_link_libraries(test_nal_rw
+  packets
+  nal_reader
+)
+add_test(test_nal_rw ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_nal_rw)
