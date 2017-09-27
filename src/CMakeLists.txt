@@ -5,6 +5,7 @@ set(cpp_files
   decoder
   log
   nal_reader
+  nal_writer
   packets
   packets_rw
   rng

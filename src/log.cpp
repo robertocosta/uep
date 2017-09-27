@@ -9,6 +9,15 @@ namespace src = boost::log::sources;
 namespace uep {
 namespace log {
 
+BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(basic_lg,
+				  default_logger,
+				  (boost::log::keywords::channel =
+				   basic));
+BOOST_LOG_GLOBAL_LOGGER_CTOR_ARGS(perf_lg,
+				  default_logger,
+				  (boost::log::keywords::channel =
+				   performance));
+
 static bool was_inited = false;
 
 void init() {

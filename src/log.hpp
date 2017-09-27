@@ -10,6 +10,7 @@
 #include <boost/log/expressions.hpp>
 #include <boost/log/expressions/formatters/date_time.hpp>
 #include <boost/log/expressions/formatters/named_scope.hpp>
+#include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/support/date_time.hpp>
@@ -53,6 +54,10 @@ void init(const std::string &perflog);
  *  once.
  */
 void init();
+
+/** Setup a pair of global loggers. */
+BOOST_LOG_GLOBAL_LOGGER(basic_lg, default_logger);
+BOOST_LOG_GLOBAL_LOGGER(perf_lg, default_logger);
 
 /** Write the severity level to an ostream. */
 std::ostream &operator<<(std::ostream &strm, severity_level level);
