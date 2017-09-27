@@ -404,6 +404,7 @@ private:
    *  to the target send rate.
    */
   void schedule_next_pkt() {
+    BOOST_LOG_SEV(basic_lg, log::debug) << "Called schedule_next_pkt";
     using std::move;
     //using std::chrono::seconds;
     using std::chrono::microseconds;
@@ -543,6 +544,7 @@ private:
 
   /** Called after start(). */
   void handle_started() {
+    BOOST_LOG_SEV(basic_lg, log::debug) << "Called handle_started";
     is_stopped_ = false;
     schedule_next_pkt();
     listen_for_acks();

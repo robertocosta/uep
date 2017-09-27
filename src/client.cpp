@@ -8,6 +8,7 @@
 #include "log.hpp"
 #include "uep_decoder.hpp"
 #include "nal_reader.hpp"
+#include "nal_writer.hpp"
 #include <fstream>
 
 using namespace boost::asio;
@@ -22,7 +23,7 @@ using boost::asio::ip::udp;
 struct memory_sink;
 
 typedef uep_decoder dec_type;
-typedef memory_sink sink_type;
+typedef nal_writer sink_type;
 typedef data_client<dec_type,sink_type> dc_type;
 typedef all_parameter_set<dec_type::parameter_set> all_params;
 
