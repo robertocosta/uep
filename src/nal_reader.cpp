@@ -31,7 +31,7 @@
 using namespace std;
 using namespace uep;
 
-#ifdef UEP_SPLIT_STREAMS
+//#ifdef UEP_SPLIT_STREAMS
 
 //typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
 //all_params parset;
@@ -194,11 +194,11 @@ std::vector<streamTrace> loadTrace(std::string streamName) {
 					break;
 				case (5):
 					if (s == "StreamHeader") {
-						elem.packetType = 1;
+						elem.packetType = streamTrace::stream_header;
 					} else if (s == "ParameterSet") {
-						elem.packetType = 2;
+						elem.packetType = streamTrace::parameter_set;
 					} else if (s == "SliceData") {
-						elem.packetType = 3;
+						elem.packetType = streamTrace::slice_data;
 					}
 					break;
 				case (6):
@@ -368,7 +368,7 @@ size_t packet_source::totLength() const {
 	return totalLength;
 }
 
-#endif
+//#endif
 
 namespace uep {
 

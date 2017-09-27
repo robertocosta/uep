@@ -9,7 +9,7 @@
 #include "lt_param_set.hpp"
 #include "packets.hpp"
 
-#ifdef UEP_SPLIT_STREAMS
+//#ifdef UEP_SPLIT_STREAMS
 #include "uep_encoder.hpp"
 
 bool file_exists (const std::string& name);
@@ -49,7 +49,7 @@ struct packet_source {
   bool operator!() const;
 };
 
-#endif
+//#endif
 
 namespace uep {
 

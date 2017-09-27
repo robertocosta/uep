@@ -26,6 +26,7 @@
 #include "log.hpp"
 #include "nal_reader.hpp"
 #include "uep_encoder.hpp"
+#include "lt_param_set.hpp"
 
 /*
 	1: client to server: streamName
@@ -54,9 +55,13 @@ using namespace uep;
 using namespace uep::net;
 using namespace uep::log;
 
-// DEFAULT PARAMETER SET
-//typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
+typedef uep_encoder<> enc_t;
+typedef all_parameter_set<enc_t::parameter_set> all_params;
 //typedef lt_uep_parameter_set all_params;
+typedef nal_reader src_t;
+typedef data_server<enc_t,src_t> ds_type;
+//typedef packet_source src_t;
+
 all_params ps;
 
 class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
@@ -65,18 +70,14 @@ class tcp_connection: public boost::enable_shared_from_this<tcp_connection> {
 			as long as there is an operation that refers to it.*/
 public:
 	typedef boost::shared_ptr<tcp_connection> pointer;
-	typedef uep_encoder<> enc_t;
-	typedef packet_source src_t;
-	//typedef nal_reader src_t;
-	typedef uep::net::data_server<enc_t,src_t> ds_type;
 
-		static pointer create(boost::asio::io_service& io_service) {
-			return pointer(new tcp_connection(io_service));
-		}
+	static pointer create(boost::asio::io_service& io_service) {
+		return pointer(new tcp_connection(io_service));
+	}
 
-		tcp::socket& socket() {
-			return socket_;
-		}
+	tcp::socket& socket() {
+		return socket_;
+	}
 
 	void start() {
 		boost::system::error_code error;
@@ -132,16 +133,17 @@ private:
 
 			// SENDING ENCODER PARAMETERS
 			controlMessage::TXParam secondMessage;
-			secondMessage.add_ks(ps.Ks[0]);
-			secondMessage.add_ks(ps.Ks[1]);
+			for (uint i=0; i<ps.Ks.size(); i++) {
+				secondMessage.add_ks(ps.Ks[i]);
+				secondMessage.add_rfs(ps.RFs[i]);
+			}
+			
 			secondMessage.set_c(ps.c);
 			secondMessage.set_delta(ps.delta);
-			secondMessage.add_rfs(ps.RFs[0]);
-			secondMessage.add_rfs(ps.RFs[1]);
 
 			secondMessage.set_ef(ps.EF);
 			secondMessage.set_ack(ps.ack);
-			const buffer_type &hdr = ds.source().header;
+			const buffer_type &hdr = ds.source().header();
 			secondMessage.add_header(hdr.data(), hdr.size());
 			secondMessage.set_headersize(hdr.size());
 			secondMessage.set_filesize(ds.source().totLength());
@@ -300,6 +302,7 @@ int main(int argc, char **argv) {
 	ps.sendRate = 10240;
 	ps.fileSize = 20480;
 	ps.tcp_port_num = default_tcp_port;
+	ps.packet_size = 1000;
 
 	string tcp_port = default_tcp_port;
 	if (argc > 1) {

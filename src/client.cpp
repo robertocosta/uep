@@ -25,7 +25,7 @@ typedef uep_decoder dec_type;
 typedef memory_sink sink_type;
 typedef data_client<dec_type,sink_type> dc_type;
 typedef all_parameter_set<dec_type::parameter_set> all_params;
-std::string streamN;
+
 // MEMORY SINK
 struct memory_sink {
   typedef all_params parameter_set;
@@ -110,7 +110,8 @@ int main(int argc, char* argv[]) {
 	std::string serialize_buf;
 	boost::system::error_code error;
 	std::size_t written;
-	// send stream name to server
+	
+	// sending stream name to server
 	controlMessage::StreamName firstMessage;
 	firstMessage.set_streamname(ps.streamName);
 	if (!firstMessage.SerializeToString(&serialize_buf)) {
@@ -119,6 +120,7 @@ int main(int argc, char* argv[]) {
 	written = socket.write_some(boost::asio::buffer(serialize_buf));
 	std::cout << "Sent " << written << " bytes with stream name: \""<<ps.streamName<<"\"\n";
 
+	// receiving parameters from server
 	parse_buf.resize(recv_size);
 	size_t len = socket.read_some(boost::asio::buffer(&parse_buf.front(),
 																										parse_buf.size()));
@@ -130,7 +132,7 @@ int main(int argc, char* argv[]) {
 		throw std::runtime_error("Parsing of secondMessage failed");
 	}
 	std::cout << "Message received from server:\n";
-
+	
 	for (int i=0; i<secondMessage.ks_size(); i++) {
 		std::cout << "k_" << i << ":" << secondMessage.ks(i) << ",";
 	}
@@ -154,7 +156,8 @@ int main(int argc, char* argv[]) {
 	//cout << "header pointer: " << head_ptr << "\nheader:\n";
 	//for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
 	//cout << endl;
-	streamN = "dataset_client/"+ps.streamName+".264";
+	std::string streamN = "dataset_client/"+ps.streamName+".264";
+
 	if (file_exists(streamN)) {
 		if (!overwriteCharVecToFile( streamN,headerVec))
 			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
@@ -163,6 +166,7 @@ int main(int argc, char* argv[]) {
 			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
 	}
 	std::cout << "\nCreation of decoder...\n";
+	
 	// CREATION OF DECODER
 	uint ks_size = secondMessage.ks_size();
 	ps.Ks.resize(ks_size);
