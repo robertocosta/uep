@@ -510,19 +510,8 @@ void nal_reader::read_header() {
 
 buffer_type nal_reader::read_nal(const streamTrace &st) {
   buffer_type buf(st.len);
-  // The first packet counts one extra zero byte: read one byte less
-  if (st.startPos == 0) {
-    file.seekg(0);
-    buf.resize(st.len-1);
-    file.read(buf.data(), buf.size());
-    assert(file.gcount() == st.len-1);
-    return buf;
-  }
-
-  // The starting positions leave a zero byte at the end of the
-  // previous packet: shift back by 1
-  if (file.tellg() != st.startPos-1) {
-    file.seekg(st.startPos-1);
+  if (file.tellg() != st.startPos) {
+    file.seekg(st.startPos);
   }
   file.read(buf.data(), buf.size());
   assert(file.gcount() == st.len);

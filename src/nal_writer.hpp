@@ -65,11 +65,6 @@ template <class Iter>
 Iter find_startcode(Iter first, Iter last) {
   static const char sc[3] = {0x00, 0x00, 0x01};
   auto i = std::search(first, last, sc, sc+3);
-  // Take the 4-byte prefix if the leading zero is present
-  if (i != first && i != last &&
-      *(i-1) == 0x00) {
-    --i;
-  }
   return i;
 }
 

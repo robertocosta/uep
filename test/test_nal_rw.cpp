@@ -14,31 +14,44 @@ bool compare_streams(const std::string &fileA, const std::string &fileB) {
 
   std::vector<char> awhole;
   std::vector<char> bwhole;
-  
-  std::array<char, 4096> abuf, bbuf;
-  
-  while (a && b) {
-    abuf.fill(0);
-    bbuf.fill(0);
-    
-    a.read(abuf.data(), abuf.size());
-    b.read(bbuf.data(), bbuf.size());
+  std::array<char, 4096> buf;
 
-    awhole.insert(awhole.end(), abuf.cbegin(), abuf.cend());
-    bwhole.insert(bwhole.end(), bbuf.cbegin(), bbuf.cend());
+  while (a) {
+    buf.fill(0);
+    a.read(buf.data(), buf.size());
+    awhole.insert(awhole.end(), buf.cbegin(), buf.cend());
   }
-  if (!(a.eof() && b.eof())) return false;
+  while (b) {
+    buf.fill(0);
+    b.read(buf.data(), buf.size());
+    bwhole.insert(bwhole.end(), buf.cbegin(), buf.cend());
+  }
 
   auto i = awhole.cbegin();
   auto j = bwhole.cbegin();
-  while (i != awhole.cend() && j != bwhole.cend()) {
+  bool lastloop = false;
+  while (i != awhole.cend() && j != bwhole.cend() && !lastloop) {
     auto sc_a = find_startcode(i, awhole.cend());
     auto sc_b = find_startcode(j, bwhole.cend());
-    auto end_a = find_nal_end(i+3, awhole.cend());
-    auto end_b = find_nal_end(j+3, bwhole.cend());
 
-    if (end_a - sc_a != end_b - sc_b) return false;    
-    if (!std::equal(sc_a, end_a, sc_b)) return false;
+    if (sc_a == awhole.cend())
+      return sc_b == bwhole.cend();
+
+    auto end_a = find_nal_end(sc_a+3, awhole.cend());
+    auto end_b = find_nal_end(sc_b+3, bwhole.cend());
+
+    size_t size_a = end_a - sc_a;
+    BOOST_LOG_SEV(log::basic_lg::get(), log::trace) << "NAL size A: "
+						    << size_a;
+
+    size_t size_b = end_b - sc_b;
+    BOOST_LOG_SEV(log::basic_lg::get(), log::trace) << "NAL size B: "
+						    << size_b;
+
+    if (size_a != size_b)
+      return false;
+    if (!std::equal(sc_a, end_a, sc_b))
+      return false;
 
     i = end_a;
     j = end_b;
@@ -52,7 +65,7 @@ bool compare_streams(const std::string &fileA, const std::string &fileB) {
     if (find_startcode(j, bwhole.cend()) != bwhole.cend())
       return false;
   }
-  
+
   return true;
 }
 
@@ -76,10 +89,7 @@ BOOST_AUTO_TEST_CASE(nal_read) {
   ps.packet_size = 512;
   nal_reader r(ps);
   BOOST_CHECK(!r.header().empty());
-  BOOST_CHECK_EQUAL(r.header().size(), 451+15+16+8+8-1); // One byte
-							 // shifted to
-							 // the next
-							 // packets
+  BOOST_CHECK_EQUAL(r.header().size(), 451+15+16+8+8);
 
   BOOST_CHECK(r.has_packet());
   BOOST_CHECK(static_cast<bool>(r));
@@ -95,7 +105,7 @@ BOOST_AUTO_TEST_CASE(nal_read) {
   }
   BOOST_CHECK(all_of(fp.buffer().cend() - 137, fp.buffer().cend(),
 		     [](char c){return c == 0;}));
-  BOOST_CHECK_NE(*(fp.buffer().cend() - 138), 0);
+  BOOST_CHECK_NE(*(fp.buffer().cend() - 139), 0); // Possibly one trailing zero
 
   for (size_t i = 0; i < 16; ++i) {
     fp = r.next_packet();
@@ -105,7 +115,7 @@ BOOST_AUTO_TEST_CASE(nal_read) {
   }
   BOOST_CHECK(all_of(fp.buffer().cend() - 310, fp.buffer().cend(),
 		     [](char c){return c == 0;}));
-  BOOST_CHECK_NE(*(fp.buffer().cend() - 311), 0);
+  BOOST_CHECK_NE(*(fp.buffer().cend() - 312), 0); // Possibly one trailing zero
 
   while(r) {
     fp = r.next_packet();
@@ -114,7 +124,7 @@ BOOST_AUTO_TEST_CASE(nal_read) {
   BOOST_CHECK_EQUAL(fp.getPriority(), 1);
   BOOST_CHECK(all_of(fp.buffer().cend() - 21, fp.buffer().cend(),
 		     [](char c){return c == 0;}));
-  BOOST_CHECK_NE(*(fp.buffer().cend() - 22), 0);
+  BOOST_CHECK_NE(*(fp.buffer().cend() - 23), 0); // Possibly one trailing zero
 
   BOOST_CHECK_GE(npkts, ceil(static_cast<double>(r.totLength()) / ps.packet_size));
 }
@@ -135,8 +145,8 @@ BOOST_AUTO_TEST_CASE(nal_read_write) {
   BOOST_CHECK(compare_streams("dataset/CREW_352x288_30_orig_01.264",
 			      "dataset/CREW_352x288_30_orig_01.264"));
   BOOST_CHECK(compare_streams("dataset_client/CREW_352x288_30_orig_01.264",
-			      "dataset_client/CREW_352x288_30_orig_01.264"));  
-  
+			      "dataset_client/CREW_352x288_30_orig_01.264"));
+
   BOOST_CHECK(compare_streams("dataset/CREW_352x288_30_orig_01.264",
-			      "dataset_client/CREW_352x288_30_orig_01.264"));  
+			      "dataset_client/CREW_352x288_30_orig_01.264"));
 }

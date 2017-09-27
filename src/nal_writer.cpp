@@ -13,9 +13,9 @@ nal_writer::nal_writer(const buffer_type &header,
   BOOST_LOG_SEV(basic_lg, log::trace) << "Create a NAL writer for "
 				      << stream_name;
   file.open(filename(), ios_base::binary);
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Opened output file"; 
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Opened output file";
   file.write(header.data(), header.size());
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";   
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";
 }
 
 nal_writer::nal_writer(const parameter_set &ps) :
@@ -82,7 +82,7 @@ void nal_writer::enqueue_nals(bool must_end) {
     // +3 bytes to not stop on the found startcode
     auto end = find_nal_end(i + 3, nal_buf.end());
     BOOST_LOG_SEV(basic_lg, log::trace) << "NAL end found at " << (void*) &*end;
-	
+
     if (end == nal_buf.end()) { // No end found: NAL may continue
       if (must_end) { // NAL can not continue: enqueue
 	BOOST_LOG_SEV(basic_lg, log::trace) << "must_end: write to file "
