@@ -93,6 +93,7 @@ target_link_libraries(client
   decoder
   uep_decoder
   nal_reader
+  nal_writer
   packets_rw
   ${Boost_LIBRARIES}
 )
