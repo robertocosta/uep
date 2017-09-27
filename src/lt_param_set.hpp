@@ -80,6 +80,7 @@ struct net_parameter_set {
   std::string tcp_port_num; /**< The TCP port where the control server listens. */
   std::string udp_port_num; /**< The UDP port where the data client listens. */
   std::size_t packet_size; /**< The size of the packets to pass to the encoder. */
+  std::vector<char> header;
   std::vector<streamTrace> videoTraceAr;
 };
 

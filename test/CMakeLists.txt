@@ -61,5 +61,6 @@ add_executable(test_nal_rw test_nal_rw.cpp)
 target_link_libraries(test_nal_rw
   packets
   nal_reader
+  nal_writer
 )
 add_test(test_nal_rw ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_nal_rw)
