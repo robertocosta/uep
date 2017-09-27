@@ -31,6 +31,8 @@
 using namespace std;
 using namespace uep;
 
+#ifdef UEP_SPLIT_STREAMS
+
 //typedef all_parameter_set<uep_encoder<>::parameter_set> all_params;
 //all_params parset;
 
@@ -366,20 +368,29 @@ size_t packet_source::totLength() const {
 	return totalLength;
 }
 
+#endif
 
 namespace uep {
 
+std::string nal_reader::filename() const {
+  return "dataset/"+stream_name+".264";
+}
+
+std::string nal_reader::tracename() const {
+  return "dataset/"+stream_name+".trace";
+}
+
 nal_reader::nal_reader(const parameter_set &ps) :
   basic_lg(boost::log::keywords::channel = log::basic),
-  perf_lg(boost::log::keywords::channel = log::performance) {
-  stream_name = ps.streamName;
+  perf_lg(boost::log::keywords::channel = log::performance),
+  stream_name(ps.streamName),
+  pkt_size(ps.packet_size) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for \""
 				      << stream_name << "\"";
-	file.open("dataset/"+stream_name+".264", ios_base::in|ios_base::binary);
-	file.seekg(0, ios::end);
-	totalLength = file.tellg();
-	file.seekg(0, ios::beg);
-  trace.open("dataset/"+stream_name+".trace", ios_base::in);
+  file.open(filename(), ios_base::binary|ios_base::ate);
+  totalLength = file.tellg();
+  file.seekg(0);
+  trace.open(tracename());
   BOOST_LOG_SEV(basic_lg, log::trace) << "Opened stream and trace files";
 
   read_header(); // Read header NALs into hdr
@@ -388,36 +399,30 @@ nal_reader::nal_reader(const parameter_set &ps) :
 streamTrace nal_reader::read_trace_line() {
   string line;
   getline(trace,line);
-
   BOOST_LOG_SEV(basic_lg, log::trace) << "Reading trace line"
 				      << ". Raw line: "
 				      << line;
+
+  // Skip empty lines after this
+  string nextline;
+  size_t oldpos;
+  while (nextline.empty() && trace) {
+    oldpos = trace.tellg();
+    getline(trace, nextline);
+  }
+  if (!nextline.empty()) {
+    trace.seekg(oldpos);
+  }
 
   if (line.empty()) {
     throw runtime_error("Empty trace line");
   }
 
-  std::string whiteSpacesTrimmed;
-  int n = line.find(" ");
-  std::string s = line;
-  while (n>=0) {
-    if (n==0) {
-      s = s.substr(1,s.length());
-    } else if (n>0) {
-      whiteSpacesTrimmed += s.substr(0,n) + " ";
-      s = s.substr(n,s.length());
-    }
-    n = s.find(" ");
-  }
-  whiteSpacesTrimmed += s;
-
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Trimmed line: "
-				      << whiteSpacesTrimmed;
-
-  istringstream iss(whiteSpacesTrimmed);
+  istringstream iss(line);
   streamTrace elem;
+
   iss >> std::hex >> elem.startPos;
-  if (iss.fail()) { // Was not a packet line, take next one
+  if (iss.fail()) { // Was not a packet line, ignore and take next one
     BOOST_LOG_SEV(basic_lg, log::trace) << "Skip non-packet line";
     trace.clear();
     return read_trace_line();
@@ -429,29 +434,23 @@ streamTrace nal_reader::read_trace_line() {
   iss >> elem.tid;
   iss >> elem.qid;
 
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Read offset="
-				      << std::hex << elem.startPos
-				      << " length="
-				      << std::dec << elem.len
-				      << " Lid=" << elem.lid
-				      << " Tid=" << elem.tid
-				      << " Qid=" << elem.qid;
-
   string pkt_type;
   iss >> std::ws; // Skip whitespace
   getline(iss, pkt_type, ' ');
   BOOST_LOG_SEV(basic_lg, log::trace) << "Raw pkt_type=" << pkt_type;
   if (pkt_type == "StreamHeader") {
-    elem.packetType = 1;
+    elem.packetType = streamTrace::stream_header;
   } else if (pkt_type == "ParameterSet") {
-    elem.packetType = 2;
+    elem.packetType = streamTrace::parameter_set;
   } else if (pkt_type == "SliceData") {
-    elem.packetType = 3;
+    elem.packetType = streamTrace::slice_data;
   }
   else throw runtime_error("Unknown packet type");
 
   string disc;
+  iss >> std::ws; // Skip whitespace
   getline(iss, disc, ' ');
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Raw disc=" << disc;
   if (disc == "Yes") {
     elem.discardable = true;
   } else if (disc == "No") {
@@ -460,13 +459,28 @@ streamTrace nal_reader::read_trace_line() {
   else throw runtime_error("Unknown discardable field");
 
   string trunc;
+  iss >> std::ws; // Skip whitespace
   getline(iss, trunc, ' ');
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Raw trunc=" << trunc;
   if (trunc == "Yes") {
-    elem.discardable = true;
+    elem.truncatable = true;
   } else if (trunc == "No") {
-    elem.discardable = false;
+    elem.truncatable = false;
   }
   else throw runtime_error("Unknown truncatable field");
+
+  BOOST_LOG_SEV(basic_lg, log::trace) << std::hex
+				      << "Read streamTrace: offset="
+				      << elem.startPos
+				      << " length="
+				      << std::dec << elem.len
+				      << " Lid=" << elem.lid
+				      << " Tid=" << elem.tid
+				      << " Qid=" << elem.qid
+				      << std::boolalpha
+				      << " PktType=" << elem.packetType
+				      << " Disc=" << elem.discardable
+				      << " Trunc=" << elem.truncatable;
 
   return elem;
 }
@@ -474,74 +488,98 @@ streamTrace nal_reader::read_trace_line() {
 void nal_reader::read_header() {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Reading header";
   streamTrace st_line = read_trace_line();
-  buffer_type nal;
-  while (st_line.packetType == 1 || st_line.packetType == 2) {
+  buffer_type nal = read_nal(st_line);
+  while (st_line.packetType == streamTrace::stream_header ||
+	 st_line.packetType == streamTrace::parameter_set) {
     BOOST_LOG_SEV(basic_lg, log::trace) << "Found packet with type "
 					<< st_line.packetType
 					<< " offset="
 					<< std::hex << st_line.startPos;
-    nal = read_nal(st_line);
     hdr.insert(hdr.end(), nal.begin(), nal.end());
     BOOST_LOG_SEV(basic_lg, log::trace) << "Read into header buffer"
 					<< ". Total size=" << hdr.size();
     st_line = read_trace_line();
+    nal = read_nal(st_line);
   }
+
   // Don't drop the first slice NAL
-  if (last_nal.empty()) {
-    BOOST_LOG_SEV(basic_lg, log::trace) << "Read the first NAL";
-    last_nal = read_nal(st_line);
-    next_chunk = last_nal.cbegin();
-    if (st_line.discardable && st_line.qid > 0) {
-      last_priority = 1;
-    }
-    else {
-      last_priority = 0;
-    }
-  }
+  assert(last_nal.empty());
+  last_nal = std::move(nal);
+  last_prio = classify(st_line);
 }
 
 buffer_type nal_reader::read_nal(const streamTrace &st) {
   buffer_type buf(st.len);
-  file.seekg(st.startPos);
+  // The first packet counts one extra zero byte: read one byte less
+  if (st.startPos == 0) {
+    file.seekg(0);
+    buf.resize(st.len-1);
+    file.read(buf.data(), buf.size());
+    assert(file.gcount() == st.len-1);
+    return buf;
+  }
+
+  // The starting positions leave a zero byte at the end of the
+  // previous packet: shift back by 1
+  if (file.tellg() != st.startPos-1) {
+    file.seekg(st.startPos-1);
+  }
   file.read(buf.data(), buf.size());
   assert(file.gcount() == st.len);
   return buf;
 }
 
-fountain_packet nal_reader::next_packet() {
-  if (!has_packet()) throw runtime_error("Out of packets");
-  if (last_nal.empty()) {
-    BOOST_LOG_SEV(basic_lg, log::trace) << "Read a new NAL";
-    streamTrace st = read_trace_line();
-    last_nal = read_nal(st);
-    next_chunk = last_nal.cbegin();
-    if (/*st.discardable &&*/ st.qid > 0) {
-      last_priority = 1;
+void nal_reader::pack_nals() {
+  if (last_nal.empty()) throw runtime_error("Out of NALs");
+
+  std::size_t prio = last_prio;
+  buffer_type packed = std::move(last_nal);
+  last_nal.clear();
+
+  while(trace) {
+    streamTrace st_line = read_trace_line();
+    last_nal = read_nal(st_line);
+    last_prio = classify(st_line);
+
+    // Append the next NAL if same priority
+    if (last_prio == prio && packed.size() <= MAX_PACKED_SIZE) {
+      packed.insert(packed.end(), last_nal.begin(), last_nal.end());
+      last_nal.clear();
     }
-    else {
-      last_priority = 0;
+    else { // Different priority
+      break;
     }
   }
 
-  // Size of NAL chunk to extract
-  std::size_t chunk_size = min(static_cast<size_t>(last_nal.cend() - next_chunk),
-			       pkt_size);
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Build a pkt of " << chunk_size
-				      << " bytes"
-				      << " priority " << last_priority;
-
+  // Segment and pad the packed NALs
+  size_t npkts = static_cast<size_t>(ceil(static_cast<double>(packed.size()) /
+					  pkt_size));
+  auto i = packed.cbegin();
+  for (size_t n = 0; n < npkts-1; ++n) {
+    fountain_packet fp;
+    fp.setPriority(prio);
+    fp.buffer().resize(pkt_size);
+    std::copy(i, i + pkt_size, fp.buffer().begin());
+    pkt_queue.push(std::move(fp));
+    i += pkt_size;
+  }
   fountain_packet fp;
-  fp.buffer().assign(next_chunk, next_chunk + chunk_size);
-  next_chunk += chunk_size;
-  fp.setPriority(last_priority);
+  fp.setPriority(prio);
+  fp.buffer().resize(pkt_size, 0x00); // Pad with zeros the last segment
+  std::copy(i, packed.cend(), fp.buffer().begin());
+  pkt_queue.push(std::move(fp));
+}
 
-  if (next_chunk == last_nal.cend()) {
-    last_nal.clear();
+fountain_packet nal_reader::next_packet() {
+  if (pkt_queue.empty()) {
+    pack_nals();
   }
 
-  fp.buffer().resize(pkt_size, 0); // Pad with zeros
+  fountain_packet fp = std::move(pkt_queue.front());
+  pkt_queue.pop();
   return fp;
 }
+
 /*
 	fountain_packet next_packet() { // using uep_encoder
 		if (currInd[currQid]*Ls >= max_count[currQid]) throw std::runtime_error("Max packet count");
@@ -570,12 +608,21 @@ fountain_packet nal_reader::next_packet() {
 	}
 	*/
 
+std::size_t nal_reader::classify(const streamTrace &st) {
+  if (st.discardable && st.qid > 0) {
+    return 1;
+  }
+  else {
+    return 0;
+  }
+}
+
 const buffer_type &nal_reader::header() const {
   return hdr;
 }
 
 bool nal_reader::has_packet() const {
-  return !trace.eof();
+  return !(pkt_queue.empty() && last_nal.empty() && trace.eof()) ;
 }
 
 nal_reader::operator bool() const {

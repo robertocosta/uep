@@ -2,11 +2,14 @@
 #define UEP_NAL_READER_HPP
 
 #include <fstream>
+#include <queue>
 #include <sstream>
 
 #include "log.hpp"
 #include "lt_param_set.hpp"
 #include "packets.hpp"
+
+#ifdef UEP_SPLIT_STREAMS
 #include "uep_encoder.hpp"
 
 bool file_exists (const std::string& name);
@@ -41,13 +44,15 @@ struct packet_source {
   explicit packet_source(const parameter_set &ps);
   fountain_packet next_packet();
   size_t totLength() const;
-  
+
   explicit operator bool() const;
   bool operator!() const;
 };
 
+#endif
+
 namespace uep {
- 
+
 class nal_reader {
 public:
   /** Type of the parameter set used to setup the reader. */
@@ -68,35 +73,49 @@ public:
 
   /** Return true when the reader is able to produce a packet. */
   bool has_packet() const;
-  
+
   /** Return the size of the original stream. */
-  size_t totLength() const;
-  
+  std::size_t totLength() const;
+
   /** Return true when the reader is able to produce a packet. */
   explicit operator bool() const;
   /** Return true when the reader cannot produce a packet. */
   bool operator!() const;
 
 private:
+  static constexpr std::size_t MAX_PACKED_SIZE = 16*1024*1024;
+
   log::default_logger basic_lg, perf_lg;
 
   std::string stream_name;
+  std::size_t pkt_size;
 
   std::ifstream file;
   std::ifstream trace;
 
   buffer_type hdr;
-
-  std::size_t pkt_size = 1000;
-  buffer_type last_nal;
-  buffer_type::const_iterator next_chunk;
-  std::size_t last_priority;
-
   std::size_t totalLength;
 
-  streamTrace read_trace_line();
+  buffer_type last_nal;
+  std::size_t last_prio;
+  std::queue<fountain_packet> pkt_queue;
+
+  /** Return the name of the underlying file with the H264 bitstream. */
+  std::string filename() const;
+  /** Return the name of the underlying file with the NAL trace. */
+  std::string tracename() const;
+  /** Read the first NALs into the `hdr` buffer. */
   void read_header();
+  /** Read the next line from the NAL trace. */
+  streamTrace read_trace_line();
+  /** Read the NAL unit corresponding to the given trace line. */
   buffer_type read_nal(const streamTrace &st);
+  /** Assign a priority to the NAL unit. */
+  std::size_t classify(const streamTrace &st);
+  /** Create more packets by packing together NALs with the same
+   *  priority.
+   */
+  void pack_nals();
 };
 
 }

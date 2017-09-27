@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -90,6 +91,14 @@ public:
   /** Get the current timeout value in seconds. */
   double timeout() const;
 
+  /** Add an handler that will be called when this client stops. */
+  template <class H>
+  void add_stop_handler(const H &h);
+  /** Abort all handlers set up with add_stop_handler. Returns the
+   *  number of aborted handlers.
+   */
+  std::size_t cancel_stop_handlers();
+
   /** Return a const reference to the sink object. */
   const Sink &sink() const;
   /** Return a const reference to the decoder object. */
@@ -148,6 +157,13 @@ private:
 					   *   time if packets are not
 					   *   received.
 					   */
+
+  std::list<
+    std::function<
+      void(const boost::system::error_code&)
+      >
+    > stop_handlers; /**< Holds the handlers to call after a stop. */
+
   /** Duration of an interval without packets after which the client
    *  stops. If this is 0 the timeout is disabled.
    */
@@ -315,6 +331,14 @@ public:
     return is_stopped_;
   }
 
+  /** Add an handler that will be called when this client stops. */
+  template <class H>
+  void add_stop_handler(const H &h);
+  /** Abort all handlers set up with add_stop_handler. Returns the
+   *  number of aborted handlers.
+   */
+  std::size_t cancel_stop_handlers();
+
   /** Return a const reference to the source object. */
   const Source &source() const {
     return *source_;
@@ -369,6 +393,12 @@ private:
   boost::asio::steady_timer pkt_timer; /**< Timer used to schedule the
 					*   packet transmissions.
 					*/
+
+  std::list<
+    std::function<
+      void(const boost::system::error_code&)
+      >
+    > stop_handlers; /**< Holds the handlers to call after a stop. */
 
   /** Encode the next packet and schedule its transmission according
    *  to the target send rate.
@@ -526,6 +556,12 @@ private:
     BOOST_LOG(perf_lg) << "data_server::stopped sent_pkts="
 		       << encoder_->total_coded_count();
     BOOST_LOG_SEV(basic_lg, log::debug) << "UDP server is stopped";
+
+    // Call all handlers
+    for (const auto &f : stop_handlers) {
+      f(boost::system::error_code());
+    }
+    stop_handlers.clear();
   }
 };
 
@@ -828,6 +864,23 @@ void data_client<Decoder, Sink>::handle_timeout(const boost::system::error_code&
 }
 
 template <class Decoder, class Sink>
+template <class H>
+void data_client<Decoder, Sink>::add_stop_handler(const H &h) {
+  stop_handlers.push_back(strand_.wrap(h));
+}
+
+template <class Decoder, class Sink>
+std::size_t data_client<Decoder, Sink>::cancel_stop_handlers() {
+  std::size_t cnt = 0;
+  for (const auto &f : stop_handlers) {
+    f(boost::asio::error::operation_aborted);
+    ++cnt;
+  }
+  stop_handlers.clear();
+  return cnt;
+}
+
+template <class Decoder, class Sink>
 void data_client<Decoder, Sink>::handle_stop() {
   timeout_timer.cancel();
   socket_.cancel();
@@ -844,7 +897,34 @@ void data_client<Decoder, Sink>::handle_stop() {
 		     << decoder_->average_push_time();
 
   BOOST_LOG_SEV(basic_lg, log::debug) << "UDP client is stopped";
+
+  // Call all handlers
+  for (const auto &f : stop_handlers) {
+    f(boost::system::error_code());
+  }
+  stop_handlers.clear();
 }
+
+//	   data_server<Encoder,Source> template definitions
+
+template <class Encoder, class Source>
+template <class H>
+void data_server<Encoder, Source>::add_stop_handler(const H &h) {
+  stop_handlers.push_back(strand_.wrap(h));
+}
+
+template <class Encoder, class Source>
+std::size_t data_server<Encoder, Source>::cancel_stop_handlers() {
+  std::size_t cnt = 0;
+  for (const auto &f : stop_handlers) {
+    f(boost::asio::error::operation_aborted);
+    ++cnt;
+  }
+  stop_handlers.clear();
+  return cnt;
+}
+
+
 
 }}
 
