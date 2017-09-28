@@ -1,31 +1,15 @@
 #include "uep_decoder.hpp"
 
-#include <limits>
-
 using namespace std;
 
 namespace uep {
 
 uep_decoder::uep_decoder(const parameter_set &ps) :
-  basic_lg(boost::log::keywords::channel = log::basic),
-  perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF),
-  empty_queued_count(0),
-  seqno_ctr(numeric_limits<uep_packet::seqno_type>::max()),
-  tot_dec_count(0),
-  tot_fail_count(0) {
-  if (RFs.empty()) { // Using two-level UEP
-    RFs = {ps.RFM, ps.RFL};
-  }
-  if (Ks.size() != RFs.size()) {
-    throw std::invalid_argument("Ks, RFs sizes do not match");
-  }
-
-  out_queues.resize(Ks.size());
-
-  std_dec = std::make_unique<lt_decoder>(block_size_in(), ps.c, ps.delta);
-
-  seqno_ctr.set(0);
+  uep_decoder(ps.Ks.begin(), ps.Ks.end(),
+	      ps.RFs.begin(), ps.RFs.end(),
+	      ps.EF,
+	      ps.c,
+	      ps.delta) {
 }
 
 void uep_decoder::push(const fountain_packet &p) {

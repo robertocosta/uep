@@ -33,6 +33,15 @@ public:
 
   /** Construct using the given parameter set. */
   explicit uep_encoder(const parameter_set &ps);
+  /** Construct using the given sub-block sizes, repetition factors,
+   *  expansion factor, c and delta.
+   */
+  template<typename KsIter, typename RFsIter>
+  explicit uep_encoder(KsIter ks_begin, KsIter ks_end,
+		       RFsIter rfs_begin, RFsIter rfs_end,
+		       std::size_t ef,
+		       double c,
+		       double delta);
 
   /** Enqueue a packet according to its priority level. */
   void push(fountain_packet &&p);
@@ -139,30 +148,39 @@ private:
 //		uep_decoder<Gen> template definitions
 
 template <class Gen>
-uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
+template<typename KsIter, typename RFsIter>
+uep_encoder<Gen>::uep_encoder(KsIter ks_begin, KsIter ks_end,
+			      RFsIter rfs_begin, RFsIter rfs_end,
+			      std::size_t ef,
+			      double c,
+			      double delta) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ps.Ks), RFs(ps.RFs), EF(ps.EF),
+  Ks(ks_begin, ks_end),
+  RFs(rfs_begin, rfs_end),
+  EF(ef),
   seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()) {
-  if (RFs.empty()) { // Using two-level UEP
-    RFs = {ps.RFM, ps.RFL};
-  }
   if (Ks.size() != RFs.size()) {
     throw std::invalid_argument("Ks, RFs sizes do not match");
   }
-
   inp_queues.reserve(Ks.size());
   for (std::size_t s : Ks) {
     inp_queues.emplace_back(s);
   }
-
   K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
 				  RFs.cbegin(), 0);
   K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
-
-  std_enc = std::make_unique<lt_encoder<Gen>>(K_out, ps.c, ps.delta);
-
+  std_enc = std::make_unique<lt_encoder<Gen>>(K_out, c, delta);
   seqno_ctr.set(0);
+}
+
+template<typename Gen>
+uep_encoder<Gen>::uep_encoder(const parameter_set &ps) :
+  uep_encoder(ps.Ks.begin(), ps.Ks.end(),
+	      ps.RFs.begin(), ps.RFs.end(),
+	      ps.EF,
+	      ps.c,
+	      ps.delta) {
 }
 
 template <class Gen>
