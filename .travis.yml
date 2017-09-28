@@ -31,7 +31,7 @@ before_install:
 
 before_script:
   - export CC=gcc-6 && export CXX=g++-6
-  - mkdir build
+  - mkdir -p build
   - pushd build
   - cmake -DCMAKE_BUILD_TYPE=Release ..
   - popd
