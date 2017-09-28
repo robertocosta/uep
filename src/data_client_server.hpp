@@ -42,11 +42,13 @@ public:
   /** Replace the decoder object with one built from the given
    *  parameters.
    */
-  void setup_decoder(const decoder_parameter_set &ps);
+  template <typename ...Args>
+  void setup_decoder(Args... args);
   /** Replace the sink object with one built from the given
    *  parameters.
    */
-  void setup_sink(const sink_parameter_set &ps);
+  template <typename ...Args>
+  void setup_sink(Args... args);
 
   /** Bind the socket to the given port. */
   void bind(const std::string &service);
@@ -229,17 +231,19 @@ public:
   /** Replace the encoder with a new one built using the given
    *  parameter set.
    */
-  void setup_encoder(const encoder_parameter_set &ps) {
+  template<typename ...Args>
+  void setup_encoder(Args... args) {
     BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the encoder";
-    encoder_.reset(new Encoder(ps));
+    encoder_ = std::make_unique<Encoder>(args...);
   }
 
   /** Replace the source with a new one built using the given
    *  parameter set.
    */
-  void setup_source(const source_parameter_set &ps) {
+  template<typename ...Args>
+  void setup_source(Args... args) {
     BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the source";
-    source_.reset(new Source(ps));
+    source_ = std::make_unique<Source>(args...);
   }
 
   /** Resolve the destination (client) endpoint and bind the socket. */
@@ -585,15 +589,17 @@ data_client<Decoder,Sink>::data_client(boost::asio::io_service &io) :
 }
 
 template <class Decoder, class Sink>
-void data_client<Decoder,Sink>::setup_decoder(const decoder_parameter_set &ps) {
+template <typename ...Args>
+void data_client<Decoder,Sink>::setup_decoder(Args... args) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the decoder";
-  decoder_ = std::make_unique<Decoder>(ps);
+  decoder_ = std::make_unique<Decoder>(args...);
 }
 
 template <class Decoder, class Sink>
-void data_client<Decoder,Sink>::setup_sink(const sink_parameter_set &ps) {
+template <typename ...Args>
+void data_client<Decoder,Sink>::setup_sink(Args... args) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Setting up the sink";
-  sink_ = std::make_unique<Sink>(ps);
+  sink_ = std::make_unique<Sink>(args...);
 }
 
 template <class Decoder, class Sink>
