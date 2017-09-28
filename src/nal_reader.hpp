@@ -2,6 +2,7 @@
 #define UEP_NAL_READER_HPP
 
 #include <fstream>
+#include <istream>
 #include <queue>
 #include <sstream>
 
@@ -61,6 +62,8 @@ public:
   /** Construct a reader with the given parameter set. */
   explicit nal_reader(const parameter_set &ps);
   explicit nal_reader(const std::string &strname, std::size_t pktsize);
+  explicit nal_reader(std::istream &in_trace, std::istream &in_bitstream,
+		      std::size_t pktsize);
 
   /** Extract the next fixed-size packet, with zero padding if
    *  required, along with its assigned priority.
@@ -84,6 +87,9 @@ public:
   bool operator!() const;
 
 private:
+  /** The maximum length a pack of NALs with the same priority can be
+   *  before being split into packets.
+   */
   static constexpr std::size_t MAX_PACKED_SIZE = 16*1024*1024;
 
   log::default_logger basic_lg, perf_lg;
@@ -91,8 +97,22 @@ private:
   std::string stream_name;
   std::size_t pkt_size;
 
-  std::ifstream file;
-  std::ifstream trace;
+  std::unique_ptr<std::ifstream> file_backend; /**< Holds the `file`
+						*   stream if it is
+						*   not passed
+						*   externally.
+						*/
+  std::unique_ptr<std::ifstream> trace_backend; /**< Holds the `trace`
+						 *   stream if it is
+						 *   not passed
+						 *   externally.
+						 */
+  std::istream &file; /**< Reference to the stream that reads from the
+		       *   raw H264 bitstream.
+		       */
+  std::istream &trace; /**< Reference to the stream that reads from
+			*   the trace file.
+			*/
 
   buffer_type hdr;
   std::size_t totalLength;

@@ -380,18 +380,42 @@ std::string nal_reader::tracename() const {
   return "dataset/"+stream_name+".trace";
 }
 
+nal_reader::nal_reader(std::istream &in_trace, std::istream &in_bitstream,
+		       std::size_t pktsize) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
+  pkt_size(pktsize),
+  file(in_bitstream),
+  trace(in_trace) {
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader with given istreams";
+
+  auto oldg = file.tellg();
+  file.seekg(0, ios_base::end);
+  totalLength = file.tellg() - oldg;
+  file.seekg(oldg);
+  BOOST_LOG_SEV(basic_lg, log::debug) << "Total bytes to read from H264 bitstream: "
+				      << totalLength;
+
+  read_header(); // Read header NALs into hdr
+}
+
+
 nal_reader::nal_reader(const std::string &strname, std::size_t pktsize) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
   stream_name(strname),
-  pkt_size(pktsize) {
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for \""
-				      << stream_name << "\"";
-  file.open(filename(), ios_base::binary|ios_base::ate);
+  pkt_size(pktsize),
+  file_backend(new ifstream(filename(), ios_base::binary|ios_base::ate)),
+  trace_backend(new ifstream(tracename())),
+  file(*file_backend),
+  trace(*trace_backend) {
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for "
+				      << stream_name;
+
   totalLength = file.tellg();
   file.seekg(0);
-  trace.open(tracename());
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Opened stream and trace files";
+  BOOST_LOG_SEV(basic_lg, log::debug) << "Total bytes to read from H264 bitstream: "
+				      << totalLength;
 
   read_header(); // Read header NALs into hdr
 }
