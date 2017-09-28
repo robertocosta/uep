@@ -380,11 +380,11 @@ std::string nal_reader::tracename() const {
   return "dataset/"+stream_name+".trace";
 }
 
-nal_reader::nal_reader(const parameter_set &ps) :
+nal_reader::nal_reader(const std::string &strname, std::size_t pktsize) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  stream_name(ps.streamName),
-  pkt_size(ps.packet_size) {
+  stream_name(strname),
+  pkt_size(pktsize) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for \""
 				      << stream_name << "\"";
   file.open(filename(), ios_base::binary|ios_base::ate);
@@ -394,6 +394,10 @@ nal_reader::nal_reader(const parameter_set &ps) :
   BOOST_LOG_SEV(basic_lg, log::trace) << "Opened stream and trace files";
 
   read_header(); // Read header NALs into hdr
+}
+
+nal_reader::nal_reader(const parameter_set &ps) :
+  nal_reader(ps.streamName, ps.packet_size) {
 }
 
 streamTrace nal_reader::read_trace_line() {

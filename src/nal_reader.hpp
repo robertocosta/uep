@@ -60,6 +60,7 @@ public:
 
   /** Construct a reader with the given parameter set. */
   explicit nal_reader(const parameter_set &ps);
+  explicit nal_reader(const std::string &strname, std::size_t pktsize);
 
   /** Extract the next fixed-size packet, with zero padding if
    *  required, along with its assigned priority.
