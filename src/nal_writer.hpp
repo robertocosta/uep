@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <queue>
+#include <ostream>
 #include <sstream>
 
 #include "log.hpp"
@@ -23,6 +24,9 @@ public:
    *  mapped to `dataset_client/${strname}.264`.
    */
   explicit nal_writer(const buffer_type &header, const std::string &strname);
+  /** Construct a writer that will write to the given ostream. */
+  explicit nal_writer(std::ostream &out, const buffer_type &header);
+  explicit nal_writer(std::ostream &out);
 
   ~nal_writer();
 
@@ -38,7 +42,8 @@ private:
 
   std::string stream_name;
 
-  std::ofstream file;
+  std::unique_ptr<std::ofstream> file_backend;
+  std::ostream &file;
 
   buffer_type nal_buf; /**< Holds the partially received NALs. */
   std::size_t buf_prio; /**< The priority of the NALs in the buffer. */

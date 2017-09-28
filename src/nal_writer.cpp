@@ -9,17 +9,32 @@ nal_writer::nal_writer(const buffer_type &header,
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
   stream_name(strname),
+  file_backend(new ofstream(filename(), ios_base::binary)),
+  file(*file_backend),
   buf_prio(0) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Create a NAL writer for "
 				      << stream_name;
-  file.open(filename(), ios_base::binary);
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Opened output file";
+
   file.write(header.data(), header.size());
   BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";
 }
 
 nal_writer::nal_writer(const parameter_set &ps) :
   nal_writer(ps.header, ps.streamName) {
+}
+
+nal_writer::nal_writer(std::ostream &out) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
+  file(out),
+  buf_prio(0) {
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Create a NAL writer with a given ostream";
+}
+
+nal_writer::nal_writer(std::ostream &out, const buffer_type &header) :
+  nal_writer(out) {
+  file.write(header.data(), header.size());
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";
 }
 
 nal_writer::~nal_writer() {
