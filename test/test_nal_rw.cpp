@@ -73,9 +73,9 @@ bool compare_streams(const std::string &fileA, const std::string &fileB) {
 struct global_fixture {
   global_fixture() {
     uep::log::init();
-    // auto warn_filter = boost::log::expressions::attr<
-    //  uep::log::severity_level>("Severity") >= uep::log::warning;
-    // boost::log::core::get()->set_filter(warn_filter);
+    auto warn_filter = boost::log::expressions::attr<
+     uep::log::severity_level>("Severity") >= uep::log::warning;
+    boost::log::core::get()->set_filter(warn_filter);
   }
 
   ~global_fixture() {

@@ -1,9 +1,11 @@
 #ifndef UEP_UEP_DECODER_HPP
 #define UEP_UEP_DECODER_HPP
 
-#include "decoder.hpp"
+#include <limits>
 
 #include <boost/iterator/iterator_adaptor.hpp>
+
+#include "decoder.hpp"
 
 namespace uep {
 
@@ -23,6 +25,12 @@ public:
   static constexpr std::size_t BLOCK_WINDOW = lt_decoder::BLOCK_WINDOW;
 
   explicit uep_decoder(const parameter_set &ps);
+  template<typename KsIter, typename RFsIter>
+  explicit uep_decoder(KsIter ks_begin, KsIter ks_end,
+		       RFsIter rfs_begin, RFsIter rfs_end,
+		       std::size_t EF,
+		       double c,
+		       double delta);
 
   /** Pass a received packet. \sa push(fountain_packet&&) */
   void push(const fountain_packet &p);
@@ -150,7 +158,30 @@ private:
   std::size_t map_in2out(std::size_t i);
 };
 
-//		   uep_decoder template definitions
+	      //// uep_decoder template definitions ////
+
+template<typename KsIter, typename RFsIter>
+uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
+			 RFsIter rfs_begin, RFsIter rfs_end,
+			 std::size_t ef,
+			 double c,
+			 double delta) :
+  basic_lg(boost::log::keywords::channel = log::basic),
+  perf_lg(boost::log::keywords::channel = log::performance),
+  Ks(ks_begin, ks_end),
+  RFs(rfs_begin, rfs_end),
+  EF(ef),
+  empty_queued_count(0),
+  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
+  tot_dec_count(0),
+  tot_fail_count(0) {
+  if (Ks.size() != RFs.size()) {
+    throw std::invalid_argument("Ks, RFs sizes do not match");
+  }
+  out_queues.resize(Ks.size());
+  std_dec = std::make_unique<lt_decoder>(block_size_in(), c, delta);
+  seqno_ctr.set(0);
+}
 
 template <class Iter>
 void uep_decoder::push(Iter first, Iter last) {
