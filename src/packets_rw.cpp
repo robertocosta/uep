@@ -1,55 +1,38 @@
 #include "packets_rw.hpp"
 
-#include <stdexcept>
-#include <iterator>
-
-#include <boost/numeric/conversion/cast.hpp>
-
 using namespace std;
+using namespace uep::rw_utils;
+
 using boost::numeric_cast;
 
-template <class T>
-void append_raw(std::vector<char> &out, const T &n) {
-  const char *start = reinterpret_cast<const char*>(&n);
-  const char *end = start + sizeof(T);
-  out.insert(out.end(), start, end);
-}
-
-template <class T, class IterType>
-T extract_raw(IterType &in) {
-  typedef typename iterator_traits<IterType>::value_type iter_value_type;
-  static_assert(is_same<iter_value_type,char>::value,
-		"IterType is not an iterator over char");
-
-  T out;
-  char *raw_out = reinterpret_cast<char*>(&out);
-  IterType start = in;
-  IterType end = (in += sizeof(T));
-  copy(start, end, raw_out);
-
-  return out;
-}
-
 void append_hton_int(std::vector<char> &out, std::uint16_t n) {
-  n = htons(n);
-  append_raw<uint16_t>(out, n);
+  out.resize(out.size() + sizeof(std::uint16_t));
+  write_hton<std::uint16_t>(n,
+			    out.end() - sizeof(std::uint16_t),
+			    out.end());
 }
 
 void append_hton_int(std::vector<char> &out, std::uint32_t n) {
-  n = htonl(n);
-  append_raw<uint32_t>(out, n);
+  out.resize(out.size() + sizeof(std::uint32_t));
+  write_hton<std::uint32_t>(n,
+			    out.end() - sizeof(std::uint32_t),
+			    out.end());
 }
 
 template <class IterType>
 std::uint16_t extract_ntoh_uint16(IterType &in) {
-  uint16_t n = extract_raw<uint16_t, IterType>(in);
-  return ntohs(n);
+  std::uint16_t out;
+  IterType i = read_ntoh<std::uint16_t>(out, in, in+sizeof(std::uint16_t));
+  in = i;
+  return out;
 }
 
 template <class IterType>
 std::uint32_t extract_ntoh_uint32(IterType &in) {
-  uint32_t n = extract_raw<uint32_t, IterType>(in);
-  return ntohl(n);
+  std::uint32_t out;
+  IterType i = read_ntoh<std::uint32_t>(out, in, in+sizeof(std::uint32_t));
+  in = i;
+  return out;
 }
 
 std::vector<char> build_raw_packet(const fountain_packet &fp) {

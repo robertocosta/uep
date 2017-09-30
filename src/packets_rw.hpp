@@ -2,19 +2,20 @@
 #define PACKETS_RW_HPP
 
 #include "packets.hpp"
+#include "rw_utils.hpp"
 
-#include <cstdint>
-#include <climits>
-#include <vector>
-#include <streambuf>
-#include <istream>
-#include <ostream>
 #include <algorithm>
+#include <climits>
+#include <cstdint>
+#include <istream>
+#include <iterator>
+#include <ostream>
+#include <stdexcept>
+#include <streambuf>
 #include <type_traits>
+#include <vector>
 
-extern "C" {
-#include <arpa/inet.h>
-}
+#include <boost/numeric/conversion/cast.hpp>
 
 static_assert(CHAR_BIT == 8, "Char is not 8 bits long");
 
