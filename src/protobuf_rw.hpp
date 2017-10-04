@@ -92,6 +92,10 @@ private:
   boost::asio::io_service::strand strand;
 
   std::vector<char> in_buf; /**< Encoded message to be sent. */
+  std::array<char, sizeof(msglen_type)> rawlen; /**< Buffer for the
+						 *   raw length to be
+						 *   sent.
+						 */
   handler_type handler;
 
   void send_length();

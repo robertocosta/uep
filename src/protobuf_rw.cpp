@@ -121,7 +121,6 @@ void protobuf_writer::send_length() {
 
   msglen_type len = static_cast<msglen_type>(in_buf.size());
   if (len == 0) throw std::runtime_error("Empty buffer");
-  std::array<char, sizeof(msglen_type)> rawlen;
   rw_utils::write_hton<msglen_type>(len, rawlen.begin(), rawlen.end());
   auto h = strand.wrap(std::bind(&protobuf_writer::send_data,
 				 this, _1, _2));
