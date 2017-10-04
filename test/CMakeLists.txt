@@ -64,3 +64,12 @@ target_link_libraries(test_nal_rw
   nal_writer
 )
 add_test(test_nal_rw ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_nal_rw)
+
+add_executable(test_protobuf_rw test_protobuf_rw.cpp)
+target_link_libraries(test_protobuf_rw
+  packets
+  protobuf_rw
+  controlMessage.pb
+  log
+)
+add_test(test_protobuf_rw ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_protobuf_rw)

@@ -8,6 +8,7 @@ set(cpp_files
   nal_writer
   packets
   packets_rw
+  protobuf_rw
   rng
   uep_decoder
 )
@@ -78,12 +79,13 @@ target_link_libraries(demo_dc
 
 add_executable(server server.cpp)
 target_link_libraries(server
-  controlMessage.pb
   block_encoder
   block_queues
-  packets_rw
-  uep_decoder
+  controlMessage.pb
   nal_reader
+  packets_rw
+  protobuf_rw
+  uep_decoder
   ${Boost_LIBRARIES}
 )
 
@@ -91,10 +93,11 @@ add_executable(client client.cpp)
 target_link_libraries(client
   controlMessage.pb
   decoder
-  uep_decoder
   nal_reader
   nal_writer
   packets_rw
+  protobuf_rw
+  uep_decoder
   ${Boost_LIBRARIES}
 )
 
