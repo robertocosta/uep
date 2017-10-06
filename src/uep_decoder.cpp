@@ -108,12 +108,21 @@ std::size_t uep_decoder::queue_size() const {
 }
 
 bool uep_decoder::has_queued_packets() const {
-  return empty_queued_count > 0 ||
-    std::any_of(out_queues.cbegin(),
-		out_queues.cend(),
-		[](const queue_type &q){
-		  return !q.empty();
-		});
+  if (empty_queued_count == 0) {
+    return std::any_of(out_queues.cbegin(),
+		       out_queues.cend(),
+		       [](const queue_type &q){
+			 return !q.empty();
+		       });
+  }
+  else {
+    std::size_t next_seqno = seqno_ctr.value();
+    return std::all_of(out_queues.begin(), out_queues.end(),
+			  [next_seqno](const queue_type &q){
+			    return !q.empty() &&
+			    q.front().sequence_number() >= next_seqno;
+			  });
+  }
 }
 
 std::size_t uep_decoder::total_received_count() const {
