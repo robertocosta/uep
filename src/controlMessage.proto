@@ -1,17 +1,17 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package uep.protobuf;
 
 message ClientParameters {
-    repeated uint32 Ks = 1;
-    double c = 2;
-    double delta = 3;
-    repeated uint32 RFs = 4;
-    uint32 EF = 5;
-    bool ACK = 6;
-    uint64 fileSize = 7;
-    bytes header = 8;
-    uint32 headerSize = 9;
+    repeated uint32 Ks = 1 [packed=true];
+    optional double c = 2;
+    optional double delta = 3;
+    repeated uint32 RFs = 4 [packed=true];
+    optional uint32 EF = 5;
+    optional bool ACK = 6;
+    optional uint64 fileSize = 7;
+    optional bytes header = 8;
+    optional uint32 headerSize = 9;
 }
 
 enum StartStop {
