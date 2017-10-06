@@ -206,16 +206,24 @@ struct knuth_mul_hasher {
 
 }}
 
+template<typename Iter>
+void write_iterable(std::ostream &out, Iter begin, Iter end) {
+  std::string sep;
+  out << '[';
+  for (; begin != end; ++begin) {
+    out << sep;
+    out << *begin;
+    sep = ", ";
+  }
+  out << ']';
+}
+
 namespace std {
 
 /** Write a text representation of a vector. */
-template <class T>
-ostream &operator<<(ostream &out, const vector<T> &v) {
-  out << '[';
-  for (auto i = v.cbegin(); i != v.cend(); ++i) {
-    out << *i << ", ";
-  }
-  out << "\b\b]";
+template<typename T>
+ostream &operator<<(ostream &out, const vector<T> &vec) {
+  write_iterable(out, vec.begin(), vec.end());
   return out;
 }
 

@@ -24,6 +24,9 @@ void uep_decoder::push(fountain_packet &&p) {
 
 fountain_packet uep_decoder::next_decoded() {
   std::size_t next_seqno = seqno_ctr.value();
+  BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: extract a packet."
+				      << " queue_size=" << queue_size()
+				      << " next_seqno=" << next_seqno;
   auto i = std::find_if(out_queues.begin(), out_queues.end(),
 			[next_seqno](const queue_type &q){
 			  return !q.empty() &&
@@ -32,14 +35,20 @@ fountain_packet uep_decoder::next_decoded() {
   fountain_packet p;
   if (i != out_queues.end()) { // Otherwise empty fountain_packet
     uep_packet &up = i->front();
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Found the packet with prio "
+					<< up.priority();
     p.buffer() = std::move(up.buffer());
     p.setPriority(up.priority());
     i->pop();
   }
   else {
-    if (empty_queued_count == 0)
+    if (empty_queued_count == 0) {
       throw std::runtime_error("Extracting from empty UEP decoder");
+    }
     --empty_queued_count;
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Packet was lost. "
+					<< "New empty queue count = "
+					<< empty_queued_count;
   }
   seqno_ctr.next();
   return p;
@@ -184,6 +193,10 @@ void uep_decoder::deduplicate_queued() {
     tot_dec_count += decoded;
     tot_fail_count += out_block.size() - decoded;
 
+    BOOST_LOG(perf_lg) << "uep_decoder::deduplicate_queued "
+			<< "decoded=" << decoded
+			<< "failed=" << out_block.size() - decoded;
+
     auto j = out_block.begin();
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
       for (std::size_t i = 0; i < Ks[subblock]; ++i) {
@@ -196,6 +209,8 @@ void uep_decoder::deduplicate_queued() {
 	  ++empty_queued_count;
       }
     }
+    BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: empty queued packets = "
+					<< empty_queued_count;
   }
 }
 
