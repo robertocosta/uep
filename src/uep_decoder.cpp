@@ -117,20 +117,26 @@ std::size_t uep_decoder::queue_size() const {
 }
 
 bool uep_decoder::has_queued_packets() const {
+  const std::size_t next_seqno = seqno_ctr.value();
   if (empty_queued_count == 0) {
     return std::any_of(out_queues.cbegin(),
 		       out_queues.cend(),
-		       [](const queue_type &q){
-			 return !q.empty();
+		       [next_seqno](const queue_type &q){
+			 return !q.empty() &&
+			   q.front().sequence_number() == next_seqno;
 		       });
   }
   else {
-    std::size_t next_seqno = seqno_ctr.value();
-    return std::all_of(out_queues.begin(), out_queues.end(),
-			  [next_seqno](const queue_type &q){
-			    return !q.empty() &&
-			    q.front().sequence_number() >= next_seqno;
-			  });
+    bool any_eq = false;
+    bool all_geq = std::all_of(out_queues.begin(), out_queues.end(),
+			       [&any_eq,next_seqno](const queue_type &q){
+				 if (q.empty()) return false;
+				 auto sn = q.front().sequence_number();
+				 if (sn == next_seqno) any_eq = true;
+				 if (sn >= next_seqno) return true;
+				 return false;
+			       });
+    return any_eq || all_geq;
   }
 }
 
