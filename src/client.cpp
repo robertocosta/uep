@@ -15,7 +15,7 @@
 namespace uep { namespace net {
 
 /** Set of parameters needed by the control_client to setup a
- *  connection. 
+ *  connection.
  */
 struct uep_client_parameters {
   std::string stream_name;
@@ -45,7 +45,7 @@ class control_client {
     SEND_START, // Send the start command
     RUNNING // Data client is active
   };
-  
+
 public:
   /** Construct the client. This does not open the connection to the server. */
   explicit control_client(boost::asio::io_service &io_svc,
@@ -58,14 +58,14 @@ public:
     proto_rd(io_svc, tcp_socket),
     proto_wr(io_svc, tcp_socket),
     dc(io_svc),
-    client_params(cl_par) {    
+    client_params(cl_par) {
   }
 
   /** Open the connction to the server and start the receiving process. */
   void start() {
     using namespace boost::asio::ip;
     using namespace std::placeholders;
-    
+
     tcp::resolver resolver(tcp_socket.get_io_service());
     tcp::resolver::query query(client_params.remote_control_addr,
 			       client_params.remote_control_port);
@@ -73,14 +73,14 @@ public:
     auto h = strand.wrap(std::bind(&control_client::handle_connection,
 				   this,
 				   _1, _2));
-    boost::asio::async_connect(tcp_socket, ep_iter, h);    
+    boost::asio::async_connect(tcp_socket, ep_iter, h);
   }
-  
+
 private:
   log::default_logger basic_lg, perf_lg;
 
   client_state state;
-  
+
   boost::asio::io_service::strand strand;
   boost::asio::ip::tcp::socket tcp_socket;
   protobuf_reader proto_rd;
@@ -98,7 +98,7 @@ private:
     if (ec) throw boost::system::system_error(ec);
     if (i == decltype(i){}) throw std::runtime_error("Could not connect");
 
-    if (out_msg.stream_name().empty())
+    if (client_params.stream_name.empty())
       throw std::runtime_error("Stream name is empty");
     out_msg.set_stream_name(client_params.stream_name);
     BOOST_LOG_SEV(basic_lg, log::trace) << "Sending the stream name";
@@ -120,11 +120,11 @@ private:
     proto_rd.async_read_one(last_msg, handler);
   }
 
-  
+
   /** Handle a new control message. */
   void handle_new_message(const boost::system::error_code &ec, std::size_t bytes) {
     if (ec) throw boost::system::system_error(ec);
-    
+
     switch (state) {
     case WAIT_PARAMS:
       handle_params();
@@ -205,7 +205,7 @@ private:
 			   state = RUNNING;
 			 });
     proto_wr.async_write_one(out_msg, h);
-  }  
+  }
 };
 
 }}
@@ -218,39 +218,48 @@ using namespace uep::net;
 using namespace uep;
 
 int main(int argc, char* argv[]) {
-	log::init("client.log");
-	default_logger basic_lg(boost::log::keywords::channel = basic);
-	default_logger perf_lg(boost::log::keywords::channel = performance);
+  log::init("client.log");
+  default_logger basic_lg(boost::log::keywords::channel = basic);
+  default_logger perf_lg(boost::log::keywords::channel = performance);
 
-	boost::asio::io_service io;
-	uep_client_parameters client_params = DEFAULT_CLIENT_PARAMETERS;
-	
-	if (argc < 3) {
-		std::cerr << "Usage: client <stream> <server> [<server_port>] [<listen_port>]"
-							<< std::endl;
-		return 1;
-	}
+  boost::asio::io_service io;
+  uep_client_parameters client_params = DEFAULT_CLIENT_PARAMETERS;
 
-	client_params.stream_name = argv[1];
-	client_params.remote_control_addr = argv[2];
-	if (argc > 3) {
-		client_params.remote_control_port = argv[3];
-	}
-	if (argc > 4) {
-		client_params.local_data_port = argv[4];
-	}
-	if (argc > 5) {
-		std::cerr << "Too many args" << std::endl;
-		return 1;
-	}
+  if (argc < 3) {
+    std::cerr << "Usage: client <stream> <server> [<server_port>] [<listen_port>]"
+	      << std::endl;
+    return 1;
+  }
 
-	control_client cc{io, client_params};
+  client_params.stream_name = argv[1];
+  client_params.remote_control_addr = argv[2];
+  if (argc > 3) {
+    client_params.remote_control_port = argv[3];
+  }
+  if (argc > 4) {
+    client_params.local_data_port = argv[4];
+  }
+  if (argc > 5) {
+    std::cerr << "Too many args" << std::endl;
+    return 1;
+  }
 
-	cc.start();
-	
-	std::cout << "Run" << std::endl;
-	io.run();
-	std::cout << "Done" << std::endl;
+  BOOST_LOG_SEV(basic_lg, log::info) << "Requesting stream \""
+				     << client_params.stream_name
+				     << "\" from "
+				     << client_params.remote_control_addr
+				     << ":"
+				     << client_params.remote_control_port
+				     << " Local port: "
+				     << client_params.local_data_port;
 
-	return 0;
+  control_client cc{io, client_params};
+
+  cc.start();
+
+  std::cout << "Run" << std::endl;
+  io.run();
+  std::cout << "Done" << std::endl;
+
+  return 0;
 }
