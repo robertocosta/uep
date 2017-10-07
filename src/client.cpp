@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -6,10 +7,209 @@
 #include "controlMessage.pb.h"
 #include "data_client_server.hpp"
 #include "log.hpp"
-#include "uep_decoder.hpp"
 #include "nal_reader.hpp"
 #include "nal_writer.hpp"
-#include <fstream>
+#include "protobuf_rw.hpp"
+#include "uep_decoder.hpp"
+
+namespace uep { namespace net {
+
+/** Set of parameters needed by the control_client to setup a
+ *  connection.
+ */
+struct uep_client_parameters {
+  std::string stream_name;
+  std::string local_data_port;
+  std::string remote_control_addr;
+  std::string remote_control_port;
+};
+
+/** Default values for the client parameters. */
+const uep_client_parameters DEFAULT_CLIENT_PARAMETERS{
+  "",
+  "12345",
+  "127.0.0.1",
+  "12312"
+};
+
+class control_client {
+  using dec_t = uep_decoder;
+  using sink_t = nal_writer;
+  using dc_type = data_client<dec_t, sink_t>;
+
+  enum client_state {
+    SEND_STREAM, // Send the requested stream name (initial state)
+    WAIT_PARAMS, // Wait for the client parameters
+    SEND_CLIENT_PORT, // Send the local data port
+    WAIT_SERVER_PORT, // Wait for the remote data port
+    SEND_START, // Send the start command
+    RUNNING // Data client is active
+  };
+
+public:
+  /** Construct the client. This does not open the connection to the server. */
+  explicit control_client(boost::asio::io_service &io_svc,
+			  const uep_client_parameters &cl_par) :
+    basic_lg(boost::log::keywords::channel = log::basic),
+    perf_lg(boost::log::keywords::channel = log::performance),
+    state(SEND_STREAM),
+    strand(io_svc),
+    tcp_socket(io_svc),
+    proto_rd(io_svc, tcp_socket),
+    proto_wr(io_svc, tcp_socket),
+    dc(io_svc),
+    client_params(cl_par) {
+  }
+
+  /** Open the connction to the server and start the receiving process. */
+  void start() {
+    using namespace boost::asio::ip;
+    using namespace std::placeholders;
+
+    tcp::resolver resolver(tcp_socket.get_io_service());
+    tcp::resolver::query query(client_params.remote_control_addr,
+			       client_params.remote_control_port);
+    tcp::resolver::iterator ep_iter = resolver.resolve(query);
+    auto h = strand.wrap(std::bind(&control_client::handle_connection,
+				   this,
+				   _1, _2));
+    boost::asio::async_connect(tcp_socket, ep_iter, h);
+  }
+
+private:
+  log::default_logger basic_lg, perf_lg;
+
+  client_state state;
+
+  boost::asio::io_service::strand strand;
+  boost::asio::ip::tcp::socket tcp_socket;
+  protobuf_reader proto_rd;
+  protobuf_writer proto_wr;
+  dc_type dc;
+  uep_client_parameters client_params;
+
+  uep::protobuf::ControlMessage last_msg;
+  uep::protobuf::ControlMessage out_msg;
+  buffer_type out_header;
+  boost::asio::ip::udp::endpoint remote_data_ep;
+
+  void handle_connection(const boost::system::error_code &ec,
+			 boost::asio::ip::tcp::resolver::iterator i) {
+    if (ec) throw boost::system::system_error(ec);
+    if (i == decltype(i){}) throw std::runtime_error("Could not connect");
+
+    if (client_params.stream_name.empty())
+      throw std::runtime_error("Stream name is empty");
+    out_msg.set_stream_name(client_params.stream_name);
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Sending the stream name";
+    auto h = strand.wrap([this](const boost::system::error_code &ec,
+				std::size_t bytes_tx) {
+			   if (ec) throw boost::system::system_error(ec);
+			   if (state != SEND_STREAM)
+			     throw std::logic_error("Unexpected state");
+			   state = WAIT_PARAMS;
+			 });
+    proto_wr.async_write_one(out_msg, h);
+    wait_for_message();
+  }
+
+  void wait_for_message() {
+    using namespace std::placeholders;
+    auto handler = strand.wrap(std::bind(&control_client::handle_new_message,
+					 this, _1, _2));
+    proto_rd.async_read_one(last_msg, handler);
+  }
+
+
+  /** Handle a new control message. */
+  void handle_new_message(const boost::system::error_code &ec, std::size_t bytes) {
+    if (ec) throw boost::system::system_error(ec);
+
+    switch (state) {
+    case WAIT_PARAMS:
+      handle_params();
+      state = SEND_CLIENT_PORT;
+      send_client_port();
+      break;
+    case WAIT_SERVER_PORT:
+      handle_server_port();
+      state = SEND_START;
+      send_start();
+      break;
+    case RUNNING:
+      // handle stop msg
+      break;
+    default:
+      throw std::runtime_error("Should never get a message in this state");
+    }
+    wait_for_message();
+  }
+
+  void handle_params() {
+    const protobuf::ClientParameters &cp = last_msg.client_parameters();
+    assert(cp.ks_size() == cp.rfs_size());
+    assert(cp.ks_size() != 0);
+    assert(cp.ef() != 0);
+    assert(cp.c() != 0);
+    assert(cp.delta() != 0);
+    std::vector<std::size_t> Ks, RFs;
+    for (int i = 0; i < cp.ks_size(); ++i) {
+      Ks.push_back(cp.ks(i));
+      RFs.push_back(cp.rfs(i));
+    }
+    out_header.assign(cp.header().begin(), cp.header().end());
+    dc.setup_decoder(Ks.begin(), Ks.end(),
+		     RFs.begin(), RFs.end(),
+		     cp.ef(),
+		     cp.c(),
+		     cp.delta());
+    dc.setup_sink(out_header, client_params.stream_name);
+    dc.enable_ack(cp.ack());
+    //dc.expected_count(0);
+    //dc.timeout(1);
+    //dc.add_stop_handler();
+    dc.bind(client_params.local_data_port);
+  }
+
+  void send_client_port() {
+    unsigned short cp = dc.client_endpoint().port();
+    out_msg.set_client_port(cp);
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Sending the client port "
+					<< cp;
+    auto h = strand.wrap([this](const boost::system::error_code &ec,
+				std::size_t bytes_tx) {
+			   if (ec) throw boost::system::system_error(ec);
+			   if (state != SEND_CLIENT_PORT)
+			     throw std::logic_error("Unexpected state");
+			   state = WAIT_SERVER_PORT;
+			 });
+    proto_wr.async_write_one(out_msg, h);
+  }
+
+  void handle_server_port() {
+    unsigned short sp = static_cast<unsigned short>(last_msg.server_port());
+    assert(sp != 0);
+    remote_data_ep.port(sp);
+    remote_data_ep.address(tcp_socket.remote_endpoint().address());
+    dc.start_receive(remote_data_ep);
+  }
+
+  void send_start() {
+    out_msg.set_start_stop(protobuf::START);
+    BOOST_LOG_SEV(basic_lg, log::trace) << "Sending the start command";
+    auto h = strand.wrap([this](const boost::system::error_code &ec,
+				std::size_t bytes_tx) {
+			   if (ec) throw boost::system::system_error(ec);
+			   if (state != SEND_START)
+			     throw std::logic_error("Unexpected state");
+			   state = RUNNING;
+			 });
+    proto_wr.async_write_one(out_msg, h);
+  }
+};
+
+}}
+
 
 using namespace boost::asio;
 using namespace std;
@@ -17,215 +217,49 @@ using namespace uep::log;
 using namespace uep::net;
 using namespace uep;
 
-using boost::asio::ip::tcp;
-using boost::asio::ip::udp;
+int main(int argc, char* argv[]) {
+  log::init("client.log");
+  default_logger basic_lg(boost::log::keywords::channel = basic);
+  default_logger perf_lg(boost::log::keywords::channel = performance);
 
-struct memory_sink;
+  boost::asio::io_service io;
+  uep_client_parameters client_params = DEFAULT_CLIENT_PARAMETERS;
 
-typedef uep_decoder dec_type;
-typedef nal_writer sink_type;
-typedef data_client<dec_type,sink_type> dc_type;
-typedef all_parameter_set<dec_type::parameter_set> all_params;
-
-// MEMORY SINK
-struct memory_sink {
-  typedef all_params parameter_set;
-  explicit memory_sink(const parameter_set&) {}
-
-  std::vector<fountain_packet> received;
-
-  void push(const fountain_packet &p) {
-    received.push_back(p);
-    /*
-      if (!writeCharVecToFile( streamN,received[received.size()-1]))
-        cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
-    */
+  if (argc < 3) {
+    std::cerr << "Usage: client <stream> <server> [<server_port>] [<listen_port>]"
+	      << std::endl;
+    return 1;
   }
 
-  // void push(fountain_packet &&p) {
-  //   using std::move;
-  //   received.push_back(move(p));
-  // }
+  client_params.stream_name = argv[1];
+  client_params.remote_control_addr = argv[2];
+  if (argc > 3) {
+    client_params.remote_control_port = argv[3];
+  }
+  if (argc > 4) {
+    client_params.local_data_port = argv[4];
+  }
+  if (argc > 5) {
+    std::cerr << "Too many args" << std::endl;
+    return 1;
+  }
 
-  explicit operator bool() const { return true; }
-  bool operator!() const { return false; }
-};
+  BOOST_LOG_SEV(basic_lg, log::info) << "Requesting stream \""
+				     << client_params.stream_name
+				     << "\" from "
+				     << client_params.remote_control_addr
+				     << ":"
+				     << client_params.remote_control_port
+				     << " Local port: "
+				     << client_params.local_data_port;
 
-const std::string default_udp_port = "12345";
-const std::string default_tcp_port = "12312";
+  control_client cc{io, client_params};
 
-/*
-bool writeCharVecToFile(std::string filename, std::vector<char> v) {
-	std::ofstream newFile;
-	newFile.open(filename, std::ios_base::app); // append mode
-	bool out = false;
-	if (newFile.is_open()) {
-		for (uint i=0; i<v.size(); i++) {
-			newFile << v[i];
-		}
-		out = true;
-	}
-	newFile.close();
-	return out;
-}
-*/
-int main(int argc, char* argv[]) {
-	log::init("client.log");
-	default_logger basic_lg(boost::log::keywords::channel = basic);
-	default_logger perf_lg(boost::log::keywords::channel = performance);
+  cc.start();
 
-	boost::asio::io_service io;
-	dc_type dc(io);
-	all_params ps;
-	ps.udp_port_num = default_udp_port;
-	ps.tcp_port_num = default_tcp_port;
+  std::cout << "Run" << std::endl;
+  io.run();
+  std::cout << "Done" << std::endl;
 
-	if (argc < 3) {
-		std::cerr << "Usage: client <stream> <server> [<server_port>] [<listen_port>]"
-							<< std::endl;
-		return 1;
-	}
-
-	ps.streamName = argv[1];
-	string host = argv[2];
-	if (argc > 3) {
-		ps.tcp_port_num = argv[3];
-	}
-	if (argc > 4) {
-		ps.udp_port_num = argv[4];
-	}
-	if (argc > 5) {
-		std::cerr << "Too many args" << std::endl;
-		return 1;
-	}
-
-	tcp::resolver resolver(io);
-	tcp::resolver::query query(host, ps.tcp_port_num);
-	tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-
-	tcp::socket socket(io);
-	boost::asio::connect(socket, endpoint_iterator);
-
-	constexpr std::size_t recv_size = 4096;
-	std::string parse_buf;
-	std::string serialize_buf;
-	boost::system::error_code error;
-	std::size_t written;
-	
-	// sending stream name to server
-	controlMessage::StreamName firstMessage;
-	firstMessage.set_streamname(ps.streamName);
-	if (!firstMessage.SerializeToString(&serialize_buf)) {
-		throw std::runtime_error("Serialization of firstMessage failed");
-	}
-	written = socket.write_some(boost::asio::buffer(serialize_buf));
-	std::cout << "Sent " << written << " bytes with stream name: \""<<ps.streamName<<"\"\n";
-
-	// receiving parameters from server
-	parse_buf.resize(recv_size);
-	size_t len = socket.read_some(boost::asio::buffer(&parse_buf.front(),
-																										parse_buf.size()));
-	parse_buf.resize(len);
-
-	//std::cout.write(buf.data(), len);
-	controlMessage::TXParam secondMessage;
-	if (!secondMessage.ParseFromString(parse_buf)) {
-		throw std::runtime_error("Parsing of secondMessage failed");
-	}
-	std::cout << "Message received from server:\n";
-	
-	for (int i=0; i<secondMessage.ks_size(); i++) {
-		std::cout << "k_" << i << ":" << secondMessage.ks(i) << ",";
-	}
-	std::cout << "c="<<secondMessage.c()<<"; ";
-	std::cout << "Delta="<<secondMessage.delta()<<"; ";
-	for (int i=0; i<secondMessage.rfs_size(); i++) {
-		std::cout << "RF_" << i << ":" << secondMessage.rfs(i) << ",";
-	}
-	std::cout << "EF="<<secondMessage.ef()<<"; ";
-	std::cout << "ACK="<<(secondMessage.ack()?"TRUE":"FALSE")<<"; ";
-	std::cout << "fileSize="<<secondMessage.filesize()<<";";
-
-	//std::vector<std::string> head;
-	//header = secondMessage.header();
-	size_t headSize = secondMessage.headersize();
-	std::cout <<  "headerLength="<<headSize << "\n";
-	const string& head_ptr = secondMessage.header(0);
-	vector<char> headerVec;
-	headerVec.resize(headSize);
-	for (uint i = 0; i<headSize; i++) { headerVec[i] = head_ptr[i]; }
-	//cout << "header pointer: " << head_ptr << "\nheader:\n";
-	//for (uint i = 0; i<headSize; i++) { cout << headerVec[i]; }
-	//cout << endl;
-	std::string streamN = "dataset_client/"+ps.streamName+".264";
-
-	if (file_exists(streamN)) {
-		if (!overwriteCharVecToFile( streamN,headerVec))
-			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
-	} else {
-		if (!writeCharVecToFile( streamN,headerVec))
-			cout << "error in writing stream file.\nMake sure the directory 'dataset_client' is present.\n";
-	}
-	std::cout << "\nCreation of decoder...\n";
-	
-	// CREATION OF DECODER
-	uint ks_size = secondMessage.ks_size();
-	ps.Ks.resize(ks_size);
-	ps.RFs.resize(ks_size);
-	for (uint i=0; i<ks_size; i++) {
-		ps.Ks[i] = secondMessage.ks(i);
-		ps.RFs[i] = secondMessage.rfs(i);
-	}
-	ps.c = secondMessage.c();
-	ps.delta = secondMessage.delta();
-	ps.EF = secondMessage.ef();
-
-	dc.setup_decoder(ps);
-	dc.setup_sink(ps);
-	dc.enable_ack(ps.ack);
-	dc.bind(ps.udp_port_num);
-	std::cout << "Bound to " << dc.client_endpoint() << std::endl;
-
-	controlMessage::Connect connectMessage;
-	connectMessage.set_port(dc.client_endpoint().port());
-	if (!connectMessage.SerializeToString(&serialize_buf)) {
-		throw std::runtime_error("Serialization of connectMessage failed");
-	}
-	written = socket.write_some(boost::asio::buffer(serialize_buf));
-	std::cout << "Connecting now...\n";
-	// waiting for ConnACK
-	parse_buf.resize(recv_size);
-	len = socket.read_some(boost::asio::buffer(&parse_buf.front(),
-						   parse_buf.size()));
-	parse_buf.resize(len);
-
-	//std::cout.write(buf.data(), len);
-	controlMessage::ConnACK connACKMessage;
-	if (!connACKMessage.ParseFromString(parse_buf)) {
-		throw std::runtime_error("Parsing of connACKMessage failed");
-	}
-	std::cout << "Connection ACK message received from server:\n";
-	std::cout << "udp port="<<connACKMessage.port()<<"\n";
-	ip::address remAddr = socket.remote_endpoint().address();
-	udp::endpoint remote_ep(remAddr,
-													static_cast<unsigned short>(connACKMessage.port()));
-	std::cout << "Start receiving from " << remote_ep << std::endl;
-	dc.start_receive(remote_ep);
-
-	std::cout << "Sending PLAY command\n";
-	controlMessage::Play playMessage;
-	playMessage.set_play(true);
-	if (!playMessage.SerializeToString(&serialize_buf)) {
-		throw std::runtime_error("Serialization of playMessage failed");
-	}
-	assert(serialize_buf.size() > 0);
-	written = socket.write_some(boost::asio::buffer(serialize_buf));
-	assert(written > 0);
-	std::cout << "PLAY command sent.\n";
-
-	std::cout << "Run" << std::endl;
-	io.run();
-	std::cout << "Done" << std::endl;
-
-	return 0;
+  return 0;
 }

@@ -412,6 +412,9 @@ nal_reader::nal_reader(const std::string &strname, std::size_t pktsize) :
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for "
 				      << stream_name;
 
+  if (!file_backend) throw ios_base::failure("Failed to open the H264 file");
+  if (!trace_backend) throw ios_base::failure("Failed to open the trace file");
+
   totalLength = file.tellg();
   file.seekg(0);
   BOOST_LOG_SEV(basic_lg, log::debug) << "Total bytes to read from H264 bitstream: "

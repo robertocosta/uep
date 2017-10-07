@@ -195,6 +195,10 @@ void uep_encoder<Gen>::push(fountain_packet &&p) {
   uep_packet up(std::move(p.buffer()));
   up.priority(p.getPriority());
   up.sequence_number(seqno_ctr.value());
+  BOOST_LOG_SEV(basic_lg, log::trace) << "UEP encoder has packet with seqno="
+				      << up.sequence_number()
+				      << " priority="
+				      << up.priority();
 
   if (inp_queues.size() <= up.priority())
     throw std::runtime_error("Priority is out of range");

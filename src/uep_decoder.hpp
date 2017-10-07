@@ -181,6 +181,13 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
   out_queues.resize(Ks.size());
   std_dec = std::make_unique<lt_decoder>(block_size_in(), c, delta);
   seqno_ctr.set(0);
+
+  BOOST_LOG_SEV(basic_lg, log::debug) << "Constructed a uep_decoder."
+				      << " Ks=" << Ks
+				      << " RFs=" << RFs
+				      << " EF=" << EF
+				      << " c=" << c
+				      << " delta=" << delta;
 }
 
 template <class Iter>

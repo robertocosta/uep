@@ -258,11 +258,17 @@ public:
     if (i == udp::resolver::iterator()) {
       throw std::runtime_error("No endpoint found");
     }
-    client_endpoint_ = *i;
+    open(*i);
+  }
+
+  void open(const boost::asio::ip::udp::endpoint &remote_ep) {
+    using namespace boost::asio::ip;
+
+    client_endpoint_ = remote_ep;
     BOOST_LOG_SEV(basic_lg, log::info) << "Server will send data to: "
 				       << client_endpoint_;
     // Send from any address and pick a free port
-    udp::endpoint local(ip::address::from_string("0.0.0.0"), 0);
+    udp::endpoint local(address::from_string("0.0.0.0"), 0);
     socket_.open(udp::v4());
     socket_.bind(local);
     BOOST_LOG_SEV(basic_lg, log::info) << "Server UDP port bound to: "

@@ -8,6 +8,135 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
+static_assert(std::is_same<std::uint8_t,unsigned char>::value,
+	      "unsigned char is not std::uint8_t");
+using byte = unsigned char;
+
+class buffer {
+public:
+  buffer() : buffer(nullptr, 0) {
+  }
+  /** Construct a buffer over the already allocated memory given by
+   *  the arguments. The buffer will not free this memory upon
+   *  destruction.
+   */
+  explicit buffer(void *mem, std::size_t size) :
+    membegin(reinterpret_cast<byte*>(mem)),
+    bufbegin(membegin),
+    memend(membegin+size),
+    bufend(memend) {
+  }
+
+  const void *allocated_memory() const {
+    return membegin;
+  }
+
+  void *allocated_memory() {
+    return membegin;
+  }
+
+  std::size_t allocated_size() const {
+    return memend - membegin;
+  }
+
+  const byte *begin() const {
+    return bufbegin;
+  }
+
+  byte *begin() {
+    return bufbegin;
+  }
+
+  const byte *end() const {
+    return bufend;
+  }
+
+  byte *end() {
+    return bufend;
+  }
+
+  std::size_t size() const {
+    return bufend - bufbegin;
+  }
+
+  void trim_front(std::size_t num) {
+    if (static_cast<std::size_t>(bufend - bufbegin) >= num)
+      bufbegin += num;
+    else
+      throw std::range_error("Would trim after the end");
+  }
+
+  void extend_front(std::size_t num) {
+    if (static_cast<std::size_t>(bufbegin - membegin) >= num)
+      bufbegin -= num;
+    else
+      throw std::range_error("Would extend after the allocated memory");
+  }
+
+  void trim_back(std::size_t num) {
+    if (static_cast<std::size_t>(bufend - bufbegin) >= num)
+      bufend -= num;
+    else
+      throw std::range_error("Would trim after the beginning");
+  }
+
+  void extend_back(std::size_t num) {
+    if (static_cast<std::size_t>(memend - bufend) >= num)
+      bufend += num;
+    else
+      throw std::range_error("Would extend after the allocated memory");
+  }
+
+  const buffer slice(std::size_t seek, std::size_t size) const {
+    buffer b{*this};
+    b.trim_front(seek);
+    if (static_cast<std::size_t>(b.memend - b.bufbegin) >= size)
+      b.bufend = b.bufbegin + size;
+    else
+      throw std::range_error("Would extend after the allocated memory");
+    return b;
+  }
+
+  buffer slice(std::size_t seek, std::size_t size) {
+    const buffer *const cthis = this;
+    return cthis->slice(seek, size);
+  }
+
+protected:
+  byte *membegin; /**< Start of the allocated memory. */
+  byte *bufbegin; /**< Start of the buffer. */
+  byte *memend; /**< End of the allocated memory. */
+  byte *bufend; /**< End of the buffer. */
+};
+
+class unique_buffer : public buffer {
+public:
+  explicit unique_buffer(std::size_t size) :
+    mem{new byte[size]} {
+    membegin = mem.get();
+    bufbegin = membegin;
+    memend = membegin + size;
+    bufend = memend;
+  }
+
+private:
+  std::unique_ptr<byte[]> mem;
+};
+
+class shared_buffer : public buffer {
+public:
+  explicit shared_buffer(std::size_t size) :
+    mem{new byte[size], std::default_delete<byte[]>{}} {
+    membegin = mem.get();
+    bufbegin = membegin;
+    memend = membegin + size;
+    bufend = memend;
+  }
+
+private:
+  std::shared_ptr<byte> mem;
+};
+
 namespace uep { namespace utils {
 
 /** Predicate that just converts the input to bool. */
@@ -77,16 +206,24 @@ struct knuth_mul_hasher {
 
 }}
 
+template<typename Iter>
+void write_iterable(std::ostream &out, Iter begin, Iter end) {
+  std::string sep;
+  out << '[';
+  for (; begin != end; ++begin) {
+    out << sep;
+    out << *begin;
+    sep = ", ";
+  }
+  out << ']';
+}
+
 namespace std {
 
 /** Write a text representation of a vector. */
-template <class T>
-ostream &operator<<(ostream &out, const vector<T> &v) {
-  out << '[';
-  for (auto i = v.cbegin(); i != v.cend(); ++i) {
-    out << *i << ", ";
-  }
-  out << "\b\b]";
+template<typename T>
+ostream &operator<<(ostream &out, const vector<T> &vec) {
+  write_iterable(out, vec.begin(), vec.end());
   return out;
 }
 

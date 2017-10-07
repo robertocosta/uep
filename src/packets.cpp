@@ -1,14 +1,11 @@
 #include "packets.hpp"
+#include "rw_utils.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
 
 #include <boost/numeric/conversion/cast.hpp>
-
-extern "C" {
-#include <arpa/inet.h>
-}
 
 using namespace std;
 using namespace uep;
@@ -390,10 +387,10 @@ uep_packet uep_packet::from_packet(const packet &p) {
   std::copy(pb.cbegin() + sizeof(seqno_type), pb.cend(),
 	    upb.begin());
 
-  const char *pb_first = &pb.front();
-  const seqno_type *raw_sn = reinterpret_cast<const seqno_type*>(pb_first);
-  up.seqno = boost::numeric_cast<std::size_t>(ntohl(*raw_sn));
-
+  seqno_type sn;
+  rw_utils::read_ntoh<seqno_type>(sn, pb.cbegin(),
+				  pb.cbegin() + sizeof(seqno_type));
+  up.seqno = boost::numeric_cast<std::size_t>(sn);
   return up;
 }
 
@@ -424,9 +421,10 @@ packet uep_packet::to_packet() const {
   pb.resize(upb.size() + sizeof(seqno_type));
   std::copy(upb.cbegin(), upb.cend(), pb.begin() + sizeof(seqno_type));
 
-  seqno_type *raw_sn = reinterpret_cast<seqno_type*>(&(pb.front()));
-  *raw_sn = htonl(boost::numeric_cast<seqno_type>(seqno));
- 
+  seqno_type sn = boost::numeric_cast<seqno_type>(seqno);
+  rw_utils::write_hton<seqno_type>(sn, pb.begin(),
+				   pb.begin() + sizeof(seqno_type));
+
   return p;
 }
 

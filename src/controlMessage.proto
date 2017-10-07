@@ -1,31 +1,30 @@
 syntax = "proto2";
 
-package controlMessage;
+package uep.protobuf;
 
-message StreamName {
-	required string StreamName = 1;
+message ClientParameters {
+    repeated uint32 Ks = 1 [packed=true];
+    optional double c = 2;
+    optional double delta = 3;
+    repeated uint32 RFs = 4 [packed=true];
+    optional uint32 EF = 5;
+    optional bool ACK = 6;
+    optional uint64 fileSize = 7;
+    optional bytes header = 8;
+    optional uint32 headerSize = 9;
 }
 
-message TXParam {
-	repeated uint32 Ks = 1;
-	required double c = 2;
-	required double delta = 3;
-	repeated uint32 RFs = 4;
-	required uint32 EF = 5;
-	required bool ACK = 6;
-	required uint64 fileSize = 7;
-	repeated bytes header = 8;
-	required uint32 headerSize = 9;
+enum StartStop {
+    START = 0;
+    STOP = 1;
 }
 
-message Connect {
-	required uint32 port = 1;
-}
-
-message ConnACK {
-	required uint32 port = 1;
-}
-
-message Play {
-	optional bool play = 1 [default = true];
+message ControlMessage {
+    oneof carried_message {
+	string stream_name = 1;
+	ClientParameters client_parameters = 2;
+	uint32 client_port = 3;
+	uint32 server_port = 4;
+	StartStop start_stop = 5;
+    }
 }
