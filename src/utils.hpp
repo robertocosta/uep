@@ -39,6 +39,16 @@ public:
     return memend - membegin;
   }
 
+  template<typename chartype = byte>
+  const chartype *data() const {
+    return reinterpret_cast<const chartype*>(bufbegin);
+  }
+
+  template<typename chartype = byte>
+  chartype *data() {
+    return reinterpret_cast<chartype*>(bufbegin);
+  }
+
   const byte *begin() const {
     return bufbegin;
   }
