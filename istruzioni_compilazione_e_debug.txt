@@ -1,0 +1,17 @@
+cd ./uep
+make
+
+debugging example:
+gdb ./bin/server
+break main
+run
+info break
+disable breakpoint 1
+
+---
+gdb --args ./bin/client CREW_352x288_30_orig_01 127.0.0.1
+break main
+run
+continue,n
+
+apt install bashdb
