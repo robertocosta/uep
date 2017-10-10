@@ -4,6 +4,7 @@ set -eu -o pipefail
 set -x
 
 H264ENCODE="$(realpath ../jsvm/bin/H264AVCEncoderLibTestStaticd)"
+H264DECODE="$(realpath ../jsvm/bin/H264AVCDecoderLibTestStaticd)"
 BSEXTR="$(realpath ../jsvm/bin/BitStreamExtractorStaticd)"
 
 DATADIR="../dataset"
@@ -22,11 +23,17 @@ dd if="stefan_cif.264" of="stefan_gops.264" bs=1 skip="$((gopoffset))"
 
 gopframes=90
 ntimes=$(( (4000 + gopframes - 1) / gopframes ))
+cp "stefan_cif.yuv" "stefan_cif_long.yuv"
+cp "stefan_cif.264" "stefan_cif_long.264"
 for i in $(seq 0 $((ntimes - 2)) ); do
-    cat stefan_gops.264 >> stefan_cif.264
+    cat stefan_gops.264 >> stefan_cif_long.264
+    cat stefan_cif.yuv >> stefan_cif_long.yuv
 done
 rm "stefan_gops.264"
 
-"$BSEXTR" -pt "stefan_cif.trace" "stefan_cif.264"
+"$BSEXTR" -pt "stefan_cif_long.trace" "stefan_cif_long.264"
+
+"$H264DECODE" "stefan_cif.264" "stefan_cif_out.yuv"
+"$H264DECODE" "stefan_cif_long.264" "stefan_cif_long_out.yuv"
 
 popd
