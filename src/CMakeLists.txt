@@ -101,6 +101,12 @@ target_link_libraries(client
   ${Boost_LIBRARIES}
 )
 
+add_executable(filter_received filter_received.cpp)
+target_link_libraries(filter_received
+  log
+  ${Boost_LIBRARIES}
+)
+
 add_executable(mp_plots mp_plots.cpp)
 target_link_libraries(mp_plots
   decoder
