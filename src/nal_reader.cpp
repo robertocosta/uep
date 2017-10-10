@@ -430,24 +430,13 @@ nal_reader::nal_reader(const parameter_set &ps) :
 streamTrace nal_reader::read_trace_line() {
   string line;
   getline(trace,line);
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Reading trace line"
-				      << ". Raw line: "
-				      << line;
-
-  // Skip empty lines after this
-  string nextline;
-  size_t oldpos;
-  while (nextline.empty() && trace) {
-    oldpos = trace.tellg();
-    getline(trace, nextline);
-  }
-  if (!nextline.empty()) {
-    trace.seekg(oldpos);
-  }
-
+  utils::skip_empty(trace);
   if (line.empty()) {
     throw runtime_error("Empty trace line");
   }
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Reading trace line"
+				      << ". Raw line: "
+				      << line;
 
   istringstream iss(line);
   streamTrace elem;

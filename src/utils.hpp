@@ -214,6 +214,25 @@ struct knuth_mul_hasher {
   }
 };
 
+/** Drop empty lines from an input stream. Return the number of
+ *  dropped lines.
+ */
+inline std::size_t skip_empty(std::istream &istr) {
+  std::size_t empty_count = 0;
+  std::string nextline;
+  std::istream::pos_type oldpos;
+  while (nextline.empty() && istr) {
+    oldpos = istr.tellg();
+    std::getline(istr, nextline);
+    ++empty_count;
+  }
+  if (!nextline.empty()) {
+    istr.seekg(oldpos);
+    --empty_count;
+  }
+  return empty_count;
+}
+
 }}
 
 template<typename Iter>
