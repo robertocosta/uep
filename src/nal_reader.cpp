@@ -444,7 +444,6 @@ streamTrace nal_reader::read_trace_line() {
   iss >> std::hex >> elem.startPos;
   if (iss.fail()) { // Was not a packet line, ignore and take next one
     BOOST_LOG_SEV(basic_lg, log::trace) << "Skip non-packet line";
-    trace.clear();
     return read_trace_line();
   }
 
