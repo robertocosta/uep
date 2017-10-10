@@ -94,4 +94,24 @@ struct all_parameter_set: public net_parameter_set,
 
 }
 
+namespace std{
+
+inline std::ostream &operator<<(std::ostream &ostr,
+				const uep::streamTrace::packet_type_t &pt) {
+  using uep::streamTrace;
+
+  switch (pt) {
+  case streamTrace::stream_header:
+    return ostr << "StreamHeader";
+  case streamTrace::parameter_set:
+    return ostr << "ParameterSet";
+  case streamTrace::slice_data:
+    return ostr << "SliceData";
+  default:
+    throw std::logic_error("Missing string for a value");
+  }
+}
+
+}
+
 #endif
