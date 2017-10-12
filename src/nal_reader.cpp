@@ -555,11 +555,20 @@ void nal_reader::pack_nals() {
       last_nal.clear();
     }
     else { // Different priority
+      if (packed.size() > MAX_PACKED_SIZE) {
+	const auto maxsize = MAX_PACKED_SIZE; // Doesn't link if placed in <<
+	BOOST_LOG_SEV(basic_lg, log::warning) << "Consecutive NALs with priority "
+					      << prio << " exceed "
+					      << maxsize << " bytes";
+      }
       break;
     }
   }
 
   // Segment and pad the packed NALs
+  BOOST_LOG(perf_lg) << "nal_reader::pack_nals before_padding"
+		     << " packed_size=" << packed.size()
+		     << " priority=" << prio;
   size_t npkts = static_cast<size_t>(ceil(static_cast<double>(packed.size()) /
 					  pkt_size));
   auto i = packed.cbegin();
@@ -576,6 +585,11 @@ void nal_reader::pack_nals() {
   fp.buffer().resize(pkt_size, 0x00); // Pad with zeros the last segment
   std::copy(i, packed.cend(), fp.buffer().begin());
   pkt_queue.push(std::move(fp));
+  BOOST_LOG(perf_lg) << "nal_reader::pack_nals after_padding"
+		     << " packed_size=" << packed.size()
+		     << " priority=" << prio
+		     << " padding=" << pkt_size*npkts - packed.size()
+		     << " pkt_size=" << pkt_size;
 }
 
 fountain_packet nal_reader::next_packet() {

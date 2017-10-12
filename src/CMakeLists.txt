@@ -85,7 +85,6 @@ target_link_libraries(server
   nal_reader
   packets_rw
   protobuf_rw
-  uep_decoder
   ${Boost_LIBRARIES}
 )
 
@@ -93,7 +92,6 @@ add_executable(client client.cpp)
 target_link_libraries(client
   controlMessage.pb
   decoder
-  nal_reader
   nal_writer
   packets_rw
   protobuf_rw
