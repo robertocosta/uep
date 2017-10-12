@@ -17,7 +17,12 @@ pushd "$DATADIR"
 
 "$BSEXTR" -pt "${STREAMNAME}.trace" "${STREAMNAME}.264" > "${STREAMNAME}_trace.log" 2>&1
 "$FILTER" "$STREAMNAME" > "${STREAMNAME}_filter.log" 2>&1
-"$H264DECODE" "${STREAMNAME}.264" "${STREAMNAME}.yuv" > "${STREAMNAME}_decode.log" 2>&1
-"$PSNR" "$STREAM_W" "$STREAM_H" "${ORIGDIR}/${STREAMNAME}.yuv" "${STREAMNAME}.yuv" > "${STREAMNAME}_psnr.log" 2>&1
+"$H264DECODE" "${STREAMNAME}_filtered.264" "${STREAMNAME}_filtered.yuv" > "${STREAMNAME}_filtered_decode.log" 2>&1
+
+size_orig=$(stat -c '%s' "${ORIGDIR}/${STREAMNAME}.yuv")
+size_filt=$(stat -c '%s' "${STREAMNAME}_filtered.yuv")
+[ "$size_orig" == "$size_filt" ] || \
+    ( echo "There were frames fully lost" && exit 100 )
+"$PSNR" "$STREAM_W" "$STREAM_H" "${ORIGDIR}/${STREAMNAME}.yuv" "${STREAMNAME}_filtered.yuv" > "${STREAMNAME}_filtered_psnr.log" 2>&1
 
 popd
