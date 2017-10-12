@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
   log::init("filter_received.log");
   log::default_logger basic_lg = log::basic_lg::get();
   log::default_logger perf_lg = log::perf_lg::get();
-  
+
   if (argc < 2) {
     std::cerr << "Usage: " << argv[0] << " {stream name}";
   }
