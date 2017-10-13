@@ -3,11 +3,14 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstddef>
 #include <iostream>
 #include <iterator>
 
 #include <boost/iterator/filter_iterator.hpp>
 
+using f_int = std::int_fast32_t;
+using f_uint = std::uint_fast32_t;
 static_assert(std::is_same<std::uint8_t,unsigned char>::value,
 	      "unsigned char is not std::uint8_t");
 using byte = unsigned char;
