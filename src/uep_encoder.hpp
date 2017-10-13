@@ -55,6 +55,11 @@ public:
   /** Generate the next coded packet from the current block. */
   fountain_packet next_coded();
 
+  /** Fill a partial block with padding packets. This allows to encode
+   *  even if there are no more source packets to be passed.
+   */
+  void pad_partial_block();
+
   /** Drop the current block of packets and prepare to encode the next
    *  one.
    */
@@ -140,6 +145,7 @@ private:
 					     *	 non-movable seed
 					     *	 generators.
 					     */
+  std::size_t pktsize; /**< The size of the pushed packets. */
 
   /** Check whether the queues have enough packets to build a block. */
   void check_has_block();
@@ -159,7 +165,8 @@ uep_encoder<Gen>::uep_encoder(KsIter ks_begin, KsIter ks_end,
   Ks(ks_begin, ks_end),
   RFs(rfs_begin, rfs_end),
   EF(ef),
-  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()) {
+  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
+  pktsize(0) {
   if (Ks.size() != RFs.size()) {
     throw std::invalid_argument("Ks, RFs sizes do not match");
   }
@@ -192,6 +199,11 @@ void uep_encoder<Gen>::push(const fountain_packet &p) {
 
 template <class Gen>
 void uep_encoder<Gen>::push(fountain_packet &&p) {
+  if (pktsize == 0) pktsize = p.buffer().size();
+  else if (pktsize != p.buffer().size()) {
+    throw std::invalid_argument("The packets must have the same size");
+  }
+
   uep_packet up(std::move(p.buffer()));
   up.priority(p.getPriority());
   up.sequence_number(seqno_ctr.value());
@@ -224,6 +236,18 @@ void uep_encoder<Gen>::push(const packet &p) {
 template <class Gen>
 fountain_packet uep_encoder<Gen>::next_coded() {
   return std_enc->next_coded();
+}
+
+template<typename Gen>
+void uep_encoder<Gen>::pad_partial_block() {
+  if (has_block()) return;
+  for (queue_type &q : inp_queues) {
+    while (!q.has_block()) {
+      // Don't give the padding pkts a seqno
+      q.push(uep_packet::make_padding(pktsize, 0));
+    }
+  }
+  check_has_block();
 }
 
 template <class Gen>

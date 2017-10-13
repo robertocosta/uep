@@ -156,6 +156,9 @@ private:
    *  block.
    */
   std::size_t map_in2out(std::size_t i);
+  /** Find the queue with the given seqno on top. */
+  std::vector<queue_type>::iterator
+  find_decoded(std::size_t seqno);
 };
 
 	      //// uep_decoder template definitions ////

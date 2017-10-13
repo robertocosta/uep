@@ -27,11 +27,7 @@ fountain_packet uep_decoder::next_decoded() {
   BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: extract a packet."
 				      << " queue_size=" << queue_size()
 				      << " next_seqno=" << next_seqno;
-  auto i = std::find_if(out_queues.begin(), out_queues.end(),
-			[next_seqno](const queue_type &q){
-			  return !q.empty() &&
-			  q.front().sequence_number() == next_seqno;
-			});
+  auto i = find_decoded(next_seqno);
   fountain_packet p;
   if (i != out_queues.end()) { // Otherwise empty fountain_packet
     uep_packet &up = i->front();
@@ -52,6 +48,15 @@ fountain_packet uep_decoder::next_decoded() {
   }
   seqno_ctr.next();
   return p;
+}
+
+std::vector<uep_decoder::queue_type>::iterator
+uep_decoder::find_decoded(std::size_t seqno) {
+  return std::find_if(out_queues.begin(), out_queues.end(),
+		      [seqno](const queue_type &q){
+			return !q.empty() &&
+			  q.front().sequence_number() == seqno;
+		      });
 }
 
 void uep_decoder::flush() {
@@ -183,6 +188,7 @@ void uep_decoder::deduplicate_queued() {
   std::vector<uep_packet> out_block(block_size_out());
   while (std_dec->has_queued_packets()) {
     std::size_t decoded = 0;
+    std::size_t padding = 0;
     for (std::size_t i = 0; i != block_size_in(); ++i) {
       packet p = std_dec->next_decoded();
       if (p.empty()) continue;
@@ -192,16 +198,22 @@ void uep_decoder::deduplicate_queued() {
 
       if (out_block[out_i].buffer().empty()) {
 	uep_packet up = uep_packet::from_packet(p);
+	if (up.padding()) {
+	  ++padding;
+	}
+	else {
+	  ++decoded;
+	}
 	out_block[out_i] = std::move(up);
-	++decoded;
       }
     }
     tot_dec_count += decoded;
-    tot_fail_count += out_block.size() - decoded;
+    tot_fail_count += out_block.size() - decoded - padding;
 
     BOOST_LOG(perf_lg) << "uep_decoder::deduplicate_queued "
-			<< "decoded=" << decoded
-			<< "failed=" << out_block.size() - decoded;
+		       << "decoded=" << decoded
+		       << " failed=" << out_block.size() - decoded - padding
+		       << " padding=" << padding;
 
     auto j = out_block.begin();
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
@@ -209,10 +221,15 @@ void uep_decoder::deduplicate_queued() {
 	uep_packet up;
 	swap(up, *j++); // Make *j empty
 	up.priority(subblock);
-	if (!up.buffer().empty()) // Do not insert empty packets: wrong seqno
-	  out_queues[subblock].push(std::move(up));
-	else
+	if (up.buffer().empty()) { // Do not insert empty packets: wrong seqno
 	  ++empty_queued_count;
+	}
+	else if (up.padding()) { // Drop the padding packets: no seqno
+	  continue;
+	}
+	else {
+	  out_queues[subblock].push(std::move(up));
+	}
       }
     }
     BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: empty queued packets = "
