@@ -121,6 +121,9 @@ protected:
 
 class unique_buffer : public buffer {
 public:
+  unique_buffer() : unique_buffer{8} {
+  }
+
   explicit unique_buffer(std::size_t size) :
     mem{new byte[size]} {
     membegin = mem.get();
@@ -129,22 +132,22 @@ public:
     bufend = memend;
   }
 
-private:
-  std::unique_ptr<byte[]> mem;
-};
-
-class shared_buffer : public buffer {
-public:
-  explicit shared_buffer(std::size_t size) :
-    mem{new byte[size], std::default_delete<byte[]>{}} {
-    membegin = mem.get();
-    bufbegin = membegin;
-    memend = membegin + size;
-    bufend = memend;
+  void resize(std::size_t size) {
+    if ((memend - bufbegin) >= size) {
+      bufend = bufbegin + size;
+    }
+    else {
+      decltype(mem) newmem{new byte[size]};
+      std::memmove(newmem.get(), bufbegin, size());
+      membegin = mem.get();
+      bufbegin = membegin;
+      memend = membegin + size;
+      bufend = memend;
+    }
   }
 
 private:
-  std::shared_ptr<byte> mem;
+  std::unique_ptr<byte[]> mem;
 };
 
 namespace uep { namespace utils {
