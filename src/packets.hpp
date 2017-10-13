@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <ostream>
+#include <random>
 #include <type_traits>
 #include <vector>
 
@@ -259,8 +260,13 @@ namespace uep {
  */
 class uep_packet {
 public:
-  /** The type used to store the seqno inside the packet payload. */
-  typedef std::uint32_t seqno_type;
+  /** The type used to store the seqno inside the packet payload. The
+   *  actual number of available bits is 31, since the MSB is used as
+   *  a flag for padding packets.
+   */
+  using seqno_type = std::uint32_t;
+  /** Maximum value that the sequence number can take. */
+  static const std::uint32_t MAX_SEQNO = 0x7fffffff;
 
   /** Convert a packet into a uep_packet. Read the seqno stored in the
    *  payload. \sa to_packet
@@ -272,6 +278,11 @@ public:
    *  \sa to_packet
    */
   static uep_packet from_fountain_packet(const fountain_packet &fp);
+
+  /** Make a padding packet with the given size and sequence
+   *  number. This packet contains random data.
+   */
+  static uep_packet make_padding(std::size_t size, seqno_type seqno);
 
   /** Construct a uep_packet with an empty buffer, seqno 0 and priority 0. */
   uep_packet();
@@ -308,14 +319,23 @@ public:
   void priority(std::size_t p);
 
   /** Return the sequence number. */
-  std::size_t sequence_number() const;
+  seqno_type sequence_number() const;
   /** Set the sequence number. */
-  void sequence_number(std::size_t sn);
+  void sequence_number(seqno_type sn);
+
+  /** Return the status of the padding flag. */
+  bool padding() const;
+  /** Set the padding flag. */
+  void padding(bool enable);
 
 private:
+  static std::independent_bits_engine<std::default_random_engine,
+				      8,
+				      byte> padding_rng;
+
   std::shared_ptr<buffer_type> shared_buf;
   std::size_t priority_lvl;
-  std::size_t seqno;
+  seqno_type seqno;
 };
 
 }

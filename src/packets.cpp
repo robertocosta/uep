@@ -460,12 +460,49 @@ void uep_packet::priority(std::size_t p) {
   priority_lvl = p;
 }
 
-std::size_t uep_packet::sequence_number() const {
-  return seqno;
+uep_packet::seqno_type uep_packet::sequence_number() const {
+  return seqno & 0x7fffffff;
 }
 
-void uep_packet::sequence_number(std::size_t sn) {
-  seqno = sn;
+void uep_packet::sequence_number(seqno_type sn) {
+ if (sn > MAX_SEQNO) {
+   throw std::invalid_argument("seqno is too large");
+ }
+
+ seqno_type padding_bit = seqno & 0x80000000;
+ seqno = sn;
+ seqno |= padding_bit;
 }
+
+uep_packet uep_packet::make_padding(std::size_t size, seqno_type seqno) {
+  uep_packet p{};
+  p.buffer().resize(size);
+  p.sequence_number(seqno);
+  p.padding(true);
+  for (byte *i = reinterpret_cast<byte*>(p.buffer().data());
+       i != reinterpret_cast<byte*>(p.buffer().data()) + size;
+       ++i) {
+    *i = padding_rng();
+  }
+  return p;
+}
+
+void uep_packet::padding(bool enable) {
+  if (enable) {
+    seqno |= 0x80000000; // Set the MSB
+  }
+  else {
+    seqno &= 0x7fffffff;
+  }
+}
+
+bool uep_packet::padding() const {
+  return seqno > MAX_SEQNO;
+}
+
+std::independent_bits_engine<std::default_random_engine,
+			     8,
+			     byte> uep_packet::padding_rng;
+
 
 }

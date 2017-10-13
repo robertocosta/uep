@@ -2,8 +2,9 @@
 #define UEP_UTILS_HPP
 
 #include <algorithm>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 
@@ -136,12 +137,12 @@ public:
   }
 
   void resize(std::size_t size) {
-    if ((memend - bufbegin) >= size) {
+    if (static_cast<std::size_t>(memend - bufbegin) >= size) {
       bufend = bufbegin + size;
     }
     else {
       decltype(mem) newmem{new byte[size]};
-      std::memmove(newmem.get(), bufbegin, size());
+      std::memmove(newmem.get(), bufbegin, this->size());
       membegin = mem.get();
       bufbegin = membegin;
       memend = membegin + size;

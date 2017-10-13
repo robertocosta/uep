@@ -27,7 +27,7 @@ public:
   /** Iterator over the current block. */
   //typedef typename lt_encoder<Gen>::const_block_iterator const_block_iterator;
 
-  static constexpr std::size_t MAX_SEQNO = lt_encoder<Gen>::MAX_SEQNO;
+  static constexpr std::size_t MAX_SEQNO = uep_packet::MAX_SEQNO;
   static constexpr std::size_t MAX_BLOCKNO = lt_encoder<Gen>::MAX_BLOCKNO;
   static constexpr std::size_t BLOCK_WINDOW = lt_encoder<Gen>::BLOCK_WINDOW;
 
