@@ -314,6 +314,7 @@ public:
   average_counter() : n(0) {}
 
   void add_sample(double s) {
+    last = s;
     if (n == 0) {
       avg = s;
     }
@@ -336,9 +337,55 @@ public:
     n = 0;
   }
 
+  double last_sample() const {
+    if (n == 0) throw std::runtime_error("Never gave a sample");
+    return last;
+  }
+
 private:
+  double last;
   std::size_t n;
   double avg;
+};
+
+template<typename T>
+class sum_counter {
+public:
+  sum_counter() : has_last(false), sum(0) {}
+
+  void add_sample(T s) {
+    last = s;
+    has_last = true;
+    sum += s;
+  }
+
+  T value() const {
+    return sum;
+  }
+
+  void reset() {
+    has_last = false;
+    sum = 0;
+  }
+
+  void clear_last() {
+    has_last = false;
+  }
+
+  T last_sample() const {
+    if (!has_last) throw std::runtime_error("Never gave a sample");
+    return last;
+  }
+
+  T last_sample(T default_value) const {
+    if (has_last) return last;
+    else return default_value;
+  }
+
+private:
+  bool has_last;
+  T last;
+  T sum;
 };
 
 }}

@@ -157,6 +157,10 @@ std::size_t uep_decoder::total_failed_count() const {
   return tot_fail_count;
 }
 
+std::size_t uep_decoder::total_padding_count() const {
+  return padding_cnt.value();
+}
+
 double uep_decoder::average_push_time() const {
   return std_dec->average_push_time();
 }
@@ -207,6 +211,7 @@ void uep_decoder::deduplicate_queued() {
 	out_block[out_i] = std::move(up);
       }
     }
+    padding_cnt.add_sample(padding);
     tot_dec_count += decoded;
     tot_fail_count += out_block.size() - decoded - padding;
 

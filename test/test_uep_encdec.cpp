@@ -988,8 +988,6 @@ BOOST_AUTO_TEST_CASE(uep_padding) {
   double c = 0.1;
   double delta = 0.5;
 
-  size_t nblocks = 50;
-
   uep_encoder<std::mt19937> enc(Ks.begin(), Ks.end(),
 				RFs.begin(), RFs.end(),
 				EF, c, delta);
@@ -1024,7 +1022,100 @@ BOOST_AUTO_TEST_CASE(uep_padding) {
 
   BOOST_CHECK_EQUAL(dec.queue_size(), 8);
   BOOST_CHECK_EQUAL(dec.total_decoded_count(), 8);
-  BOOST_CHECK_EQUAL(dec.total_failed_count(), 8);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+  auto i = original.cbegin();
+  while (dec.has_queued_packets()) {
+    fountain_packet fp = dec.next_decoded();
+    BOOST_CHECK(fp.buffer() == i->buffer());
+    BOOST_CHECK(fp.getPriority() == i->getPriority());
+    ++i;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(uep_padding_many) {
+  size_t L = 10;
+  size_t K_uep = 100;
+  size_t K = 250;
+  vector<size_t> Ks = {25, 75};
+  vector<size_t> RFs = {2, 1};
+  size_t EF = 2;
+  double c = 0.1;
+  double delta = 0.5;
+
+  size_t nblocks = 50;
+
+  uep_encoder<std::mt19937> enc(Ks.begin(), Ks.end(),
+				RFs.begin(), RFs.end(),
+				EF, c, delta);
+  uep_decoder dec(Ks.begin(), Ks.end(),
+		  RFs.begin(), RFs.end(),
+		  EF, c, delta);
+
+  vector<fountain_packet> original;
+  for (size_t i = 0; i < nblocks*Ks[0]; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(0);
+    original.push_back(p);
+  }
+  for (size_t i = 0; i < nblocks*Ks[1]; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(1);
+    original.push_back(p);
+  }
+  for (size_t i = 0; i < 32; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(0);
+    original.push_back(p);
+  }
+  for (size_t i = 0; i < 64; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(1);
+    original.push_back(p);
+  }
+  BOOST_CHECK_EQUAL(original.size(), nblocks*K_uep + 32 + 64);
+
+  for (const fountain_packet &fp : original) {
+    enc.push(fp);
+  }
+
+  while (enc.has_block()) {
+    do {
+      dec.push(enc.next_coded());
+    } while (!dec.has_decoded());
+    enc.next_block();
+  }
+
+  BOOST_CHECK_EQUAL(dec.queue_size(), nblocks*K_uep);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), nblocks*K_uep);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_padding_count(), 0);
+
+  BOOST_CHECK(!enc.has_block());
+  BOOST_CHECK_EQUAL(enc.size(), 32+64);
+  BOOST_CHECK_EQUAL(enc.queue_size(), 32+64);
+  BOOST_CHECK_EQUAL(enc.padding_count(), 0);
+  BOOST_CHECK_EQUAL(enc.total_padding_count(), 0);
+  enc.pad_partial_block();
+  BOOST_CHECK_EQUAL(enc.padding_count(), Ks[1] - 64);
+  BOOST_CHECK_EQUAL(enc.total_padding_count(), Ks[1] - 64);
+  while (enc.has_block()) {
+    do {
+      dec.push(enc.next_coded());
+    } while (!dec.has_decoded());
+    enc.next_block();
+    if (!enc.has_block() && enc.queue_size() > 0) {
+      enc.pad_partial_block();
+    }
+  }
+
+  BOOST_CHECK_EQUAL(enc.padding_count(), 0);
+  BOOST_CHECK_EQUAL(enc.total_padding_count(), Ks[1] - 64 +
+		    Ks[0] - (32-Ks[0]) + Ks[1]);
+  BOOST_CHECK_EQUAL(dec.queue_size(), nblocks*K_uep + 32 + 64);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), nblocks*K_uep + 32 + 64);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
+  BOOST_CHECK_EQUAL(dec.total_padding_count(), Ks[1] - 64 +
+		    Ks[0] - (32-Ks[0]) + Ks[1]);
   auto i = original.cbegin();
   while (dec.has_queued_packets()) {
     fountain_packet fp = dec.next_decoded();
