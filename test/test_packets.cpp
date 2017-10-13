@@ -88,35 +88,35 @@ BOOST_AUTO_TEST_CASE(uep_to_packet) {
 		    p.buffer().end(),
 		    b1.cbegin()));
 
-  up.sequence_number(0xffff00ff);
-  BOOST_CHECK_EQUAL(up.sequence_number(), 0xffff00ff);
-  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0xffff00ff);
+  up.sequence_number(0x7fff00ff);
+  BOOST_CHECK_EQUAL(up.sequence_number(), 0x7fff00ff);
+  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0x7fff00ff);
   p = up.to_packet();
   BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
   BOOST_CHECK(equal(p.buffer().begin(),
 		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
-		    "\xff\xff\x00\xff"));
+		    "\x7f\xff\x00\xff"));
   BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
 		    p.buffer().end(),
 		    b1.cbegin()));
 
-  up.sequence_number(0xffffffff);
-  BOOST_CHECK_EQUAL(up.sequence_number(), 0xffffffff);
-  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0xffffffff);
+  up.sequence_number(0x7fffffff);
+  BOOST_CHECK_EQUAL(up.sequence_number(), 0x7fffffff);
+  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0x7fffffff);
   p = up.to_packet();
   BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
   BOOST_CHECK(equal(p.buffer().begin(),
 		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
-		    "\xff\xff\xff\xff"));
+		    "\x7f\xff\xff\xff"));
   BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
 		    p.buffer().end(),
 		    b1.cbegin()));
 }
 
 BOOST_AUTO_TEST_CASE(uep_from_packet) {
-  const char raw[] = "\xff\x00\x00\x00\x11\x22\x33\x44\x55";
+  const char raw[] = "\x7f\x00\x00\x00\x11\x22\x33\x44\x55";
   const char exp_data[] = "\x11\x22\x33\x44\x55";
-  const size_t exp_sn = 0xff000000;
+  const size_t exp_sn = 0x7f000000;
 
   packet p;
   p.buffer().resize(5+4);
