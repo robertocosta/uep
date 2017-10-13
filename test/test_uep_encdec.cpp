@@ -977,3 +977,59 @@ BOOST_AUTO_TEST_CASE(uep_random_order_drop) {
     ++i;
   }
 }
+
+BOOST_AUTO_TEST_CASE(uep_padding) {
+  size_t L = 10;
+  size_t K_uep = 100;
+  size_t K = 250;
+  auto Ks = {25, 75};
+  auto RFs = {2, 1};
+  size_t EF = 2;
+  double c = 0.1;
+  double delta = 0.5;
+
+  size_t nblocks = 50;
+
+  uep_encoder<std::mt19937> enc(Ks.begin(), Ks.end(),
+				RFs.begin(), RFs.end(),
+				EF, c, delta);
+  uep_decoder dec(Ks.begin(), Ks.end(),
+		  RFs.begin(), RFs.end(),
+		  EF, c, delta);
+
+  vector<fountain_packet> original;
+  for (size_t i = 0; i < 4; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(0);
+    original.push_back(p);
+  }
+  for (size_t i = 0; i < 4; ++i) {
+    fountain_packet p(random_pkt(L));
+    p.setPriority(1);
+    original.push_back(p);
+  }
+  BOOST_CHECK_EQUAL(original.size(), 8);
+
+  for (const fountain_packet &fp : original) {
+    enc.push(fp);
+  }
+
+  BOOST_CHECK(!enc.has_block());
+  enc.pad_partial_block();
+  BOOST_CHECK(enc.has_block());
+
+  while (!dec.has_decoded()) {
+    dec.push(enc.next_coded());
+  }
+
+  BOOST_CHECK_EQUAL(dec.queue_size(), 8);
+  BOOST_CHECK_EQUAL(dec.total_decoded_count(), 8);
+  BOOST_CHECK_EQUAL(dec.total_failed_count(), 8);
+  auto i = original.cbegin();
+  while (dec.has_queued_packets()) {
+    fountain_packet fp = dec.next_decoded();
+    BOOST_CHECK(fp.buffer() == i->buffer());
+    BOOST_CHECK(fp.getPriority() == i->getPriority());
+    ++i;
+  }
+}
