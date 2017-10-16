@@ -600,12 +600,13 @@ void nal_reader::pack_nals() {
     BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader finished";
     if (use_eos) {
       static const std::array<byte, 3> nal_sc{0x00, 0x00, 0x01};
+      assert(EOS_NAL.size() + nal_sc.size() <= pkt_size);
       fountain_packet fp;
       fp.setPriority(0);
-      fp.buffer().resize(EOS_NAL.size() + nal_sc.size());
-      std::copy(nal_sc.begin(), nal_sc.end(), fp.buffer().begin());
-      std::copy(EOS_NAL.begin(), EOS_NAL.end(),
-		fp.buffer().begin() + nal_sc.size());
+      fp.buffer().resize(pkt_size, 0x00); // This must also be the same length
+      auto fpi = fp.buffer().begin();
+      fpi = std::copy(nal_sc.begin(), nal_sc.end(), fpi);
+      std::copy(EOS_NAL.begin(), EOS_NAL.end(), fpi);
       pkt_queue.push(std::move(fp));
       BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader enqueued the EOS NAL"
 					  << " (" << pkt_queue.back().size()
