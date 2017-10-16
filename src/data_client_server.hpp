@@ -350,7 +350,7 @@ public:
   std::size_t cancel_stop_handlers();
 
   /** Return a const reference to the source object. */
-  const Source &source() const {
+  Source &source() const {
     return *source_;
   }
 

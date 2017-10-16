@@ -132,6 +132,7 @@ set(python_files
   plot_decodeable
   plot_required
   plot_time
+  avg_nal_segsizes
 )
 
 foreach(pyf IN LISTS python_files)

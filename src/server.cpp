@@ -202,6 +202,7 @@ private:
 		     srv_params.delta);
     // setup the source  inside the data_server
     ds.setup_source(streamName, srv_params.packet_size);
+    ds.source().use_end_of_stream(true);
 
     ds.target_send_rate(srv_params.sendRate);
     ds.enable_ack(srv_params.ack);
