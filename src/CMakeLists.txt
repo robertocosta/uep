@@ -49,6 +49,10 @@ target_link_libraries(nal_reader
   packets
   ${Boost_LIBRARIES}
 )
+target_link_libraries(nal_writer
+  nal_reader
+  ${Boost_LIBRARIES}
+)
 
 # add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
 # target_link_libraries(svc_segmenter

@@ -63,6 +63,8 @@ public:
    *  before being split into packets.
    */
   static const std::size_t MAX_PACKED_SIZE = 16*1024*1024;
+  /** Invalid NAL used to signal the end of stream. */
+  static const const_buffer EOS_NAL;
 
   /** Construct a reader with the given parameter set. */
   explicit nal_reader(const parameter_set &ps);
@@ -90,6 +92,13 @@ public:
   explicit operator bool() const;
   /** Return true when the reader cannot produce a packet. */
   bool operator!() const;
+
+  /** True when the reader sends a 4-byte word to signal the end of
+   *  the stream.
+   */
+  bool use_end_of_stream() const;
+  void use_end_of_stream(bool use);
+
 
 private:
   log::default_logger basic_lg, perf_lg;
@@ -120,6 +129,8 @@ private:
   buffer_type last_nal;
   std::size_t last_prio;
   std::queue<fountain_packet> pkt_queue;
+
+  bool use_eos; /**< Flag to enable the sending of the EOS code. */
 
   /** Return the name of the underlying file with the H264 bitstream. */
   std::string filename() const;

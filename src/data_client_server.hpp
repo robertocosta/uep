@@ -839,13 +839,15 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
   }
 
   // Keep listening if not all packets have been decoded or failed
-  if (exp_count == 0 ||
-      (decoder_->total_decoded_count() +
-       decoder_->total_failed_count()) < exp_count) {
+  bool more_eos = *sink_;
+  bool more_pktnum = exp_count == 0 ||
+    (decoder_->total_decoded_count() +
+     decoder_->total_failed_count()) < exp_count;
+  if (more_eos && more_pktnum) {
     async_receive_pkt();
   }
   else {
-    BOOST_LOG_SEV(basic_lg, log::info) << "Data client reached expected_count";
+    BOOST_LOG_SEV(basic_lg, log::info) << "Data client got all data: stop";
     stop();
   }
 }
