@@ -27,7 +27,7 @@ public:
   /** Iterator over the current block. */
   //typedef typename lt_encoder<Gen>::const_block_iterator const_block_iterator;
 
-  static constexpr std::size_t MAX_SEQNO = lt_encoder<Gen>::MAX_SEQNO;
+  static constexpr std::size_t MAX_SEQNO = uep_packet::MAX_SEQNO;
   static constexpr std::size_t MAX_BLOCKNO = lt_encoder<Gen>::MAX_BLOCKNO;
   static constexpr std::size_t BLOCK_WINDOW = lt_encoder<Gen>::BLOCK_WINDOW;
 
@@ -54,6 +54,11 @@ public:
 
   /** Generate the next coded packet from the current block. */
   fountain_packet next_coded();
+
+  /** Fill a partial block with padding packets. This allows to encode
+   *  even if there are no more source packets to be passed.
+   */
+  void pad_partial_block();
 
   /** Drop the current block of packets and prepare to encode the next
    *  one.
@@ -110,6 +115,11 @@ public:
   /** Return the total number of coded packets that were produced. */
   std::size_t total_coded_count() const;
 
+  /** Number of padding packets added to the current block. */
+  std::size_t padding_count() const;
+  /** Total number of padding packets added to all blocks. */
+  std::size_t total_padding_count() const;
+
   /** Is true when coded packets can be produced. */
   explicit operator bool() const;
   /** Is true when there is not a full block available. */
@@ -140,6 +150,10 @@ private:
 					     *	 non-movable seed
 					     *	 generators.
 					     */
+  std::size_t pktsize; /**< The size of the pushed packets. */
+  stat::sum_counter<std::size_t> padding_cnt; /**< Number of padding
+					       *   packets.
+					       */
 
   /** Check whether the queues have enough packets to build a block. */
   void check_has_block();
@@ -159,7 +173,8 @@ uep_encoder<Gen>::uep_encoder(KsIter ks_begin, KsIter ks_end,
   Ks(ks_begin, ks_end),
   RFs(rfs_begin, rfs_end),
   EF(ef),
-  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()) {
+  seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
+  pktsize(0) {
   if (Ks.size() != RFs.size()) {
     throw std::invalid_argument("Ks, RFs sizes do not match");
   }
@@ -192,6 +207,11 @@ void uep_encoder<Gen>::push(const fountain_packet &p) {
 
 template <class Gen>
 void uep_encoder<Gen>::push(fountain_packet &&p) {
+  if (pktsize == 0) pktsize = p.buffer().size();
+  else if (pktsize != p.buffer().size()) {
+    throw std::invalid_argument("The packets must have the same size");
+  }
+
   uep_packet up(std::move(p.buffer()));
   up.priority(p.getPriority());
   up.sequence_number(seqno_ctr.value());
@@ -226,9 +246,25 @@ fountain_packet uep_encoder<Gen>::next_coded() {
   return std_enc->next_coded();
 }
 
+template<typename Gen>
+void uep_encoder<Gen>::pad_partial_block() {
+  if (has_block()) return;
+  std::size_t pad_cnt = 0;
+  for (queue_type &q : inp_queues) {
+    while (!q.has_block()) {
+      // Don't give the padding pkts a seqno
+      q.push(uep_packet::make_padding(pktsize, 0));
+      ++pad_cnt;
+    }
+  }
+  padding_cnt.add_sample(pad_cnt);
+  check_has_block();
+}
+
 template <class Gen>
 void uep_encoder<Gen>::next_block() {
   std_enc->next_block();
+  padding_cnt.clear_last();
   check_has_block();
 }
 
@@ -254,6 +290,7 @@ void uep_encoder<Gen>::next_block(std::size_t bn) {
   }
 
   std_enc->next_block(bn);
+  padding_cnt.clear_last();
   check_has_block();
 }
 
@@ -410,6 +447,16 @@ void uep_encoder<Gen>::check_has_block() {
   for (auto i = the_block.begin(); i != the_block.end(); ++i) {
     std_enc->push(std::move(*i));
   }
+}
+
+template<typename Gen>
+std::size_t uep_encoder<Gen>::padding_count() const {
+  return padding_cnt.last_sample(0);
+}
+
+template<typename Gen>
+std::size_t uep_encoder<Gen>::total_padding_count() const {
+  return padding_cnt.value();
 }
 
 }

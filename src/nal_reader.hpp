@@ -59,6 +59,11 @@ public:
   /** Type of the parameter set used to setup the reader. */
   typedef net_parameter_set parameter_set;
 
+  /** The maximum length a pack of NALs with the same priority can be
+   *  before being split into packets.
+   */
+  static const std::size_t MAX_PACKED_SIZE = 16*1024*1024;
+
   /** Construct a reader with the given parameter set. */
   explicit nal_reader(const parameter_set &ps);
   explicit nal_reader(const std::string &strname, std::size_t pktsize);
@@ -87,11 +92,6 @@ public:
   bool operator!() const;
 
 private:
-  /** The maximum length a pack of NALs with the same priority can be
-   *  before being split into packets.
-   */
-  static constexpr std::size_t MAX_PACKED_SIZE = 16*1024*1024;
-
   log::default_logger basic_lg, perf_lg;
 
   std::string stream_name;

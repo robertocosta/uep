@@ -116,6 +116,8 @@ public:
    *  current block.
    */
   std::size_t total_failed_count() const;
+  /** Total number of padding packets successfully decoded. */
+  std::size_t total_padding_count() const;
 
   /** Return the average time to push a packet. */
   double average_push_time() const;
@@ -149,6 +151,10 @@ private:
 
   std::size_t tot_dec_count;
   std::size_t tot_fail_count;
+  stat::sum_counter<std::size_t> padding_cnt; /**< Counter for the
+					       *   padding packets
+					       *   decoded.
+					       */
 
   /** Check if there are new decoded blocks and deduplicate them. */
   void deduplicate_queued();
@@ -156,6 +162,9 @@ private:
    *  block.
    */
   std::size_t map_in2out(std::size_t i);
+  /** Find the queue with the given seqno on top. */
+  std::vector<queue_type>::iterator
+  find_decoded(std::size_t seqno);
 };
 
 	      //// uep_decoder template definitions ////

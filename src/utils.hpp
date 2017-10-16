@@ -2,12 +2,16 @@
 #define UEP_UTILS_HPP
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 
 #include <boost/iterator/filter_iterator.hpp>
 
+using f_int = std::int_fast32_t;
+using f_uint = std::uint_fast32_t;
 static_assert(std::is_same<std::uint8_t,unsigned char>::value,
 	      "unsigned char is not std::uint8_t");
 using byte = unsigned char;
@@ -37,6 +41,16 @@ public:
 
   std::size_t allocated_size() const {
     return memend - membegin;
+  }
+
+  template<typename chartype = byte>
+  const chartype *data() const {
+    return reinterpret_cast<const chartype*>(bufbegin);
+  }
+
+  template<typename chartype = byte>
+  chartype *data() {
+    return reinterpret_cast<chartype*>(bufbegin);
   }
 
   const byte *begin() const {
@@ -111,6 +125,9 @@ protected:
 
 class unique_buffer : public buffer {
 public:
+  unique_buffer() : unique_buffer{8} {
+  }
+
   explicit unique_buffer(std::size_t size) :
     mem{new byte[size]} {
     membegin = mem.get();
@@ -119,22 +136,22 @@ public:
     bufend = memend;
   }
 
-private:
-  std::unique_ptr<byte[]> mem;
-};
-
-class shared_buffer : public buffer {
-public:
-  explicit shared_buffer(std::size_t size) :
-    mem{new byte[size], std::default_delete<byte[]>{}} {
-    membegin = mem.get();
-    bufbegin = membegin;
-    memend = membegin + size;
-    bufend = memend;
+  void resize(std::size_t size) {
+    if (static_cast<std::size_t>(memend - bufbegin) >= size) {
+      bufend = bufbegin + size;
+    }
+    else {
+      decltype(mem) newmem{new byte[size]};
+      std::memmove(newmem.get(), bufbegin, this->size());
+      membegin = mem.get();
+      bufbegin = membegin;
+      memend = membegin + size;
+      bufend = memend;
+    }
   }
 
 private:
-  std::shared_ptr<byte> mem;
+  std::unique_ptr<byte[]> mem;
 };
 
 namespace uep { namespace utils {
@@ -203,6 +220,25 @@ struct knuth_mul_hasher {
     return (std::size_t)(v & UINT32_MAX);
   }
 };
+
+/** Drop empty lines from an input stream. Return the number of
+ *  dropped lines.
+ */
+inline std::size_t skip_empty(std::istream &istr) {
+  std::size_t empty_count = 0;
+  std::string nextline;
+  std::istream::pos_type oldpos;
+  while (nextline.empty() && istr) {
+    oldpos = istr.tellg();
+    std::getline(istr, nextline);
+    ++empty_count;
+  }
+  if (!nextline.empty()) {
+    istr.seekg(oldpos);
+    --empty_count;
+  }
+  return empty_count;
+}
 
 }}
 

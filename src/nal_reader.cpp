@@ -430,24 +430,13 @@ nal_reader::nal_reader(const parameter_set &ps) :
 streamTrace nal_reader::read_trace_line() {
   string line;
   getline(trace,line);
-  BOOST_LOG_SEV(basic_lg, log::trace) << "Reading trace line"
-				      << ". Raw line: "
-				      << line;
-
-  // Skip empty lines after this
-  string nextline;
-  size_t oldpos;
-  while (nextline.empty() && trace) {
-    oldpos = trace.tellg();
-    getline(trace, nextline);
-  }
-  if (!nextline.empty()) {
-    trace.seekg(oldpos);
-  }
-
+  utils::skip_empty(trace);
   if (line.empty()) {
     throw runtime_error("Empty trace line");
   }
+  BOOST_LOG_SEV(basic_lg, log::trace) << "Reading trace line"
+				      << ". Raw line: "
+				      << line;
 
   istringstream iss(line);
   streamTrace elem;
@@ -455,7 +444,6 @@ streamTrace nal_reader::read_trace_line() {
   iss >> std::hex >> elem.startPos;
   if (iss.fail()) { // Was not a packet line, ignore and take next one
     BOOST_LOG_SEV(basic_lg, log::trace) << "Skip non-packet line";
-    trace.clear();
     return read_trace_line();
   }
 
@@ -567,11 +555,20 @@ void nal_reader::pack_nals() {
       last_nal.clear();
     }
     else { // Different priority
+      if (packed.size() > MAX_PACKED_SIZE) {
+	const auto maxsize = MAX_PACKED_SIZE; // Doesn't link if placed in <<
+	BOOST_LOG_SEV(basic_lg, log::warning) << "Consecutive NALs with priority "
+					      << prio << " exceed "
+					      << maxsize << " bytes";
+      }
       break;
     }
   }
 
   // Segment and pad the packed NALs
+  BOOST_LOG(perf_lg) << "nal_reader::pack_nals before_padding"
+		     << " packed_size=" << packed.size()
+		     << " priority=" << prio;
   size_t npkts = static_cast<size_t>(ceil(static_cast<double>(packed.size()) /
 					  pkt_size));
   auto i = packed.cbegin();
@@ -588,6 +585,11 @@ void nal_reader::pack_nals() {
   fp.buffer().resize(pkt_size, 0x00); // Pad with zeros the last segment
   std::copy(i, packed.cend(), fp.buffer().begin());
   pkt_queue.push(std::move(fp));
+  BOOST_LOG(perf_lg) << "nal_reader::pack_nals after_padding"
+		     << " packed_size=" << packed.size()
+		     << " priority=" << prio
+		     << " padding=" << pkt_size*npkts - packed.size()
+		     << " pkt_size=" << pkt_size;
 }
 
 fountain_packet nal_reader::next_packet() {

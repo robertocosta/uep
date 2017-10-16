@@ -60,3 +60,19 @@ target_link_libraries(test_protobuf_rw
   controlMessage.pb
   log
 )
+
+add_custom_target(test_filter ALL
+  ${CMAKE_COMMAND} -E copy
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_filter.sh
+  ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_filter
+  COMMENT "Copying test_filter.sh to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_filter"
+)
+add_dependencies(test_filter filter_received)
+add_test(
+  NAME test_filter
+  COMMAND ${CMAKE_COMMAND} -E env
+  FILTER=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/filter_received
+  BSEXTR=${CMAKE_SOURCE_DIR}/jsvm/bin/BitStreamExtractorStaticd
+  bash test_filter
+  WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)

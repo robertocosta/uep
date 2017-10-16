@@ -88,35 +88,35 @@ BOOST_AUTO_TEST_CASE(uep_to_packet) {
 		    p.buffer().end(),
 		    b1.cbegin()));
 
-  up.sequence_number(0xffff00ff);
-  BOOST_CHECK_EQUAL(up.sequence_number(), 0xffff00ff);
-  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0xffff00ff);
+  up.sequence_number(0x7fff00ff);
+  BOOST_CHECK_EQUAL(up.sequence_number(), 0x7fff00ff);
+  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0x7fff00ff);
   p = up.to_packet();
   BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
   BOOST_CHECK(equal(p.buffer().begin(),
 		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
-		    "\xff\xff\x00\xff"));
+		    "\x7f\xff\x00\xff"));
   BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
 		    p.buffer().end(),
 		    b1.cbegin()));
 
-  up.sequence_number(0xffffffff);
-  BOOST_CHECK_EQUAL(up.sequence_number(), 0xffffffff);
-  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0xffffffff);
+  up.sequence_number(0x7fffffff);
+  BOOST_CHECK_EQUAL(up.sequence_number(), 0x7fffffff);
+  BOOST_CHECK_EQUAL(boost::numeric_cast<uep_packet::seqno_type>(up.sequence_number()), 0x7fffffff);
   p = up.to_packet();
   BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
   BOOST_CHECK(equal(p.buffer().begin(),
 		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
-		    "\xff\xff\xff\xff"));
+		    "\x7f\xff\xff\xff"));
   BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
 		    p.buffer().end(),
 		    b1.cbegin()));
 }
 
 BOOST_AUTO_TEST_CASE(uep_from_packet) {
-  const char raw[] = "\xff\x00\x00\x00\x11\x22\x33\x44\x55";
+  const char raw[] = "\x7f\x00\x00\x00\x11\x22\x33\x44\x55";
   const char exp_data[] = "\x11\x22\x33\x44\x55";
-  const size_t exp_sn = 0xff000000;
+  const size_t exp_sn = 0x7f000000;
 
   packet p;
   p.buffer().resize(5+4);
@@ -156,4 +156,102 @@ BOOST_AUTO_TEST_CASE(uep_to_from_fountain_packet) {
   BOOST_CHECK_EQUAL(up2.sequence_number(), up.sequence_number());
   BOOST_CHECK_EQUAL(up2.priority(), up.priority());
   BOOST_CHECK(up2.buffer() == up.buffer());
+}
+
+BOOST_AUTO_TEST_CASE(uep_padding) {
+  uep_packet up;
+  up.buffer() = {0x11, 0x22, 0x33, 0x44, 0x55};
+  up.priority(123);
+  uep_packet::seqno_type max_seqno = uep_packet::MAX_SEQNO;
+  uep_packet::seqno_type max_val =
+    std::numeric_limits<uep_packet::seqno_type>::max();
+  BOOST_CHECK_NO_THROW(up.sequence_number(max_seqno));
+  BOOST_CHECK_THROW(up.sequence_number(max_seqno+1),
+		    std::invalid_argument);
+  BOOST_CHECK_THROW(up.sequence_number(max_val),
+		    std::invalid_argument);
+  up.sequence_number(12345678);
+
+  BOOST_CHECK(!up.padding());
+  BOOST_CHECK_EQUAL(up.sequence_number(), 12345678);
+
+  up.padding(true);
+  BOOST_CHECK(up.padding());
+  BOOST_CHECK_EQUAL(up.sequence_number(), 12345678);
+
+  up.padding(true);
+  BOOST_CHECK(up.padding());
+  BOOST_CHECK_EQUAL(up.sequence_number(), 12345678);
+
+  up.padding(false);
+  BOOST_CHECK(!up.padding());
+  BOOST_CHECK_EQUAL(up.sequence_number(), 12345678);
+
+  up.padding(false);
+  BOOST_CHECK(!up.padding());
+  BOOST_CHECK_EQUAL(up.sequence_number(), 12345678);
+}
+
+BOOST_AUTO_TEST_CASE(uep_make_padding) {
+  uep_packet pad = uep_packet::make_padding(1024, 12345678);
+  BOOST_CHECK_EQUAL(pad.buffer().size(), 1024);
+  BOOST_CHECK_EQUAL(pad.sequence_number(), 12345678);
+  BOOST_CHECK(pad.padding());
+
+  uep_packet pad2 = uep_packet::make_padding(1024, 12345688);
+  BOOST_CHECK(!std::equal(pad.buffer().begin(), pad.buffer().end(),
+			  pad2.buffer().begin()));
+}
+
+BOOST_AUTO_TEST_CASE(uep_padding_flag_write) {
+  buffer_type b1(10, 0x11);
+  uep_packet up(b1);
+
+  packet p = up.to_packet();
+  BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
+  BOOST_CHECK(equal(p.buffer().begin(),
+		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
+		    "\x00\x00\x00\x00"));
+  BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
+		    p.buffer().end(),
+		    b1.cbegin()));
+
+  up.padding(true);
+  p = up.to_packet();
+  BOOST_CHECK_EQUAL(p.size(), b1.size() + sizeof(uep_packet::seqno_type));
+  BOOST_CHECK(equal(p.buffer().begin(),
+		    p.buffer().begin() + sizeof(uep_packet::seqno_type),
+		    "\x80\x00\x00\x00"));
+  BOOST_CHECK(equal(p.buffer().begin() + sizeof(uep_packet::seqno_type),
+		    p.buffer().end(),
+		    b1.cbegin()));
+}
+
+BOOST_AUTO_TEST_CASE(uep_padding_flag_read) {
+  const char raw1[] = "\x7f\x00\x00\x00\x11\x22\x33\x44\x55";
+  const char raw2[] = "\xff\x00\x00\x00\x11\x22\x33\x44\x55";
+  const char exp_data[] = "\x11\x22\x33\x44\x55";
+  const size_t exp_sn = 0x7f000000;
+
+  packet p1;
+  p1.buffer().resize(5+4);
+  p1.buffer().assign(raw1, raw1+5+4);
+
+  packet p2;
+  p2.buffer().resize(5+4);
+  p2.buffer().assign(raw2, raw2+5+4);
+
+  uep_packet up1 = uep_packet::from_packet(p1);
+  BOOST_CHECK_EQUAL(up1.priority(), 0);
+  BOOST_CHECK_EQUAL(up1.sequence_number(), exp_sn);
+  BOOST_CHECK(equal(up1.buffer().begin(), up1.buffer().end(),
+		    exp_data));
+  BOOST_CHECK(!up1.padding());
+
+  uep_packet up2 = uep_packet::from_packet(p2);
+  BOOST_CHECK_EQUAL(up2.priority(), 0);
+  BOOST_CHECK_EQUAL(up2.sequence_number(), exp_sn);
+  BOOST_CHECK(equal(up2.buffer().begin(), up2.buffer().end(),
+		    exp_data));
+  BOOST_CHECK(up2.padding());
 }

@@ -11,20 +11,24 @@ addons:
     packages:
       - cmake
       - g++-6
-      - libprotobuf-dev
       - libpthread-stubs0-dev
       - libstdc++-6-dev
-      - protobuf-compiler
 
 # cache:
 #   directories:
 #     - boost_1_62_0
 
 before_install:
+  - export CC=gcc-6 && export CXX=g++-6
+  - wget 'https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz'
+  - tar -xzf 'protobuf-cpp-3.4.1.tar.gz'
+  - pushd 'protobuf-3.4.1'
+  - ./configure
+  - sudo make install
+  - popd
   - wget 'https://sourceforge.net/projects/boost/files/boost/1.62.0/boost_1_62_0.tar.gz'
   - tar -xzf 'boost_1_62_0.tar.gz'
   - pushd 'boost_1_62_0'
-  - export CC=gcc-6
   - ./bootstrap.sh
   - travis_wait 20 sudo ./b2 toolset=gcc-6 link=shared threading=multi runtime-link=shared -d0 install
   - popd

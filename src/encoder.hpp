@@ -113,6 +113,15 @@ public:
     return p;
   }
 
+  /** Added for compatibility with UEP. This just discards the partial
+   *  block.
+   */
+  void pad_partial_block() {
+    BOOST_LOG_SEV(basic_lg, log::error) <<
+      "pad_partial_block is not implemented by lt_encoder: drop partial block";
+    the_input_queue.clear();
+  }
+
   /** Drop the current block of packets and prepare to encode the next
    *  one.
    */
