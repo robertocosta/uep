@@ -25,12 +25,12 @@ namespace uep {
 namespace net {
 
 const uep_server_parameters DEFAULT_SERVER_PARAMETERS{
-  {10,100},
-  {2,1},
-  2,
+  {50,1000},
+  {10,1},
+  1,
   0.1,
   0.5,
-  512,
+  50,
   true,
   0,
   "12312"
