@@ -250,8 +250,8 @@ bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs );
 namespace uep {
 
 /** Packet class used to handle the UEP packets. Each packet carries,
- *  in addition to a shared buffer, a circular seqno and a priority
- *  level.
+ *  in addition to a shared buffer, a circular seqno, a priority
+ *  level and a flag to indicate whether it is a padding packet.
  */
 class uep_packet {
 public:
@@ -309,9 +309,9 @@ public:
   std::shared_ptr<const buffer_type> shared_buffer() const;
 
   /** Return the priority level. */
-  std::size_t priority() const;
+  f_uint priority() const;
   /** Set the priority level. */
-  void priority(std::size_t p);
+  void priority(f_uint p);
 
   /** Return the sequence number. */
   seqno_type sequence_number() const;
@@ -329,7 +329,7 @@ private:
 				      byte> padding_rng;
 
   std::shared_ptr<buffer_type> shared_buf;
-  std::size_t priority_lvl;
+  f_uint priority_lvl;
   seqno_type seqno;
 };
 
