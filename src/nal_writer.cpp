@@ -11,7 +11,8 @@ nal_writer::nal_writer(const buffer_type &header,
   stream_name(strname),
   file_backend(new ofstream(filename(), ios_base::binary)),
   file(*file_backend),
-  buf_prio(0) {
+  buf_prio(0),
+  eos_recvd(false) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Create a NAL writer for "
 				      << stream_name;
 
@@ -42,6 +43,10 @@ nal_writer::~nal_writer() {
 }
 
 void nal_writer::push(const fountain_packet &p) {
+  if (eos_recvd) {
+    throw std::runtime_error("The EOS was received");
+  }
+
   std::size_t prio = p.getPriority();
   BOOST_LOG_SEV(basic_lg, log::trace) << "Writer has a new packet"
 				      << " with prio=" << prio;
@@ -94,6 +99,24 @@ void nal_writer::enqueue_nals(bool must_end) {
       return;
     }
 
+    // Check for the EOS code
+    static const char *const eos_code_begin =
+      nal_reader::EOS_NAL.data<char>();
+    static const char *const eos_code_end =
+      eos_code_begin + nal_reader::EOS_NAL.size();
+    if (static_cast<size_t>(nal_buf.end() - i) >=
+	3 + nal_reader::EOS_NAL.size()) {
+      bool is_eos = std::equal(eos_code_begin, eos_code_end,
+			       i + 3);
+      if (is_eos) {
+	BOOST_LOG_SEV(basic_lg, log::info) << "Received the EOS";
+	eos_recvd = true;
+	nal_buf.clear();
+	file.flush();
+	return;
+      }
+    }
+
     // +3 bytes to not stop on the found startcode
     auto end = find_nal_end(i + 3, nal_buf.end());
     BOOST_LOG_SEV(basic_lg, log::trace) << "NAL end found at " << (void*) &*end;
@@ -132,6 +155,14 @@ void nal_writer::enqueue_nals(bool must_end) {
 
 std::string nal_writer::filename() const {
   return "dataset_client/" + stream_name + ".264";
+}
+
+nal_writer::operator bool() const {
+  return !eos_recvd;
+}
+
+bool nal_writer::operator!() const {
+  return eos_recvd;
 }
 
 }

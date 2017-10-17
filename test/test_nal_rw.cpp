@@ -150,3 +150,29 @@ BOOST_AUTO_TEST_CASE(nal_read_write) {
   BOOST_CHECK(compare_streams("dataset/CREW_352x288_30_orig_01.264",
 			      "dataset_client/CREW_352x288_30_orig_01.264"));
 }
+
+BOOST_AUTO_TEST_CASE(nal_eos) {
+  nal_reader::parameter_set ps;
+  ps.streamName = "CREW_352x288_30_orig_01";
+  ps.packet_size = 512;
+  nal_reader r(ps);
+  r.use_end_of_stream(true);
+  nal_writer w(r.header(), ps.streamName);
+
+  BOOST_CHECK(w);
+  while (r && w) {
+    fountain_packet fp = r.next_packet();
+    w.push(fp);
+  }
+  BOOST_CHECK(!r);
+  BOOST_CHECK(!w);
+  w.flush();
+
+  BOOST_CHECK(compare_streams("dataset/CREW_352x288_30_orig_01.264",
+			      "dataset/CREW_352x288_30_orig_01.264"));
+  BOOST_CHECK(compare_streams("dataset_client/CREW_352x288_30_orig_01.264",
+			      "dataset_client/CREW_352x288_30_orig_01.264"));
+
+  BOOST_CHECK(compare_streams("dataset/CREW_352x288_30_orig_01.264",
+			      "dataset_client/CREW_352x288_30_orig_01.264"));
+}

@@ -350,7 +350,7 @@ public:
   std::size_t cancel_stop_handlers();
 
   /** Return a const reference to the source object. */
-  const Source &source() const {
+  Source &source() const {
     return *source_;
   }
 
@@ -552,6 +552,7 @@ private:
   void handle_sent(const boost::system::error_code &ec,
 		   std::size_t sent_size) {
     if (ec == boost::asio::error::operation_aborted) return; // cancelled
+    if (ec == boost::system::errc::bad_file_descriptor) return; // socket was closed
     if (ec) throw boost::system::system_error(ec);
     if (sent_size != last_pkt.size())
       throw std::runtime_error("Did not send all the packet");
@@ -839,13 +840,15 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
   }
 
   // Keep listening if not all packets have been decoded or failed
-  if (exp_count == 0 ||
-      (decoder_->total_decoded_count() +
-       decoder_->total_failed_count()) < exp_count) {
+  bool more_eos = *sink_;
+  bool more_pktnum = exp_count == 0 ||
+    (decoder_->total_decoded_count() +
+     decoder_->total_failed_count()) < exp_count;
+  if (more_eos && more_pktnum) {
     async_receive_pkt();
   }
   else {
-    BOOST_LOG_SEV(basic_lg, log::info) << "Data client reached expected_count";
+    BOOST_LOG_SEV(basic_lg, log::info) << "Data client got all data: stop";
     stop();
   }
 }

@@ -372,6 +372,9 @@ size_t packet_source::totLength() const {
 
 namespace uep {
 
+static const byte EOS_NAL_DATA[]{0x80};
+const const_buffer nal_reader::EOS_NAL{EOS_NAL_DATA, 1};
+
 std::string nal_reader::filename() const {
   return "dataset/"+stream_name+".264";
 }
@@ -386,7 +389,8 @@ nal_reader::nal_reader(std::istream &in_trace, std::istream &in_bitstream,
   perf_lg(boost::log::keywords::channel = log::performance),
   pkt_size(pktsize),
   file(in_bitstream),
-  trace(in_trace) {
+  trace(in_trace),
+  use_eos(false) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader with given istreams";
 
   auto oldg = file.tellg();
@@ -408,7 +412,8 @@ nal_reader::nal_reader(const std::string &strname, std::size_t pktsize) :
   file_backend(new ifstream(filename(), ios_base::binary|ios_base::ate)),
   trace_backend(new ifstream(tracename())),
   file(*file_backend),
-  trace(*trace_backend) {
+  trace(*trace_backend),
+  use_eos(false) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for "
 				      << stream_name;
 
@@ -590,6 +595,24 @@ void nal_reader::pack_nals() {
 		     << " priority=" << prio
 		     << " padding=" << pkt_size*npkts - packed.size()
 		     << " pkt_size=" << pkt_size;
+
+  if (!trace) {
+    BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader finished";
+    if (use_eos) {
+      static const std::array<byte, 3> nal_sc{0x00, 0x00, 0x01};
+      assert(EOS_NAL.size() + nal_sc.size() <= pkt_size);
+      fountain_packet fp;
+      fp.setPriority(0);
+      fp.buffer().resize(pkt_size, 0x00); // This must also be the same length
+      auto fpi = fp.buffer().begin();
+      fpi = std::copy(nal_sc.begin(), nal_sc.end(), fpi);
+      std::copy(EOS_NAL.begin(), EOS_NAL.end(), fpi);
+      pkt_queue.push(std::move(fp));
+      BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader enqueued the EOS NAL"
+					  << " (" << pkt_queue.back().size()
+					  << " bytes)";
+    }
+  }
 }
 
 fountain_packet nal_reader::next_packet() {
@@ -657,6 +680,14 @@ size_t nal_reader::totLength() const {
 
 bool nal_reader::operator!() const {
   return !has_packet();
+}
+
+bool nal_reader::use_end_of_stream() const {
+  return use_eos;
+}
+
+void nal_reader::use_end_of_stream(bool use) {
+  use_eos = use;
 }
 
 }

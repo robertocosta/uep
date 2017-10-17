@@ -799,3 +799,119 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
   BOOST_CHECK_EQUAL(count_fail, dc.decoder().total_failed_count());
   BOOST_CHECK_EQUAL(count_ok, dc.decoder().total_decoded_count());
 }
+
+/** Run data_{client|server} with a source that uses different
+ *  sub-block sizes to test the UEP padding. Use ACKs and no packet
+ *  limits.
+ */
+BOOST_AUTO_TEST_CASE(uep_padding) {
+  using namespace std;
+
+  io_service io; // Global io_service object
+
+  const size_t L = 1000; // pkt size
+  const vector<size_t> Ks = {16,32,64}; // block size
+  const vector<size_t> RFs = {4,2,1};
+  const size_t EF = 2;
+  //const size_t K = 64*3*2; // Total blocksize after expansion
+  const size_t Kuep = 64+32+16; // Total blocksize before expansion
+  const double c = 0.01;
+  const double delta = 0.5;
+  const size_t nblocks = 10; // blocks to send
+  const mt19937::result_type src_seed = 0x42;
+
+  const vector<size_t> source_Ks{1,1,1};
+  const size_t source_npkts{1500};
+  uep_encoder<std::mt19937>::parameter_set enc_ps{0,0,EF,Ks,RFs,c,delta};
+  uep_decoder::parameter_set dec_ps = enc_ps;
+  random_packet_source::parameter_set src_ps{src_seed,L,source_npkts,source_Ks};
+  memory_sink::parameter_set sink_ps;
+
+  data_server<uep_encoder<std::mt19937>,random_packet_source> ds(io);
+  data_client<uep_decoder,memory_sink> dc(io);
+
+  ds.setup_encoder(enc_ps); // setup the encoder inside the data_server
+  ds.setup_source(src_ps); // setup the source  inside the data_server
+  ds.enable_ack(true);
+  ds.open("127.0.0.1", "9999"); // Setup the data_server socket:
+				// random_port -> 127.0.0.1:9999
+
+  dc.setup_decoder(dec_ps); // setup the decoder inside the data_client
+  dc.setup_sink(sink_ps); // setup the sink inside the data_client
+  dc.enable_ack(true);
+  dc.expected_count(source_npkts);
+  dc.bind("9999"); // bind the data_client to the port 9999
+
+  auto srv_ep = ds.server_endpoint(); // get the random source port
+				      // used by the data_server
+  dc.start_receive(srv_ep); // schdule the data_client to listen on
+			    // its bound port for packets from the
+			    // server's ip:port
+
+  ds.start(); // start the periodic tx of packets
+  // schedule a stop after some time
+  boost::asio::steady_timer ds_end_timer(io, std::chrono::seconds(180));
+  boost::asio::steady_timer dc_end_timer(io, ds_end_timer.expires_at());
+  ds_end_timer.async_wait([&ds] (const boost::system::error_code &ec) -> void {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!ds.is_stopped()) {
+	ds.stop();
+	BOOST_ERROR("data_server did not stop");
+      }
+    });
+  dc_end_timer.async_wait([&dc] (const boost::system::error_code &ec) -> void {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!dc.is_stopped()) {
+	dc.stop();
+	BOOST_ERROR("data_client did not stop");
+      }
+    });
+  dc.add_stop_handler([&dc_end_timer](const boost::system::error_code &ec) -> void {
+      dc_end_timer.cancel();
+    });
+  ds.add_stop_handler([&ds_end_timer](const boost::system::error_code &ec) -> void {
+      ds_end_timer.cancel();
+    });
+  io.run(); // enter the io_service loop: process both the server and
+	    // the client scheduled actions until they stop (empty
+	    // action queue)
+
+  const std::vector<fountain_packet> &orig = ds.source().original_fp;
+  const std::vector<fountain_packet> &recv = dc.sink().received_fp;
+
+  // verify number of packets
+  BOOST_CHECK_EQUAL(orig.size(), source_npkts); // all pkts were extracted
+  BOOST_CHECK_EQUAL(recv.size(), source_npkts); // all pkts were flushed
+
+  //BOOST_CHECK_EQUAL(dc.decoder().blockno(), nblocks-1); // synced on the last block
+  //BOOST_CHECK_GE(dc.decoder().received_count(), Kuep); // min to decode fully
+
+  // Flushed count
+  BOOST_CHECK_EQUAL(dc.decoder().total_decoded_count(), source_npkts);
+  BOOST_CHECK_EQUAL(dc.decoder().total_failed_count(), 0);
+
+  // Check correctness
+  std::size_t count_ok = 0;
+  std::size_t count_fail = 0;
+  auto i = recv.cbegin();
+  auto j = orig.cbegin();
+  while (i != recv.cend() && j != orig.cend()) {
+    if (*i) {
+      BOOST_CHECK(i->buffer() == j->buffer());
+      BOOST_CHECK(i->getPriority() == j->getPriority());
+      ++count_ok;
+    }
+    else {
+      ++count_fail;
+    }
+    ++i;
+    ++j;
+  }
+
+  count_fail += recv.size() - orig.size();
+
+  BOOST_CHECK_EQUAL(count_fail, dc.decoder().total_failed_count());
+  BOOST_CHECK_EQUAL(count_ok, dc.decoder().total_decoded_count());
+}

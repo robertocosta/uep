@@ -8,15 +8,10 @@
 #include <type_traits>
 #include <vector>
 
+#include "base_types.hpp"
 #include "utils.hpp"
 
 namespace uep {
-
-/** Class to hold a chunk of data. */
-typedef std::vector<char> buffer_type;
-
-/** Perform a bitwise XOR between two buffers. */
-void inplace_xor(buffer_type &lhs, const buffer_type &rhs);
 
 /** Specialization of symbol_traits for buffers. */
 namespace utils {
