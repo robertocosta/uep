@@ -33,3 +33,9 @@
 /src/*.pb.h
 Makefile
 jsvm-prefix/
+*.cfg
+*.264
+*.yuv
+*.7z
+cmake_defines.hpp
+*.log
