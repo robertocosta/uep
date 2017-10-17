@@ -552,6 +552,7 @@ private:
   void handle_sent(const boost::system::error_code &ec,
 		   std::size_t sent_size) {
     if (ec == boost::asio::error::operation_aborted) return; // cancelled
+    if (ec == boost::system::errc::bad_file_descriptor) return; // socket was closed
     if (ec) throw boost::system::system_error(ec);
     if (sent_size != last_pkt.size())
       throw std::runtime_error("Did not send all the packet");
