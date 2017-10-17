@@ -8,6 +8,7 @@
 
 #include "log.hpp"
 #include "lt_param_set.hpp"
+#include "nal_reader.hpp"
 #include "packets.hpp"
 
 namespace uep {
@@ -34,8 +35,8 @@ public:
   void flush();
 
   // Can always be pushed to. Remove this?
-  explicit operator bool() const { return true; }
-  bool operator!() const { return false; }
+  explicit operator bool() const;
+  bool operator!() const;
 
 private:
   log::default_logger basic_lg, perf_lg;
@@ -47,6 +48,8 @@ private:
 
   buffer_type nal_buf; /**< Holds the partially received NALs. */
   std::size_t buf_prio; /**< The priority of the NALs in the buffer. */
+
+  bool eos_recvd; /**< Flag set when the EOS is received. */
 
   /** Look in the NAL buffer, enqueue any full NALs found and remove
    *  them from the buffer. The argument is set to true if there can

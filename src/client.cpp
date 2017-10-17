@@ -123,6 +123,10 @@ private:
 
   /** Handle a new control message. */
   void handle_new_message(const boost::system::error_code &ec, std::size_t bytes) {
+    if (ec == boost::asio::error::operation_aborted) {
+      return; // Client was stopped
+    }
+
     if (ec) throw boost::system::system_error(ec);
 
     switch (state) {
@@ -187,10 +191,15 @@ private:
   }
 
   void handle_server_port() {
+    using namespace std::placeholders;
+
     unsigned short sp = static_cast<unsigned short>(last_msg.server_port());
     assert(sp != 0);
     remote_data_ep.port(sp);
     remote_data_ep.address(tcp_socket.remote_endpoint().address());
+    auto dc_stop_h = strand.wrap(std::bind(&control_client::handle_dc_stop,
+					   this, _1));
+    dc.add_stop_handler(dc_stop_h);
     dc.start_receive(remote_data_ep);
   }
 
@@ -205,6 +214,14 @@ private:
 			   state = RUNNING;
 			 });
     proto_wr.async_write_one(out_msg, h);
+  }
+
+  void handle_dc_stop(const boost::system::error_code &ec) {
+    if (ec) throw boost::system::system_error(ec);
+
+    BOOST_LOG_SEV(basic_lg, log::debug) << "TCP client is stopping";
+    tcp_socket.cancel();
+    tcp_socket.close();
   }
 };
 

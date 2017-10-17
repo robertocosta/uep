@@ -12,24 +12,26 @@
 # Makefile.in
 # \.deps/
 # \.dirstamp
+*.cmake
 *.pyc
+/*/CMakeFiles/
 /.lock-waf_*
 /.waf-*/
 /.waf3-*/
+/CMakeC*
+/CMakeFiles/
+/bin/
 /build/
+/dataset/
+/dataset/CREW_352x288_30_orig_01.*.264
+/dataset_client/
 /doc/doxygen_sqlite3.db
 /doc/html
-/CMakeFiles/
-/CMakeC*
-*.cmake
-Makefile
-/*/CMakeFiles/
-/src/*.a
-/src/*.pb.h
-/src/*.pb.cc
 /lib/
-/bin/
-/dataset/CREW_352x288_30_orig_01.*.264
+/src/*.a
+/src/*.pb.cc
+/src/*.pb.h
+Makefile
 jsvm-prefix/
 *.cfg
 *.264

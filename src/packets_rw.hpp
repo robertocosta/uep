@@ -17,8 +17,6 @@
 
 #include <boost/numeric/conversion/cast.hpp>
 
-static_assert(CHAR_BIT == 8, "Char is not 8 bits long");
-
 /** Byte used to identify the type of packet. */
 enum raw_packet_type : char {
   data = 0,
