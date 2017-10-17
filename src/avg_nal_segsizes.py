@@ -63,12 +63,25 @@ if __name__ == "__main__":
     avg_bl_pad = np.mean(base_layer["padding"])
     avg_el_pad = np.mean(enhancement_layers["padding"])
 
+    bl_frac = avg_bl_size / (avg_bl_size + avg_el_size)
+    el_frac = avg_el_size / (avg_bl_size + avg_el_size)
+
+    print("Symbol size: {:d}".format(packet_size))
     print("Base layer: avg. size = {:e}, avg. padding = {:e}".format(avg_bl_size, avg_bl_pad))
     print("Enhancement layers: avg. size = {:e}, avg.padding = {:e}".format(avg_el_size, avg_el_pad))
+    print("BL fraction = {:e}, EL fraction = {:e}".format(bl_frac, el_frac))
 
     plt.figure()
     plt.hist(base_layer["sizes"])
+    plt.title("Chunk sizes - Base Layer")
     plt.figure()
     plt.hist(enhancement_layers["sizes"])
+    plt.title("Chunk sizes - Enhanc. Layers")
+    plt.figure()
+    plt.hist(base_layer["padding"])
+    plt.title("Padding - Base Layer")
+    plt.figure()
+    plt.hist(enhancement_layers["padding"])
+    plt.title("Padding - Enhanc. Layers")
 
     plt.show()
