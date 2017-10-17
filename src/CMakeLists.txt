@@ -1,4 +1,5 @@
 set(cpp_files
+  base_types
   block_decoder
   block_encoder
   block_queues
@@ -22,6 +23,9 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS controlMessage.proto)
 add_library(controlMessage.pb STATIC ${PROTO_SRCS} ${PROTO_HDRS})
 target_link_libraries(controlMessage.pb ${PROTOBUF_LIBRARIES})
 
+target_link_libraries(packets
+  base_types
+)
 target_link_libraries(packets_rw
   packets
 )
@@ -47,6 +51,10 @@ target_link_libraries(log
 target_link_libraries(nal_reader
   log
   packets
+  ${Boost_LIBRARIES}
+)
+target_link_libraries(nal_writer
+  nal_reader
   ${Boost_LIBRARIES}
 )
 
@@ -102,6 +110,7 @@ target_link_libraries(client
 add_executable(filter_received filter_received.cpp)
 target_link_libraries(filter_received
   log
+  base_types
   ${Boost_LIBRARIES}
 )
 
@@ -128,6 +137,7 @@ set(python_files
   plot_decodeable
   plot_required
   plot_time
+  avg_nal_segsizes
 )
 
 foreach(pyf IN LISTS python_files)
