@@ -1,0 +1,20 @@
+apt-get install aptitude
+aptitude
+build-essential
+libboost-all-dev
+git
+protobuf-compiler
+libprotobuf-dev
+cmake
+
+for virtualbox guest additions
+apt-get install module-assistant
+m-a prepare
+mount vboxGuestAdd
+mkdir /mnt/VBoxAdd
+cp -R /media/cdrom/* /mnt/VBoxAdd
+chmod +X /mnt/VBoxAdd/*
+sh /mnt/VBoxAdd/VBoxLinuxAdditions.run
+
+Shared folder
+mount -t vboxsf uep /mnt/d/git/uep

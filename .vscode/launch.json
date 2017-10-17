@@ -5,8 +5,8 @@
         "name": "(gdb) Bash on Windows Launch",
         "type": "cppdbg",
         "request": "launch",
-        "program": "/mnt/d/git/uep/bin/server",
-        "args": ["-fThreading"],
+        "program": "/mnt/d/git/uep/bin/test_nal_rw",
+        "args": [""],
         "stopAtEntry": false,
         "cwd": "/mnt/d/git/uep",
         "environment": [],
@@ -30,7 +30,9 @@
         },
         "sourceFileMap": {
             "/mnt/c": "c:\\",
-            "/mnt/d": "d:\\"
+            "/mnt/d": "d:\\",
+            "/usr/lib": "C:\\Users\\root\\AppData\\Local\\lxss\\rootfs\\usr\\lib",
+            "/lib": "C:\\Users\\root\\AppData\\Local\\lxss\\rootfs\\lib"
         }
         
         

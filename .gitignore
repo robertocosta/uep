@@ -31,3 +31,9 @@ Makefile
 /bin/
 /dataset/CREW_352x288_30_orig_01.*.264
 jsvm-prefix/
+*.cfg
+*.264
+*.yuv
+*.7z
+cmake_defines.hpp
+*.log

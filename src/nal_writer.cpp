@@ -16,6 +16,7 @@ nal_writer::nal_writer(const buffer_type &header,
 				      << stream_name;
 
   file.write(header.data(), header.size());
+  file.flush();
   BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";
 }
 
@@ -34,6 +35,7 @@ nal_writer::nal_writer(std::ostream &out) :
 nal_writer::nal_writer(std::ostream &out, const buffer_type &header) :
   nal_writer(out) {
   file.write(header.data(), header.size());
+  file.flush();
   BOOST_LOG_SEV(basic_lg, log::trace) << "Written the header";
 }
 
@@ -105,7 +107,8 @@ void nal_writer::enqueue_nals(bool must_end) {
 					    << " bytes, clear the nal_buf";
 	const char *ic = &(*i);
 	size_t cnt = end-i;
-	file.write(ic, cnt);
+  file.write(ic, cnt);
+  file.flush();
 	nal_buf.clear();
       }
       else {
@@ -125,6 +128,7 @@ void nal_writer::enqueue_nals(bool must_end) {
     const char *ic = &(*i);
     size_t cnt = end-i;
     file.write(ic, cnt);
+    file.flush();    
     i = end;
     BOOST_LOG_SEV(basic_lg, log::trace) << "Advance i to " << (void*) &*i;
   }

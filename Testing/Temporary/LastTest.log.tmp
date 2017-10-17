@@ -1,0 +1,60 @@
+Start testing: Oct 16 16:24 DST
+----------------------------------------------------------
+1/14 Testing: test_block_decoder
+1/14 Test: test_block_decoder
+Command: "/mnt/d/git/uep/bin/test_block_decoder"
+Directory: /mnt/d/git/uep/bin
+"test_block_decoder" start time: Oct 16 16:24 DST
+Output:
+----------------------------------------------------------
+Running 7 test cases...
+unknown location(0): fatal error in "correct_decoding": std::runtime_error: No run duration measured
+/mnt/d/git/uep/test/test_block_decoder.cpp(79): last checkpoint
+unknown location(0): fatal error in "out_of_order": std::runtime_error: No run duration measured
+/mnt/d/git/uep/test/test_block_decoder.cpp(135): last checkpoint
+
+*** 2 failures detected in test suite "test_block_decoder"
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Failed.
+"test_block_decoder" end time: Oct 16 16:24 DST
+"test_block_decoder" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/14 Testing: test_block_encoder
+2/14 Test: test_block_encoder
+Command: "/mnt/d/git/uep/bin/test_block_encoder"
+Directory: /mnt/d/git/uep/bin
+"test_block_encoder" start time: Oct 16 16:24 DST
+Output:
+----------------------------------------------------------
+Running 2 test cases...
+
+*** No errors detected
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"test_block_encoder" end time: Oct 16 16:24 DST
+"test_block_encoder" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/14 Testing: test_counters
+3/14 Test: test_counters
+Command: "/mnt/d/git/uep/bin/test_counters"
+Directory: /mnt/d/git/uep/bin
+"test_counters" start time: Oct 16 16:24 DST
+Output:
+----------------------------------------------------------
+Running 49 test cases...
+
+*** No errors detected
+<end of output>
+Test time =   0.37 sec
+----------------------------------------------------------
+Test Passed.
+"test_counters" end time: Oct 16 16:24 DST
+"test_counters" time elapsed: 00:00:00
+----------------------------------------------------------
+

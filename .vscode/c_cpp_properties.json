@@ -27,8 +27,11 @@
             "name": "Linux",
             "includePath": [
                 "/usr/include",
+                "/usr/include/google",
                 "/usr/local/include",
-                "${workspaceRoot}"
+                "${workspaceRoot}",
+                "${workspaceRoot}/src",
+                "${workspaceRoot}/test"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -52,7 +55,10 @@
                 "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/winrt",
                 "${workspaceRoot}",
                 "C:/Users/root/AppData/Local/lxss/rootfs/usr/include",
-                "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/x86_64-linux-gnu"
+                "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/x86_64-linux-gnu",
+                "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/boost",
+                "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/boost/log/utility/setup",
+                "${workspaceRoot}/src"
             ],
             "defines": [
                 "_DEBUG",
@@ -66,7 +72,11 @@
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/shared",
                     "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/winrt",
-                    "${workspaceRoot}"
+                    "${workspaceRoot}",
+                    "C:/Users/root/AppData/Local/lxss/rootfs/usr/include",
+                    "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/x86_64-linux-gnu",
+                    "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/boost",
+                    "C:/Users/root/AppData/Local/lxss/rootfs/usr/include/boost/log/utility/setup"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
