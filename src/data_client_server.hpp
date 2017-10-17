@@ -464,7 +464,7 @@ private:
     else { // Set an interarrival time to have the target send rate
       double sr = target_send_rate_;
       decltype(last_sent_time) next_send = last_sent_time +
-	microseconds(static_cast<long>(last_pkt.size() * (1e6 / sr)));
+	microseconds(static_cast<long>(last_pkt.size() * (8e6 / sr)));
       pkt_timer.expires_at(next_send);
     }
 
