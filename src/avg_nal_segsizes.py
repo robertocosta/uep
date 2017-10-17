@@ -27,6 +27,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 2:
         print("Usage: {!s} <logfile>".format(sys.argv[0]), file=sys.stderr)
+        sys.exit(2)
     logfile = sys.argv[1]
 
     # Sizes and paddding of the chunks with prio=0
