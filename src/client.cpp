@@ -22,6 +22,7 @@ struct uep_client_parameters {
   std::string local_data_port;
   std::string remote_control_addr;
   std::string remote_control_port;
+  double drop_prob;
 };
 
 /** Default values for the client parameters. */
@@ -29,7 +30,8 @@ const uep_client_parameters DEFAULT_CLIENT_PARAMETERS{
   "",
   "12345",
   "127.0.0.1",
-  "12312"
+  "12312",
+  0
 };
 
 class control_client {
@@ -172,6 +174,7 @@ private:
     //dc.expected_count(0);
     //dc.timeout(1);
     //dc.add_stop_handler();
+    dc.drop_probability(client_params.drop_prob);
     dc.bind(client_params.local_data_port);
   }
 
@@ -243,7 +246,9 @@ int main(int argc, char* argv[]) {
   uep_client_parameters client_params = DEFAULT_CLIENT_PARAMETERS;
 
   if (argc < 3) {
-    std::cerr << "Usage: client <stream> <server> [<server_port>] [<listen_port>]"
+    std::cerr << "Usage: client <stream> <server>"
+	      << " [<server_port>] [<listen_port>]"
+	      << " [<drop probability>]"
 	      << std::endl;
     return 1;
   }
@@ -257,6 +262,9 @@ int main(int argc, char* argv[]) {
     client_params.local_data_port = argv[4];
   }
   if (argc > 5) {
+    client_params.drop_prob = std::stod(argv[5]);
+  }
+  if (argc > 6) {
     std::cerr << "Too many args" << std::endl;
     return 1;
   }

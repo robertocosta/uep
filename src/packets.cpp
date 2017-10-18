@@ -338,8 +338,8 @@ std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
 	     << ", seed="
 	     << std::hex << std::showbase << p.block_seed()
 	     << std::dec << std::noshowbase
-	     << ", priority=" << p.getPriority()
 	     << ", size=" << p.size()
+	     << ", priority=" << (std::size_t) p.getPriority()
 	     << "}";
 }
 }

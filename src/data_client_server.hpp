@@ -750,7 +750,8 @@ double data_client<Decoder,Sink>::timeout() const {
 
 template<typename Decoder, typename Sink>
 void data_client<Decoder,Sink>::drop_probability(double p) {
-  auto param = decltype(drop_dist)::param_type(p);
+  using param_t = typename decltype(drop_dist)::param_type;
+  auto param = param_t(p);
   drop_dist.param(param);
 }
 
