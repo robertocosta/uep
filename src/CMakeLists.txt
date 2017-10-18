@@ -118,10 +118,11 @@ target_link_libraries(uep_mp_plots
 )
 
 set(python_files
+  avg_nal_segsizes
+  ber
   plot_decodeable
   plot_required
   plot_time
-  avg_nal_segsizes
 )
 
 foreach(pyf IN LISTS python_files)
