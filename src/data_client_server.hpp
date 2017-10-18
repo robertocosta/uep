@@ -92,6 +92,10 @@ public:
   void timeout(double t);
   /** Get the current timeout value in seconds. */
   double timeout() const;
+  /** Set the probability to drop a received packet. */
+  void drop_probability(double p);
+  /** Get the probability to drop a received packet. */
+  double drop_probability() const;
 
   /** Add an handler that will be called when this client stops. */
   template <class H>
@@ -154,6 +158,12 @@ private:
 				 *   listen.
 				 */
   std::atomic_bool is_stopped_;
+
+  std::random_device drop_rng; /**< RNG for packet dropping. */
+  std::bernoulli_distribution drop_dist; /**< Distribution of packet
+					  *   dropping.
+					  */
+
   boost::asio::steady_timer timeout_timer; /**< Timer used to stop the
 					   *   reception after some
 					   *   time if packets are not
@@ -186,6 +196,8 @@ private:
   void handle_timeout(const boost::system::error_code& ec);
   /** Called after stop(). */
   void handle_stop();
+  /** Decide when to drop a packet. */
+  bool drop_packet(const fountain_packet &p);
 };
 
 /** Send the packets output by an encoder through a UDP socket.
@@ -598,6 +610,7 @@ data_client<Decoder,Sink>::data_client(boost::asio::io_service &io) :
   ack_enabled(true),
   exp_count(0),
   is_stopped_(true),
+  drop_dist(0),
   timeout_timer(io),
   timeout_(std::chrono::steady_clock::duration::zero()) {
 }
@@ -733,6 +746,17 @@ double data_client<Decoder,Sink>::timeout() const {
   return duration_cast<duration<double>>(timeout_.load()).count();
 }
 
+template<typename Decoder, typename Sink>
+void data_client<Decoder,Sink>::drop_probability(double p) {
+  auto param = decltype(drop_dist)::param_type(p);
+  drop_dist.param(param);
+}
+
+template<typename Decoder, typename Sink>
+double data_client<Decoder,Sink>::drop_probability() const {
+  return drop_dist.p();
+}
+
 template <class Decoder, class Sink>
 const Sink &data_client<Decoder,Sink>::sink() const {
   return *sink_;
@@ -796,6 +820,14 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
     // should handle malformed packets
     throw e;
   }
+
+  if (drop_packet(p)) {
+    BOOST_LOG(perf_lg) << "data_client::handle_received"
+		       << " drop_pkt" << p;
+    async_receive_pkt();
+    return;
+  }
+
   recv_list.push_back(std::move(p));
 
   // Read more packets if available
@@ -817,6 +849,13 @@ void data_client<Decoder,Sink>::handle_received(const boost::system::error_code&
       // should handle malformed packets
       throw e;
     }
+
+    if (drop_packet(p)) {
+      BOOST_LOG(perf_lg) << "data_client::handle_received"
+			 << " drop_pkt" << p;
+      continue;
+    }
+
     recv_list.push_back(std::move(p));
   }
 
@@ -927,6 +966,11 @@ void data_client<Decoder, Sink>::handle_stop() {
     f(boost::system::error_code());
   }
   stop_handlers.clear();
+}
+
+template<typename Decoder, typename Sink>
+bool data_client<Decoder,Sink>::drop_packet(const fountain_packet &p) {
+  return drop_dist(drop_rng);
 }
 
 //	   data_server<Encoder,Source> template definitions
