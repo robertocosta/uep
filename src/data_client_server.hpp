@@ -569,6 +569,8 @@ private:
     if (sent_size != last_pkt.size())
       throw std::runtime_error("Did not send all the packet");
 
+    BOOST_LOG(perf_lg) << "data_server::handle_sent udp_pkt_sent"
+		       << " sent_size=" << sent_size;
     schedule_next_pkt();
   }
 

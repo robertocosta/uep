@@ -201,8 +201,16 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
 
 template <class Iter>
 void uep_decoder::push(Iter first, Iter last) {
+  using namespace std::chrono;
+
+  auto tic = high_resolution_clock::now();
+
   std_dec->push(first, last);
   deduplicate_queued();
+
+  duration<double> push_tdiff = high_resolution_clock::now() - tic;
+  BOOST_LOG(perf_lg) << "uep_decoder::push push_time="
+		     << push_tdiff.count();
 }
 
 }

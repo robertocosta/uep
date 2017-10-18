@@ -215,10 +215,10 @@ void uep_encoder<Gen>::push(fountain_packet &&p) {
   uep_packet up(std::move(p.buffer()));
   up.priority(p.getPriority());
   up.sequence_number(seqno_ctr.value());
-  BOOST_LOG_SEV(basic_lg, log::trace) << "UEP encoder has packet with seqno="
-				      << up.sequence_number()
-				      << " priority="
-				      << up.priority();
+  BOOST_LOG(perf_lg) << "uep_encoder::push new_packet"
+		     << " orig_size=" << up.buffer().size()
+		     << " priority=" << up.priority()
+		     << " seqno=" << up.sequence_number();
 
   if (inp_queues.size() <= up.priority())
     throw std::runtime_error("Priority is out of range");
@@ -249,6 +249,7 @@ fountain_packet uep_encoder<Gen>::next_coded() {
 template<typename Gen>
 void uep_encoder<Gen>::pad_partial_block() {
   if (has_block()) return;
+
   std::size_t pad_cnt = 0;
   for (queue_type &q : inp_queues) {
     while (!q.has_block()) {
@@ -258,6 +259,10 @@ void uep_encoder<Gen>::pad_partial_block() {
     }
   }
   padding_cnt.add_sample(pad_cnt);
+
+  BOOST_LOG(perf_lg) << "uep_encoder::pad_partial_block"
+		     << " pad_cnt=" << pad_cnt;
+
   check_has_block();
 }
 

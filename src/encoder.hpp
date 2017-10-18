@@ -109,7 +109,8 @@ public:
     p.block_number(blockno_counter.last());
     p.block_seed(the_block_encoder.seed());
     //PUT_STAT_COUNTER(loggers.enc_pkts);
-    //BOOST_LOG_SEV(loggers.text, debug) << "New encoded packet: " << p;
+    BOOST_LOG(perf_lg) << "lt_encoder::next_coded"
+		       << " new_coded_packet" << p;
     return p;
   }
 
