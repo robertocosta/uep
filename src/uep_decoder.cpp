@@ -220,11 +220,12 @@ void uep_decoder::deduplicate_queued() {
 		       << " failed=" << out_block.size() - decoded - padding
 		       << " padding=" << padding;
 
+    std::vector<std::size_t> pkt_counts(out_queues.size(), 0);
+
     auto j = out_block.begin();
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
       for (std::size_t i = 0; i < Ks[subblock]; ++i) {
-	uep_packet up;
-	swap(up, *j++); // Make *j empty
+	uep_packet up = std::move(*j++);
 	up.priority(subblock);
 	if (up.buffer().empty()) { // Do not insert empty packets: wrong seqno
 	  ++empty_queued_count;
@@ -234,11 +235,15 @@ void uep_decoder::deduplicate_queued() {
 	}
 	else {
 	  out_queues[subblock].push(std::move(up));
+	  ++pkt_counts[subblock];
 	}
       }
     }
     BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: empty queued packets = "
 					<< empty_queued_count;
+    BOOST_LOG(perf_lg) << "uep_decoder::deduplicate_queued"
+		       << " received_block"
+		       << " pkt_counts=" << pkt_counts;
   }
 }
 
