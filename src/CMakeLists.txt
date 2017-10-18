@@ -58,17 +58,6 @@ target_link_libraries(nal_writer
   ${Boost_LIBRARIES}
 )
 
-# add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
-# target_link_libraries(svc_segmenter
-#   AvcRewriterLibStatic
-#   H264AVCCommonLibStatic
-#   H264AVCDecoderLibStatic
-#   H264AVCEncoderLibStatic
-#   H264AVCVideoIoLibStatic
-#   log
-#   packets
-# )
-
 add_executable(demo_ds demo_ds.cpp)
 target_link_libraries(demo_ds
   block_encoder
@@ -127,11 +116,6 @@ target_link_libraries(uep_mp_plots
   block_encoder
   log
 )
-
-# add_executable(corrupt corrupt.cpp)
-# target_link_libraries(corrupt
-#   svc_segmenter
-# )
 
 set(python_files
   plot_decodeable

@@ -67,32 +67,6 @@ add_definitions(
   -D_LARGEFILE64_SOURCE
 )
 
-set(svc_libs
-  AvcRewriterLibStatic
-  H264AVCCommonLibStatic
-  H264AVCDecoderLibStatic
-  H264AVCEncoderLibStatic
-  H264AVCVideoIoLibStatic
-)
-
-foreach(sl IN LISTS svc_libs)
-  add_library(${sl} STATIC IMPORTED)
-  if(${CMAKE_BUILD_TYPE} STREQUAL Debug)
-    set_target_properties(${sl}
-      PROPERTIES IMPORTED_LOCATION
-      ${CMAKE_SOURCE_DIR}/jsvm/lib/lib${sl}d.a
-    )
-  else(${CMAKE_BUILD_TYPE} STREQUAL Debug)
-    set_target_properties(${sl}
-      PROPERTIES IMPORTED_LOCATION
-      ${CMAKE_SOURCE_DIR}/jsvm/lib/lib${sl}.a
-    )
-  endif(${CMAKE_BUILD_TYPE} STREQUAL Debug)
-  add_dependencies(${sl} jsvm)
-endforeach(sl)
-
-add_library(svc_err OBJECT ${CMAKE_SOURCE_DIR}/jsvm/JSVM/H264Extension/src/lib/H264AVCCommonLib/H264AVCCommonLib.cpp)
-
 include_directories(${CMAKE_BINARY_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
