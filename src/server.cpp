@@ -33,7 +33,8 @@ const uep_server_parameters DEFAULT_SERVER_PARAMETERS{
   50,
   true,
   0,
-  "12312"
+  "12312",
+  false
 };
 
 std::shared_ptr<control_connection>
@@ -241,6 +242,9 @@ void control_server::forget_connection(const control_connection &c) {
     BOOST_LOG_SEV(basic_lg, log::debug) << "Forget connection from "
 					<< (*i)->socket().remote_endpoint();
     active_conns.erase(i);
+    if (server_params.oneshot) {
+      acceptor.cancel();
+    }
   }
 }
 
@@ -259,10 +263,12 @@ void control_server::start_accept() {
 
 void control_server::handle_accept(std::shared_ptr<control_connection> new_connection,
 				   const boost::system::error_code& error) {
+  if (error == boost::asio::error::operation_aborted) return;
+  
   if (error) {
     std::cerr << "Error on async_accept: " << error.message() << std::endl;
   }
-  else {
+  else if (!server_params.oneshot || active_conns.empty()) {
     BOOST_LOG_SEV(basic_lg, log::debug) << "New connection from "
 					<< new_connection->socket().remote_endpoint();
     active_conns.push_back(new_connection);
@@ -284,6 +290,8 @@ int main(int argc, char **argv) {
   log::default_logger perf_lg = log::perf_lg::get();
 
   net::uep_server_parameters srv_params = net::DEFAULT_SERVER_PARAMETERS;
+
+  srv_params.oneshot = true; // Serve just one client
 
   if (argc > 1) {
     srv_params.tcp_port_num = argv[1];

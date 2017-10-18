@@ -38,6 +38,7 @@ struct uep_server_parameters{
   bool ack;
   double sendRate;
   std::string tcp_port_num;
+  bool oneshot;
 };
 
 /** Default values for the server parameters. */
