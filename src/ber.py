@@ -84,5 +84,10 @@ if __name__ == "__main__":
     tot_recvd = list(functools.reduce(lambda t, a: map(sum, zip(t, a)),
                                      recvd_subblocks,
                                      [0,0]))
+    uep_err_rates = list(map(lambda a: 1 - a[0] / a[1],
+                             zip(tot_recvd, tot_sent)))
     print("Total UEP source pkts = {!s}".format(tot_sent))
     print("Total UEP decoded pkts = {!s}".format(tot_recvd))
+    print("UEP packet error rate: prio 0 = {:e}"
+          ", prio 1 = {:e}".format(uep_err_rates[0],
+                                   uep_err_rates[1]))
