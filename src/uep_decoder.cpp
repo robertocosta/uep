@@ -173,19 +173,6 @@ bool uep_decoder::operator!() const {
   return !has_queued_packets();
 }
 
-std::size_t uep_decoder::map_in2out(std::size_t i) {
-  i %= block_size_in() / EF;
-  std::size_t subblock = 0;
-  std::size_t offset = 0;
-  std::size_t out_offset = 0;
-  while (RFs[subblock] * Ks[subblock] + offset <= i) {
-    offset += RFs[subblock] * Ks[subblock];
-    out_offset += Ks[subblock];
-    ++subblock;
-  }
-  return (i - offset) % Ks[subblock] + out_offset;
-}
-
 void uep_decoder::deduplicate_queued() {
   using std::swap;
 
@@ -198,7 +185,7 @@ void uep_decoder::deduplicate_queued() {
       if (p.empty()) continue;
       if (decoded == out_block.size()) continue;
 
-      std::size_t out_i = map_in2out(i);
+      std::size_t out_i = dec_pos_map(i);
 
       if (out_block[out_i].buffer().empty()) {
 	uep_packet up = uep_packet::from_packet(p);
@@ -225,7 +212,8 @@ void uep_decoder::deduplicate_queued() {
     auto j = out_block.begin();
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
       for (std::size_t i = 0; i < Ks[subblock]; ++i) {
-	uep_packet up = std::move(*j++);
+	uep_packet up;
+	swap(up, *j++); // Make *j empty
 	up.priority(subblock);
 	if (up.buffer().empty()) { // Do not insert empty packets: wrong seqno
 	  ++empty_queued_count;

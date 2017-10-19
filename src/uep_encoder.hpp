@@ -421,7 +421,8 @@ void uep_encoder<Gen>::check_has_block() {
   }
 
   std::vector<packet> the_block;
-  the_block.reserve(block_size_out());
+  the_block.resize(block_size_out());
+  auto block_iter = the_block.begin();
 
   // Count the non-padding packets for each sub-block
   std::vector<std::size_t> pkt_counts(inp_queues.size(), 0);
@@ -429,46 +430,43 @@ void uep_encoder<Gen>::check_has_block() {
   // Iterate over all queues
   for (std::size_t i = 0; i < inp_queues.size(); ++i) {
     queue_type &q = inp_queues[i];
-    // Convert the sub-block to packets
-    for (auto l = q.block_mbegin(); l != q.block_mend(); ++l) {
-      uep_packet p = *l;
-      if (!p.padding()) ++pkt_counts[i];
-      the_block.push_back(p.to_packet());
-    }
-
-    // These remain valid because the space is `reserve`d
-    auto sb_start = the_block.cend() - q.block_size();
-    auto sb_end = the_block.cend();
-
     std::size_t RF = RFs[i];
+
+    // Convert the sub-block to packets
+    auto subblock_start = block_iter;
+    for (auto l = q.block_begin(); l != q.block_end(); ++l) {
+      const uep_packet &p = *l;
+      if (!p.padding()) ++pkt_counts[i];
+      *block_iter++ = p.to_packet();
+    }
+    auto subblock_end = block_iter;
+
     // Repeat the sub-block RF-1 times
     for (std::size_t j = 1; j < RF; ++j) {
       // Shallow-copy the sub-block
-      for (auto l = sb_start; l != sb_end; ++l) {
-	the_block.push_back(l->shallow_copy());
+      for (auto l = subblock_start; l != subblock_end; ++l) {
+	*block_iter++ = l->shallow_copy();
       }
     }
     q.pop_block();
+  }
+
+  // Expand EF-1 times
+  auto first_rep_end = block_iter;
+  for (std::size_t i = 1; i < EF; ++i) {
+    // Shallow-copy the first repetition
+    for (auto j = the_block.begin(); j != first_rep_end; ++j) {
+      *block_iter++ = j->shallow_copy();
+    }
   }
 
   BOOST_LOG(perf_lg) << "uep_encoder::check_has_block"
 		     << " new_block"
 		     << " non_padding_pkts=" << pkt_counts;
 
-  // Expand EF times
-  std::size_t orig_size = the_block.size();
-  for (std::size_t i = 0; i < EF-1; ++i) {
-    // Shallow-copy the first repetition
-    for (auto j = the_block.cbegin();
-	 j != the_block.cbegin() + orig_size;
-	 ++j) {
-      the_block.push_back(j->shallow_copy());
-    }
-  }
-
   // Pass to the standard encoder
-  for (auto i = the_block.begin(); i != the_block.end(); ++i) {
-    std_enc->push(std::move(*i));
+  for (packet &p : the_block) {
+    std_enc->push(std::move(p));
   }
 }
 
