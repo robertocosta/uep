@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 
+#include <unistd.h>
+
 #include <boost/asio.hpp>
 
 #include "controlMessage.pb.h"
@@ -23,6 +25,7 @@ struct uep_client_parameters {
   std::string remote_control_addr;
   std::string remote_control_port;
   double drop_prob;
+  double timeout;
 };
 
 /** Default values for the client parameters. */
@@ -31,6 +34,7 @@ const uep_client_parameters DEFAULT_CLIENT_PARAMETERS{
   "12345",
   "127.0.0.1",
   "12312",
+  0,
   0
 };
 
@@ -172,7 +176,7 @@ private:
     dc.setup_sink(out_header, client_params.stream_name);
     dc.enable_ack(cp.ack());
     //dc.expected_count(0);
-    //dc.timeout(1);
+    dc.timeout(client_params.timeout);
     //dc.add_stop_handler();
     dc.drop_probability(client_params.drop_prob);
     dc.bind(client_params.local_data_port);
@@ -245,28 +249,44 @@ int main(int argc, char* argv[]) {
   boost::asio::io_service io;
   uep_client_parameters client_params = DEFAULT_CLIENT_PARAMETERS;
 
-  if (argc < 3) {
-    std::cerr << "Usage: client <stream> <server>"
-	      << " [<server_port>] [<listen_port>]"
-	      << " [<drop probability>]"
-	      << std::endl;
-    return 1;
+  int c;
+  opterr = 0;
+  while ((c = getopt(argc, argv, "n:s:l:r:p:t:")) != -1) {
+    switch (c) {
+    case 'n':
+      client_params.stream_name = optarg;
+      break;
+    case 's':
+      client_params.remote_control_addr = optarg;
+      break;
+    case 'l':
+      client_params.local_data_port = optarg;
+      break;
+    case 'r':
+      client_params.remote_control_port = optarg;
+      break;
+    case 'p':
+      client_params.drop_prob = std::strtod(optarg, nullptr);
+      break;
+    case 't':
+      client_params.timeout = std::strtod(optarg, nullptr);
+      break;
+    default:
+      std::cerr << "Usage: " << argv[0]
+		<< " -n <stream name>"
+		<< " [-s <server addr>]"
+		<< " [-l <local data port>]"
+		<< " [-r <remote control port>]"
+		<< " [-p <drop probability>]"
+		<< " [-t <timeout>]"
+		<< std::endl;
+      return 2;
+    }
   }
 
-  client_params.stream_name = argv[1];
-  client_params.remote_control_addr = argv[2];
-  if (argc > 3) {
-    client_params.remote_control_port = argv[3];
-  }
-  if (argc > 4) {
-    client_params.local_data_port = argv[4];
-  }
-  if (argc > 5) {
-    client_params.drop_prob = std::stod(argv[5]);
-  }
-  if (argc > 6) {
-    std::cerr << "Too many args" << std::endl;
-    return 1;
+  if (client_params.stream_name.empty()) {
+    std::cerr << "Requires a stream name" << std::endl;
+    return 2;
   }
 
   BOOST_LOG_SEV(basic_lg, log::info) << "Requesting stream \""
