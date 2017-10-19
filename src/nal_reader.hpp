@@ -64,7 +64,7 @@ public:
    */
   static const std::size_t MAX_PACKED_SIZE = 16*1024*1024;
   /** Invalid NAL used to signal the end of stream. */
-  static const const_buffer EOS_NAL;
+  static const buffer_type EOS_NAL;
 
   /** Construct a reader with the given parameter set. */
   explicit nal_reader(const parameter_set &ps);

@@ -102,9 +102,9 @@ void nal_writer::enqueue_nals(bool must_end) {
     }
 
     // Check for the EOS code
-    static const char *const eos_code_begin =
-      nal_reader::EOS_NAL.data<char>();
-    static const char *const eos_code_end =
+    const char *const eos_code_begin =
+      nal_reader::EOS_NAL.data();
+    const char *const eos_code_end =
       eos_code_begin + nal_reader::EOS_NAL.size();
     if (static_cast<size_t>(nal_buf.end() - i) >=
 	3 + nal_reader::EOS_NAL.size()) {
