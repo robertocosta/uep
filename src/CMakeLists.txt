@@ -117,6 +117,10 @@ target_link_libraries(uep_mp_plots
   log
 )
 
+set(python_libs
+  utils
+)
+
 set(python_files
   avg_nal_segsizes
   ber
@@ -125,11 +129,20 @@ set(python_files
   plot_time
 )
 
+foreach(pyf IN LISTS python_libs)
+  add_custom_target(${pyf}.py ALL
+    ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py
+    COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py"
+  )
+endforeach(pyf)
+
 foreach(pyf IN LISTS python_files)
   add_custom_target(${pyf} ALL
     ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}
     COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}"
-)
+  )
 endforeach(pyf)
