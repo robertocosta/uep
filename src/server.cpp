@@ -1,5 +1,7 @@
 #include "server.hpp"
 
+#include <unistd.h>
+
 /*
   1: client to server: streamName
   2: server to client: TXParam
@@ -34,7 +36,7 @@ const uep_server_parameters DEFAULT_SERVER_PARAMETERS{
   true,
   0,
   "12312",
-  false,
+  true,
   uep_encoder<>::MAX_SEQNO
 };
 
@@ -293,27 +295,31 @@ int main(int argc, char **argv) {
 
   net::uep_server_parameters srv_params = net::DEFAULT_SERVER_PARAMETERS;
 
-  if (argc > 1) {
-    srv_params.tcp_port_num = argv[1];
-  }
-  if (argc > 2) {
-    srv_params.sendRate = std::stod(argv[2]);
-  }
-  if (argc > 3) {
-    srv_params.max_n_per_block = std::stoi(argv[3]);
-  }
-  if (argc > 4) {
-    std::string kl(argv[4]);
-    srv_params.oneshot = !(kl == "true");
-  }
-  if (argc > 5) {
-    std::cerr << "Too many args" << std::endl;
-    std::cerr << "Usage: server <tcp port>"
-	      << " <send_rate>"
-	      << " <pkt limit>"
-	      << " <keep listening>"
-	      << std::endl;
-    return 1;
+  int c;
+  opterr = 0;
+  while ((c = getopt(argc, argv, "p:r:n:l")) != -1) {
+    switch (c) {
+    case 'p':
+      srv_params.tcp_port_num = optarg;
+      break;
+    case 'r':
+      srv_params.sendRate = std::strtod(optarg, nullptr);
+      break;
+    case 'n':
+      srv_params.max_n_per_block = std::strtoull(optarg, nullptr, 10);
+      break;
+    case 'l':
+      srv_params.oneshot = false;
+      break;
+    default:
+      std::cerr << "Usage: " << argv[0]
+		<< " [-p <local control port>]"
+		<< " [-r <send rate>]"
+		<< " [-n <max pkts per block>]"
+		<< " [-l]"
+		<< std::endl;
+      return 2;
+    }
   }
 
   // We need to create a server object to accept incoming client connections.
