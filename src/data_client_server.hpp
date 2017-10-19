@@ -434,29 +434,14 @@ private:
 
     if (is_stopped_) return;
 
-    // Load the encoder until it has 2 full blocks: allow next_block
-    // to still have a block
-    while (*source_ && (encoder_->size() < 2*encoder_->K())) {
-      encoder_->push(source_->next_packet());
-    }
-
-    // Empty encoder and no more data: stop
-    if (!*encoder_ && encoder_->size() == 0) {
-      BOOST_LOG_SEV(basic_lg, log::info) <<
-	"Data server out of data to send";
-      stop();
-      return;
-    }
-
     // Check if the max number has been reached
     if (max_per_block <= encoder_->coded_count()) {
       encoder_->next_block();
-      if (!*encoder_ && encoder_->size() == 0) { // The source did not have 2 blocks
-	BOOST_LOG_SEV(basic_lg, log::info) <<
-	  "Data server out of data to send after reaching max_per_block";
-	stop();
-	return;
-      }
+    }
+
+    // Load the encoder until it has a full block
+    while (*source_ && !encoder_->has_block()) {
+      encoder_->push(source_->next_packet());
     }
 
     // Encoder has partial blocks left: use padding
@@ -464,6 +449,14 @@ private:
       BOOST_LOG_SEV(basic_lg, log::debug) <<
 	"Encoder left with partial data: padding";
       encoder_->pad_partial_block();
+    }
+
+    // Empty encoder and no more data: stop
+    if (!*encoder_) {
+      BOOST_LOG_SEV(basic_lg, log::info) <<
+	"Data server out of data to send";
+      stop();
+      return;
     }
 
     fountain_packet p = encoder_->next_coded();
