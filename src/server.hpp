@@ -39,6 +39,7 @@ struct uep_server_parameters{
   double sendRate;
   std::string tcp_port_num;
   bool oneshot;
+  std::size_t max_n_per_block;
 };
 
 /** Default values for the server parameters. */

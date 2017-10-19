@@ -34,7 +34,8 @@ const uep_server_parameters DEFAULT_SERVER_PARAMETERS{
   true,
   0,
   "12312",
-  false
+  false,
+  uep_encoder<>::MAX_SEQNO
 };
 
 std::shared_ptr<control_connection>
@@ -139,6 +140,7 @@ void control_connection::handle_stream_name() {
 
   ds.target_send_rate(srv_params.sendRate);
   ds.enable_ack(srv_params.ack);
+  ds.max_sequence_number(srv_params.max_n_per_block);
 }
 
 void control_connection::send_client_params() {
@@ -264,7 +266,7 @@ void control_server::start_accept() {
 void control_server::handle_accept(std::shared_ptr<control_connection> new_connection,
 				   const boost::system::error_code& error) {
   if (error == boost::asio::error::operation_aborted) return;
-  
+
   if (error) {
     std::cerr << "Error on async_accept: " << error.message() << std::endl;
   }
@@ -291,13 +293,26 @@ int main(int argc, char **argv) {
 
   net::uep_server_parameters srv_params = net::DEFAULT_SERVER_PARAMETERS;
 
-  srv_params.oneshot = true; // Serve just one client
-
   if (argc > 1) {
     srv_params.tcp_port_num = argv[1];
   }
   if (argc > 2) {
+    srv_params.sendRate = std::stod(argv[2]);
+  }
+  if (argc > 3) {
+    srv_params.max_n_per_block = std::stoi(argv[3]);
+  }
+  if (argc > 4) {
+    std::string kl(argv[4]);
+    srv_params.oneshot = !(kl == "true");
+  }
+  if (argc > 5) {
     std::cerr << "Too many args" << std::endl;
+    std::cerr << "Usage: server <tcp port>"
+	      << " <send_rate>"
+	      << " <pkt limit>"
+	      << " <keep listening>"
+	      << std::endl;
     return 1;
   }
 
