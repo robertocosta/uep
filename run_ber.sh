@@ -3,6 +3,16 @@
 set -eu -o pipefail
 set -x
 
+function send_aws_mail {
+    aws sns publish \
+	--region 'us-east-1' \
+	--topic-arn 'arn:aws:sns:us-east-1:402432167722:NotifyMe' \
+	--message "$1"
+}
+
+trap "send_aws_mail 'There was an error'" ERR
+
+
 # Get dependencies
 sudo apt-get update
 sudo apt-get install -y \
@@ -30,7 +40,7 @@ popd
 # Prepare video
 pushd dataset
 wget 'http://trace.eas.asu.edu/yuv/stefan/stefan_cif.7z'
-7z x stefan_cif.7z
+7zr x stefan_cif.7z
 popd
 pushd h264_scripts
 ./encode.sh
@@ -60,10 +70,7 @@ aws s3 cp "stefan_cif_long.264" s3://uep.zanol.eu/simulation_videos/"$subdir_nam
 popd
 popd
 
-aws sns publish \
-    --region 'us-east-1' \
-    --topic-arn 'arn:aws:sns:us-east-1:402432167722:NotifyMe' \
-    --message "run_ber is finished ($subdir_name)"
+send_aws_mail "run_ber is finished ($subdir_name)"
 
 # Shutdown
 sudo poweroff
