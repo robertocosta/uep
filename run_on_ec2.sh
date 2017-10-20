@@ -12,5 +12,5 @@ base64 -d <<< "${script_base64}" > "${script}"
 chmod a+x "${script}"
 sudo apt-get update
 sudo apt-get install -y screen
-screen -d -m bash "${script}"
+screen -d -m -L screen.log bash "${script}"
 EOF
