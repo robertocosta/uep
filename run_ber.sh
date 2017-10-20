@@ -9,10 +9,16 @@ RUN=FAILED
 PROCESS_OUTPUT=FAILED
 
 function send_aws_mail {
+    msg_str="$1
+BUILD = ${BUILD}
+PREPARE_VIDEO=${PREPARE_VIDEO}
+RUN=${RUN}
+PROCESS_OUTPUT=${PROCESS_OUTPUT}"
+
     aws sns publish \
 	--region 'us-east-1' \
 	--topic-arn 'arn:aws:sns:us-east-1:402432167722:NotifyMe' \
-	--message "$1\nBUILD = ${BUILD}\nPREPARE_VIDEO=${PREPARE_VIDEO}\nRUN=${RUN}\nPROCESS_OUTPUT=${PROCESS_OUTPUT}"
+	--message "${msg_str}"
 }
 
 trap "send_aws_mail 'There was an error'" ERR
