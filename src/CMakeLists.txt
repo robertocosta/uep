@@ -127,6 +127,7 @@ set(python_files
   plot_decodeable
   plot_required
   plot_time
+  uep_dec_time
   uep_enc_time
 )
 
