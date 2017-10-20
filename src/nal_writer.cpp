@@ -130,8 +130,7 @@ void nal_writer::enqueue_nals(bool must_end) {
 					    << " bytes, clear the nal_buf";
 	const char *ic = &(*i);
 	size_t cnt = end-i;
-  file.write(ic, cnt);
-  file.flush();
+	file.write(ic, cnt);
 	nal_buf.clear();
       }
       else {
@@ -151,7 +150,6 @@ void nal_writer::enqueue_nals(bool must_end) {
     const char *ic = &(*i);
     size_t cnt = end-i;
     file.write(ic, cnt);
-    file.flush();    
     i = end;
     BOOST_LOG_SEV(basic_lg, log::trace) << "Advance i to " << (void*) &*i;
   }
