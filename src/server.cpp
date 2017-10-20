@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
 
   int c;
   opterr = 0;
-  while ((c = getopt(argc, argv, "p:r:n:l")) != -1) {
+  while ((c = getopt(argc, argv, "p:r:n:lK:R:E:c:d:")) != -1) {
     switch (c) {
     case 'p':
       srv_params.tcp_port_num = optarg;
@@ -311,12 +311,43 @@ int main(int argc, char **argv) {
     case 'l':
       srv_params.oneshot = false;
       break;
+    case 'K': {
+      std::istringstream iss(optarg);
+      iss >> srv_params.Ks;
+      break;
+    }
+    case 'R': {
+      std::istringstream iss(optarg);
+      iss >> srv_params.RFs;
+      break;
+    }
+    case 'E': {
+      srv_params.EF = std::strtoull(optarg, nullptr, 10);
+      break;
+    }
+    case 'c': {
+      srv_params.c = std::strtod(optarg, nullptr);
+      break;
+    }
+    case 'd': {
+      srv_params.delta = std::strtod(optarg, nullptr);
+      break;
+    }
+    case 'L':
+      srv_params.packet_size = std::strtoull(optarg, nullptr, 10);
+      break;
     default:
       std::cerr << "Usage: " << argv[0]
 		<< " [-p <local control port>]"
 		<< " [-r <send rate>]"
 		<< " [-n <max pkts per block>]"
 		<< " [-l]"
+		<< " [-K '[<K0>, <K1>, ...]']"
+		<< " [-R '[<RF0>, <RF1>, ...]']"
+		<< " [-E <EF>]"
+		<< " [-c <c>]"
+		<< " [-d <delta>]"
+		<< " [-L <pktsize>]"
 		<< std::endl;
       return 2;
     }
