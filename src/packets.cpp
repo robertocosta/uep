@@ -330,15 +330,18 @@ fountain_packet &operator^=(fountain_packet &a, const packet &b) {
   return a;
 }
 
+namespace std {
 std::ostream &operator<<(std::ostream &out, const fountain_packet &p) {
-  out << "fountain_packet(" <<
-    "blockno=" << p.block_number() <<
-    ", seqno=" << p.sequence_number() <<
-    ", seed=" << p.block_seed() <<
-    ", priority=" << p.getPriority() <<
-	", size=" << p.size() <<
-    ")";
-  return out;
+  return out << "fountain_packet{"
+	     << "blockno=" << p.block_number()
+	     << ", seqno=" << p.sequence_number()
+	     << ", seed="
+	     << std::hex << std::showbase << p.block_seed()
+	     << std::dec << std::noshowbase
+	     << ", size=" << p.size()
+	     << ", priority=" << (std::size_t) p.getPriority()
+	     << "}";
+}
 }
 
 bool operator==(const fountain_packet &lhs, const fountain_packet &rhs ) {

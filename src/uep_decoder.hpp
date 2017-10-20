@@ -9,6 +9,50 @@
 
 namespace uep {
 
+/** Map the positions from the UEP expanded block to the positions in
+ *  the original block.
+ */
+class position_mapper {
+public:
+  template<typename KsIter, typename RFsIter>
+  explicit position_mapper(KsIter ks_begin, KsIter ks_end,
+			   RFsIter rfs_begin, RFsIter rfs_end,
+			   std::size_t ef) {
+    std::vector<std::size_t> Ks(ks_begin, ks_end);
+    std::vector<std::size_t> RFs(rfs_begin, rfs_end);
+    std::size_t EF(ef);
+
+    //std::size_t K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
+    std::size_t K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
+						RFs.cbegin(), 0);
+    map.resize(K_out);
+    auto i = map.begin();
+    std::size_t offset = 0;
+
+    for (std::size_t k = 0; k < Ks.size(); ++k) {
+      std::iota(i, i + Ks[k], offset);
+      auto sb_start = i;
+      i += Ks[k];
+      for (std::size_t r = 1; r < RFs[k]; ++r){
+	i = std::copy(sb_start, sb_start + Ks[k], i);
+      }
+      offset += Ks[k];
+    }
+
+    auto first_rep_end = i;
+    for (std::size_t e = 1; e < EF; ++e) {
+      i = std::copy(map.begin(), first_rep_end, i);
+    }
+  }
+
+  std::size_t operator()(std::size_t pos) const {
+    return map.at(pos);
+  }
+
+private:
+  std::vector<std::size_t> map;
+};
+
 /** Unequal error protection decoder.
  *  This class wraps an lt_decoder and deduplicates the packets of the
  *  expanded blocks. The output blocks are enqueued in a FIFO queue
@@ -144,6 +188,10 @@ private:
   circular_counter<> seqno_ctr; /**< Counter for the sequence number
 				 *   of the UEP packets.
 				 */
+  position_mapper dec_pos_map; /**< Map of the positions from
+				*   the expanded block to the
+				*   original block.
+				*/
   std::unique_ptr<lt_decoder> std_dec; /**< The standard LT
 					*    decoder. Use a pointer to
 					*    delay the construction.
@@ -158,10 +206,6 @@ private:
 
   /** Check if there are new decoded blocks and deduplicate them. */
   void deduplicate_queued();
-  /** Map an index in the expanded block to an index in the original
-   *  block.
-   */
-  std::size_t map_in2out(std::size_t i);
   /** Find the queue with the given seqno on top. */
   std::vector<queue_type>::iterator
   find_decoded(std::size_t seqno);
@@ -182,6 +226,7 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
   EF(ef),
   empty_queued_count(0),
   seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
+  dec_pos_map(ks_begin, ks_end, rfs_begin, rfs_end, ef),
   tot_dec_count(0),
   tot_fail_count(0) {
   if (Ks.size() != RFs.size()) {
@@ -201,8 +246,16 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
 
 template <class Iter>
 void uep_decoder::push(Iter first, Iter last) {
+  using namespace std::chrono;
+
+  auto tic = high_resolution_clock::now();
+
   std_dec->push(first, last);
   deduplicate_queued();
+
+  duration<double> push_tdiff = high_resolution_clock::now() - tic;
+  BOOST_LOG(perf_lg) << "uep_decoder::push push_time="
+		     << push_tdiff.count();
 }
 
 }

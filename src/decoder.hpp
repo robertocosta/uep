@@ -179,6 +179,8 @@ void lt_decoder::push(Iter first, Iter last) {
 	      return lhs.block_number() < rhs.block_number();
 	    });
 
+  BOOST_LOG(perf_lg) << "lt_decoder::push recvd_pkts=" << pkts.size();
+
   // Push to the block decoder block-by-block
   auto i = std::make_move_iterator(pkts.begin());
   auto end = std::make_move_iterator(pkts.end());
@@ -209,6 +211,7 @@ void lt_decoder::push(Iter first, Iter last) {
     }
 
     std::size_t pushed = the_block_decoder.push(i, next);
+    BOOST_LOG(perf_lg) << "lt_decoder::push uniq_pkts=" << pushed;
     uniq_recv_count += pushed;
     if (pushed != static_cast<std::size_t>(next - i))
       BOOST_LOG(perf_lg) << "lt_decoder::push duplicate_pkts blockno="

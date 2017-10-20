@@ -112,6 +112,29 @@ void write_iterable(std::ostream &out, Iter begin, Iter end) {
   out << ']';
 }
 
+template<typename T>
+std::vector<T> read_list(std::istream &in) {
+  std::vector<T> v;
+  char c = 0;
+  T e;
+  in >> c;
+  in >> std::ws;
+  if (c != '[') throw std::runtime_error("List parsing failed");
+  while (in.peek() != ']') {
+    in >> e;
+    if (!in) throw std::runtime_error("List parsing failed");
+    v.push_back(e);
+    in >> std::ws;
+    if (in.peek() == ',') {
+      in >> c;
+      in >> std::ws;
+    }
+  }
+  in >> c;
+  if (c != ']') throw std::runtime_error("List parsing failed");
+  return v;
+}
+
 namespace std {
 
 /** Write a text representation of a vector. */
@@ -119,6 +142,13 @@ template<typename T>
 ostream &operator<<(ostream &out, const vector<T> &vec) {
   write_iterable(out, vec.begin(), vec.end());
   return out;
+}
+
+/** Read a list from a stream. */
+template<typename T>
+istream &operator>>(istream &in, vector<T> &vec) {
+  vec = read_list<T>(in);
+  return in;
 }
 
 }

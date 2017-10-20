@@ -58,17 +58,6 @@ target_link_libraries(nal_writer
   ${Boost_LIBRARIES}
 )
 
-# add_library(svc_segmenter STATIC svc_segmenter.cpp $<TARGET_OBJECTS:svc_err>)
-# target_link_libraries(svc_segmenter
-#   AvcRewriterLibStatic
-#   H264AVCCommonLibStatic
-#   H264AVCDecoderLibStatic
-#   H264AVCEncoderLibStatic
-#   H264AVCVideoIoLibStatic
-#   log
-#   packets
-# )
-
 add_executable(demo_ds demo_ds.cpp)
 target_link_libraries(demo_ds
   block_encoder
@@ -128,17 +117,28 @@ target_link_libraries(uep_mp_plots
   log
 )
 
-# add_executable(corrupt corrupt.cpp)
-# target_link_libraries(corrupt
-#   svc_segmenter
-# )
+set(python_libs
+  utils
+)
 
 set(python_files
+  avg_nal_segsizes
+  ber
   plot_decodeable
   plot_required
   plot_time
-  avg_nal_segsizes
+  uep_dec_time
+  uep_enc_time
 )
+
+foreach(pyf IN LISTS python_libs)
+  add_custom_target(${pyf}.py ALL
+    ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py
+    COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py"
+  )
+endforeach(pyf)
 
 foreach(pyf IN LISTS python_files)
   add_custom_target(${pyf} ALL
@@ -146,5 +146,5 @@ foreach(pyf IN LISTS python_files)
     ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}
     COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}"
-)
+  )
 endforeach(pyf)

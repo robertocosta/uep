@@ -372,8 +372,7 @@ size_t packet_source::totLength() const {
 
 namespace uep {
 
-static const byte EOS_NAL_DATA[]{0x80};
-const const_buffer nal_reader::EOS_NAL{EOS_NAL_DATA, 1};
+const buffer_type nal_reader::EOS_NAL({'\x80'});
 
 std::string nal_reader::filename() const {
   return "dataset/"+stream_name+".264";
@@ -611,6 +610,7 @@ void nal_reader::pack_nals() {
       BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader enqueued the EOS NAL"
 					  << " (" << pkt_queue.back().size()
 					  << " bytes)";
+      BOOST_LOG(perf_lg) << "nal_reader::pack_nals enqueued_eos";
     }
   }
 }

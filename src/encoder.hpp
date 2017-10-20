@@ -1,6 +1,7 @@
 #ifndef UEP_ENCODER_HPP
 #define UEP_ENCODER_HPP
 
+#include <chrono>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -104,12 +105,20 @@ public:
 
   /** Generate the next coded packet from the current block. */
   fountain_packet next_coded() {
+    using namespace std::chrono;
+
+    auto tic = high_resolution_clock::now();
+
     fountain_packet p(the_block_encoder.next_coded());
     p.sequence_number(seqno_counter.next());
     p.block_number(blockno_counter.last());
     p.block_seed(the_block_encoder.seed());
-    //PUT_STAT_COUNTER(loggers.enc_pkts);
-    //BOOST_LOG_SEV(loggers.text, debug) << "New encoded packet: " << p;
+
+    duration<double> tdiff = high_resolution_clock::now() - tic;
+    BOOST_LOG(perf_lg) << "lt_encoder::next_coded"
+		       << " new_coded_packet=" << p
+		       << " encode_time=" << tdiff.count();
+
     return p;
   }
 

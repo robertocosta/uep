@@ -241,8 +241,10 @@ private:
  */
 fountain_packet &operator^=(fountain_packet &a, const packet &b);
 
+namespace std {
 /** Write a text representation of the fountain_packet to a stream */
 std::ostream &operator<<(std::ostream &out, const fountain_packet &p);
+}
 
 bool operator==(const fountain_packet &lhs, const fountain_packet &rhs );
 bool operator!=(const fountain_packet &lhs, const fountain_packet &rhs );

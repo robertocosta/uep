@@ -215,10 +215,10 @@ void uep_encoder<Gen>::push(fountain_packet &&p) {
   uep_packet up(std::move(p.buffer()));
   up.priority(p.getPriority());
   up.sequence_number(seqno_ctr.value());
-  BOOST_LOG_SEV(basic_lg, log::trace) << "UEP encoder has packet with seqno="
-				      << up.sequence_number()
-				      << " priority="
-				      << up.priority();
+  BOOST_LOG(perf_lg) << "uep_encoder::push new_packet"
+		     << " orig_size=" << up.buffer().size()
+		     << " priority=" << up.priority()
+		     << " seqno=" << up.sequence_number();
 
   if (inp_queues.size() <= up.priority())
     throw std::runtime_error("Priority is out of range");
@@ -249,6 +249,7 @@ fountain_packet uep_encoder<Gen>::next_coded() {
 template<typename Gen>
 void uep_encoder<Gen>::pad_partial_block() {
   if (has_block()) return;
+
   std::size_t pad_cnt = 0;
   for (queue_type &q : inp_queues) {
     while (!q.has_block()) {
@@ -258,6 +259,10 @@ void uep_encoder<Gen>::pad_partial_block() {
     }
   }
   padding_cnt.add_sample(pad_cnt);
+
+  BOOST_LOG(perf_lg) << "uep_encoder::pad_partial_block"
+		     << " pad_cnt=" << pad_cnt;
+
   check_has_block();
 }
 
@@ -416,36 +421,52 @@ void uep_encoder<Gen>::check_has_block() {
   }
 
   std::vector<packet> the_block;
-  the_block.reserve(block_size_out());
+  the_block.resize(block_size_out());
+  auto block_iter = the_block.begin();
+
+  // Count the non-padding packets for each sub-block
+  std::vector<std::size_t> pkt_counts(inp_queues.size(), 0);
 
   // Iterate over all queues
   for (std::size_t i = 0; i < inp_queues.size(); ++i) {
     queue_type &q = inp_queues[i];
     std::size_t RF = RFs[i];
-    // Repeat each sub-block RF times
-    for (std::size_t j = 0; j < RF; ++j) {
+
+    // Convert the sub-block to packets
+    auto subblock_start = block_iter;
+    for (auto l = q.block_begin(); l != q.block_end(); ++l) {
+      const uep_packet &p = *l;
+      if (!p.padding()) ++pkt_counts[i];
+      *block_iter++ = p.to_packet();
+    }
+    auto subblock_end = block_iter;
+
+    // Repeat the sub-block RF-1 times
+    for (std::size_t j = 1; j < RF; ++j) {
       // Shallow-copy the sub-block
-      for (auto l = q.block_begin(); l != q.block_end(); ++l) {
-	the_block.push_back(l->to_packet());
+      for (auto l = subblock_start; l != subblock_end; ++l) {
+	*block_iter++ = l->shallow_copy();
       }
     }
     q.pop_block();
   }
 
-  // Expand EF times
-  std::size_t orig_size = the_block.size();
-  for (std::size_t i = 0; i < EF-1; ++i) {
+  // Expand EF-1 times
+  auto first_rep_end = block_iter;
+  for (std::size_t i = 1; i < EF; ++i) {
     // Shallow-copy the first repetition
-    for (auto j = the_block.cbegin();
-	 j != the_block.cbegin() + orig_size;
-	 ++j) {
-      the_block.push_back(j->shallow_copy());
+    for (auto j = the_block.begin(); j != first_rep_end; ++j) {
+      *block_iter++ = j->shallow_copy();
     }
   }
 
+  BOOST_LOG(perf_lg) << "uep_encoder::check_has_block"
+		     << " new_block"
+		     << " non_padding_pkts=" << pkt_counts;
+
   // Pass to the standard encoder
-  for (auto i = the_block.begin(); i != the_block.end(); ++i) {
-    std_enc->push(std::move(*i));
+  for (packet &p : the_block) {
+    std_enc->push(std::move(p));
   }
 }
 

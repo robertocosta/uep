@@ -29,8 +29,8 @@ namespace net {
 
 /** Set of parameters needed by the server to setup a new connection. */
 struct uep_server_parameters{
-  std::initializer_list<std::size_t> Ks;
-  std::initializer_list<std::size_t> RFs;
+  std::vector<std::size_t> Ks;
+  std::vector<std::size_t> RFs;
   std::size_t EF;
   double c;
   double delta;
@@ -38,6 +38,8 @@ struct uep_server_parameters{
   bool ack;
   double sendRate;
   std::string tcp_port_num;
+  bool oneshot;
+  std::size_t max_n_per_block;
 };
 
 /** Default values for the server parameters. */
@@ -139,7 +141,7 @@ public:
 
 private:
   log::default_logger basic_lg, perf_lg;
-  
+
   boost::asio::io_service &io;
   boost::asio::io_service::strand strand;
   boost::asio::ip::tcp::acceptor acceptor;

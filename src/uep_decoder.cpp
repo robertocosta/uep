@@ -173,19 +173,6 @@ bool uep_decoder::operator!() const {
   return !has_queued_packets();
 }
 
-std::size_t uep_decoder::map_in2out(std::size_t i) {
-  i %= block_size_in() / EF;
-  std::size_t subblock = 0;
-  std::size_t offset = 0;
-  std::size_t out_offset = 0;
-  while (RFs[subblock] * Ks[subblock] + offset <= i) {
-    offset += RFs[subblock] * Ks[subblock];
-    out_offset += Ks[subblock];
-    ++subblock;
-  }
-  return (i - offset) % Ks[subblock] + out_offset;
-}
-
 void uep_decoder::deduplicate_queued() {
   using std::swap;
 
@@ -198,7 +185,7 @@ void uep_decoder::deduplicate_queued() {
       if (p.empty()) continue;
       if (decoded == out_block.size()) continue;
 
-      std::size_t out_i = map_in2out(i);
+      std::size_t out_i = dec_pos_map(i);
 
       if (out_block[out_i].buffer().empty()) {
 	uep_packet up = uep_packet::from_packet(p);
@@ -220,6 +207,8 @@ void uep_decoder::deduplicate_queued() {
 		       << " failed=" << out_block.size() - decoded - padding
 		       << " padding=" << padding;
 
+    std::vector<std::size_t> pkt_counts(out_queues.size(), 0);
+
     auto j = out_block.begin();
     for (std::size_t subblock = 0; subblock < Ks.size(); ++subblock) {
       for (std::size_t i = 0; i < Ks[subblock]; ++i) {
@@ -234,11 +223,15 @@ void uep_decoder::deduplicate_queued() {
 	}
 	else {
 	  out_queues[subblock].push(std::move(up));
+	  ++pkt_counts[subblock];
 	}
       }
     }
     BOOST_LOG_SEV(basic_lg, log::trace) << "UEP: empty queued packets = "
 					<< empty_queued_count;
+    BOOST_LOG(perf_lg) << "uep_decoder::deduplicate_queued"
+		       << " received_block"
+		       << " pkt_counts=" << pkt_counts;
   }
 }
 

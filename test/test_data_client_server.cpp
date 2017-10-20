@@ -7,6 +7,43 @@
 #include "uep_decoder.hpp"
 #include "uep_encoder.hpp"
 
+template<typename DS, typename DC>
+void setup_termination_checks(boost::asio::io_service &io,
+			      DS &ds, DC &dc, double timeout) {
+  auto dur_double = std::chrono::duration<double>(timeout);
+  auto dur =
+    std::chrono::duration_cast<boost::asio::steady_timer::duration>(dur_double);
+
+  auto ds_end_timer =
+    std::make_shared<boost::asio::steady_timer>(io, dur);
+  auto dc_end_timer =
+    std::make_shared<boost::asio::steady_timer>(io, ds_end_timer->expires_at());
+
+  ds_end_timer->async_wait([&ds] (const boost::system::error_code &ec) {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!ds.is_stopped()) {
+	ds.stop();
+	BOOST_ERROR("data_server did not stop");
+      }
+    });
+  dc_end_timer->async_wait([&dc] (const boost::system::error_code &ec) {
+      if (ec == boost::asio::error::operation_aborted)
+	return;
+      if (!dc.is_stopped()) {
+	dc.stop();
+	BOOST_ERROR("data_client did not stop");
+      }
+    });
+
+  dc.add_stop_handler([dc_end_timer](const boost::system::error_code &ec) -> void {
+      dc_end_timer->cancel();
+    });
+  ds.add_stop_handler([ds_end_timer](const boost::system::error_code &ec) -> void {
+      ds_end_timer->cancel();
+    });
+}
+
 // Set globally the log severity level
 struct global_fixture {
   global_fixture() {
@@ -155,8 +192,8 @@ BOOST_FIXTURE_TEST_CASE(test_send, setup_cs) {
   auto srv_ep = ds.server_endpoint(); // get the random source port used by the data_server
   dc.start_receive(srv_ep); // schdule the data_client to listen on its bound port for packets from the server's ip:port
 
-  // schedule a stop after 30 seconds
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(30));
+  // schedule a stop after 180 seconds
+  boost::asio::steady_timer end_timer(io, std::chrono::seconds(180));
   end_timer.async_wait([this]
 		       (const boost::system::error_code&) -> void {
 			 //cerr << "Stopping" << endl;
@@ -275,7 +312,7 @@ BOOST_AUTO_TEST_CASE(send_with_pkt_limit) {
 
   ds.start(); // start the periodic tx of packets
   // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(10));
+  boost::asio::steady_timer end_timer(io, std::chrono::seconds(30));
   end_timer.async_wait([&ds,&dc]
 		       (const boost::system::error_code&) -> void {
 			 ds.stop();
@@ -359,20 +396,8 @@ BOOST_AUTO_TEST_CASE(autoclose_client) {
 			    // server's ip:port
 
   ds.start(); // start the periodic tx of packets
-  // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(30));
-  end_timer.async_wait([&ds,&dc]
-		       (const boost::system::error_code&) -> void {
-			 if (!ds.is_stopped()) {
-			   ds.stop();
-			   BOOST_ERROR("data_server did not stop");
-			 }
-			 if (!dc.is_stopped()) {
-			   dc.stop();
-			   BOOST_ERROR("data_client did not stop");
-			 }
-		       });
-    io.run(); // enter the io_service loop: process both the server and
+  setup_termination_checks(io, ds, dc, 180);
+  io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
 
@@ -449,20 +474,8 @@ BOOST_AUTO_TEST_CASE(autoclose_client_ack) {
 			    // server's ip:port
 
   ds.start(); // start the periodic tx of packets
-  // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(30));
-  end_timer.async_wait([&ds,&dc]
-		       (const boost::system::error_code&) -> void {
-			 if (!ds.is_stopped()) {
-			   ds.stop();
-			   BOOST_ERROR("data_server did not stop");
-			 }
-			 if (!dc.is_stopped()) {
-			   dc.stop();
-			   BOOST_ERROR("data_client did not stop");
-			 }
-		       });
-    io.run(); // enter the io_service loop: process both the server and
+  setup_termination_checks(io, ds, dc, 180);
+  io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
 
@@ -542,19 +555,8 @@ BOOST_AUTO_TEST_CASE(autoclose_client_ack_maxseqno) {
 
   ds.start(); // start the periodic tx of packets
   // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(30));
-  end_timer.async_wait([&ds,&dc]
-		       (const boost::system::error_code&) -> void {
-			 if (!ds.is_stopped()) {
-			   ds.stop();
-			   BOOST_ERROR("data_server did not stop");
-			 }
-			 if (!dc.is_stopped()) {
-			   dc.stop();
-			   BOOST_ERROR("data_client did not stop");
-			 }
-		       });
-    io.run(); // enter the io_service loop: process both the server and
+  setup_termination_checks(io, ds, dc, 180);
+  io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
 
@@ -633,20 +635,8 @@ BOOST_AUTO_TEST_CASE(client_timeout) {
 			    // server's ip:port
 
   ds.start(); // start the periodic tx of packets
-  // schedule a stop after some time
-  boost::asio::steady_timer end_timer(io, std::chrono::seconds(60));
-  end_timer.async_wait([&ds,&dc]
-		       (const boost::system::error_code&) -> void {
-			 if (!ds.is_stopped()) {
-			   ds.stop();
-			   BOOST_ERROR("data_server did not stop");
-			 }
-			 if (!dc.is_stopped()) {
-			   dc.stop();
-			   BOOST_ERROR("data_client did not stop");
-			 }
-		       });
-    io.run(); // enter the io_service loop: process both the server and
+  setup_termination_checks(io, ds, dc, 180);
+  io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
 
@@ -733,31 +723,7 @@ BOOST_AUTO_TEST_CASE(uep_recv_all) {
 			    // server's ip:port
 
   ds.start(); // start the periodic tx of packets
-  // schedule a stop after some time
-  boost::asio::steady_timer ds_end_timer(io, std::chrono::seconds(60));
-  boost::asio::steady_timer dc_end_timer(io, ds_end_timer.expires_at());
-  ds_end_timer.async_wait([&ds] (const boost::system::error_code &ec) -> void {
-      if (ec == boost::asio::error::operation_aborted)
-	return;
-      if (!ds.is_stopped()) {
-	ds.stop();
-	BOOST_ERROR("data_server did not stop");
-      }
-    });
-  dc_end_timer.async_wait([&dc] (const boost::system::error_code &ec) -> void {
-      if (ec == boost::asio::error::operation_aborted)
-	return;
-      if (!dc.is_stopped()) {
-	dc.stop();
-	BOOST_ERROR("data_client did not stop");
-      }
-    });
-  dc.add_stop_handler([&dc_end_timer](const boost::system::error_code &ec) -> void {
-      dc_end_timer.cancel();
-    });
-  ds.add_stop_handler([&ds_end_timer](const boost::system::error_code &ec) -> void {
-      ds_end_timer.cancel();
-    });
+  setup_termination_checks(io, ds, dc, 180);
   io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)
@@ -849,31 +815,9 @@ BOOST_AUTO_TEST_CASE(uep_padding) {
 			    // server's ip:port
 
   ds.start(); // start the periodic tx of packets
-  // schedule a stop after some time
-  boost::asio::steady_timer ds_end_timer(io, std::chrono::seconds(180));
-  boost::asio::steady_timer dc_end_timer(io, ds_end_timer.expires_at());
-  ds_end_timer.async_wait([&ds] (const boost::system::error_code &ec) -> void {
-      if (ec == boost::asio::error::operation_aborted)
-	return;
-      if (!ds.is_stopped()) {
-	ds.stop();
-	BOOST_ERROR("data_server did not stop");
-      }
-    });
-  dc_end_timer.async_wait([&dc] (const boost::system::error_code &ec) -> void {
-      if (ec == boost::asio::error::operation_aborted)
-	return;
-      if (!dc.is_stopped()) {
-	dc.stop();
-	BOOST_ERROR("data_client did not stop");
-      }
-    });
-  dc.add_stop_handler([&dc_end_timer](const boost::system::error_code &ec) -> void {
-      dc_end_timer.cancel();
-    });
-  ds.add_stop_handler([&ds_end_timer](const boost::system::error_code &ec) -> void {
-      ds_end_timer.cancel();
-    });
+
+  setup_termination_checks(io, ds, dc, 180);
+
   io.run(); // enter the io_service loop: process both the server and
 	    // the client scheduled actions until they stop (empty
 	    // action queue)

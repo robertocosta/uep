@@ -1,5 +1,7 @@
 #include "server.hpp"
 
+#include <unistd.h>
+
 /*
   1: client to server: streamName
   2: server to client: TXParam
@@ -33,7 +35,9 @@ const uep_server_parameters DEFAULT_SERVER_PARAMETERS{
   50,
   true,
   0,
-  "12312"
+  "12312",
+  true,
+  uep_encoder<>::MAX_SEQNO
 };
 
 std::shared_ptr<control_connection>
@@ -138,6 +142,7 @@ void control_connection::handle_stream_name() {
 
   ds.target_send_rate(srv_params.sendRate);
   ds.enable_ack(srv_params.ack);
+  ds.max_sequence_number(srv_params.max_n_per_block);
 }
 
 void control_connection::send_client_params() {
@@ -241,6 +246,9 @@ void control_server::forget_connection(const control_connection &c) {
     BOOST_LOG_SEV(basic_lg, log::debug) << "Forget connection from "
 					<< (*i)->socket().remote_endpoint();
     active_conns.erase(i);
+    if (server_params.oneshot) {
+      acceptor.cancel();
+    }
   }
 }
 
@@ -259,10 +267,12 @@ void control_server::start_accept() {
 
 void control_server::handle_accept(std::shared_ptr<control_connection> new_connection,
 				   const boost::system::error_code& error) {
+  if (error == boost::asio::error::operation_aborted) return;
+
   if (error) {
     std::cerr << "Error on async_accept: " << error.message() << std::endl;
   }
-  else {
+  else if (!server_params.oneshot || active_conns.empty()) {
     BOOST_LOG_SEV(basic_lg, log::debug) << "New connection from "
 					<< new_connection->socket().remote_endpoint();
     active_conns.push_back(new_connection);
@@ -285,12 +295,62 @@ int main(int argc, char **argv) {
 
   net::uep_server_parameters srv_params = net::DEFAULT_SERVER_PARAMETERS;
 
-  if (argc > 1) {
-    srv_params.tcp_port_num = argv[1];
-  }
-  if (argc > 2) {
-    std::cerr << "Too many args" << std::endl;
-    return 1;
+  int c;
+  opterr = 0;
+  while ((c = getopt(argc, argv, "p:r:n:lK:R:E:c:d:")) != -1) {
+    switch (c) {
+    case 'p':
+      srv_params.tcp_port_num = optarg;
+      break;
+    case 'r':
+      srv_params.sendRate = std::strtod(optarg, nullptr);
+      break;
+    case 'n':
+      srv_params.max_n_per_block = std::strtoull(optarg, nullptr, 10);
+      break;
+    case 'l':
+      srv_params.oneshot = false;
+      break;
+    case 'K': {
+      std::istringstream iss(optarg);
+      iss >> srv_params.Ks;
+      break;
+    }
+    case 'R': {
+      std::istringstream iss(optarg);
+      iss >> srv_params.RFs;
+      break;
+    }
+    case 'E': {
+      srv_params.EF = std::strtoull(optarg, nullptr, 10);
+      break;
+    }
+    case 'c': {
+      srv_params.c = std::strtod(optarg, nullptr);
+      break;
+    }
+    case 'd': {
+      srv_params.delta = std::strtod(optarg, nullptr);
+      break;
+    }
+    case 'L':
+      srv_params.packet_size = std::strtoull(optarg, nullptr, 10);
+      break;
+    default:
+      std::cerr << "Usage: " << argv[0]
+		<< " [-p <local control port>]"
+		<< " [-r <send rate>]"
+		<< " [-n <max pkts per block>]"
+		<< " [-l]"
+		<< " [-K '[<K0>, <K1>, ...]']"
+		<< " [-R '[<RF0>, <RF1>, ...]']"
+		<< " [-E <EF>]"
+		<< " [-c <c>]"
+		<< " [-d <delta>]"
+		<< " [-L <pktsize>]"
+		<< std::endl;
+      return 2;
+    }
   }
 
   // We need to create a server object to accept incoming client connections.
