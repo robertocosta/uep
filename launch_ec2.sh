@@ -3,6 +3,8 @@
 set -eu -o pipefail
 set -x
 
+script="$1"
+
 instance_id=$(aws ec2 run-instances \
 		  --region us-east-1 \
 		  --image-id ami-5cbe7326 \
@@ -46,8 +48,24 @@ while true; do
     fi
 done
 
-# Open interactive ssh
-ssh -o ConnectTimeout=10 \
-    -o UserKnownHostsFile=/dev/null \
-    -o StrictHostKeyChecking=no \
-    admin@"$ipaddr"
+if [ -z "$script" ]; then
+    # Open interactive SSH
+    ssh -o ConnectTimeout=10 \
+	-o UserKnownHostsFile=/dev/null \
+	-o StrictHostKeyChecking=no \
+	admin@"$ipaddr"
+else
+    # Send the script
+    script_base64=$(base64 "$script")
+    ssh -o ConnectTimeout=10 \
+	-o UserKnownHostsFile=/dev/null \
+	-o StrictHostKeyChecking=no \
+	admin@"$ipaddr" <<EOF
+	    set -eux -o pipefail
+	    base64 -d <<< "${script_base64}" > "${script}"
+	    chmod a+x "${script}"
+	    sudo apt-get update
+	    sudo apt-get install -y screen
+	    screen -d -m -L screen.log bash "${script}"
+EOF
+fi

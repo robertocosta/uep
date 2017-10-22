@@ -8,17 +8,23 @@ PREPARE_VIDEO=FAILED
 RUN=FAILED
 PROCESS_OUTPUT=FAILED
 
+UPLOADED_FILES=""
+
 function send_aws_mail {
-    msg_str="$1
-BUILD = ${BUILD}
-PREPARE_VIDEO=${PREPARE_VIDEO}
-RUN=${RUN}
-PROCESS_OUTPUT=${PROCESS_OUTPUT}"
+    tmpfile=$(mktemp)
+    echo "$1" >> "$tmpfile"
+    echo "BUILD = ${BUILD}" >> "$tmpfile"
+    echo "PREPARE_VIDEO = ${PREPARE_VIDEO}" >> "$tmpfile"
+    echo "RUN = ${RUN}" >> "$tmpfile"
+    echo "PROCESS_OUTPUT = ${PROCESS_OUTPUT}" >> "$tmpfile"
+    echo "--- UPLOADED_FILES ---" >> "$tmpfile"
+    echo -e "${UPLOADED_FILES}" >> "$tmpfile"
 
     aws sns publish \
 	--region 'us-east-1' \
 	--topic-arn 'arn:aws:sns:us-east-1:402432167722:NotifyMe' \
-	--message "${msg_str}"
+	--message "file://${tmpfile}"
+    rm "${tmpfile}"
 }
 
 trap "send_aws_mail 'There was an error'" ERR
@@ -69,7 +75,10 @@ wait
 # Upload logs
 subdir_name=$(date +'%Y-%m-%d_%H-%M-%S')
 for l in *.log; do
-    aws s3 cp "$l" s3://uep.zanol.eu/simulation_logs/"$subdir_name"/"$l"
+    s3_url="s3://uep.zanol.eu/simulation_logs/${subdir_name}/${l}"
+    aws s3 cp "$l" "$s3_url"
+    publink=$(aws s3 presign "$s3_url" --expires-in 31536000)
+    UPLOADED_FILES="${UPLOADED_FILES}${l}: ${publink}\n"
 done
 popd
 
