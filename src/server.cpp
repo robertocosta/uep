@@ -289,7 +289,11 @@ using namespace std;
 using namespace uep;
 
 int main(int argc, char **argv) {
+#ifdef UEP_VERBOSE_LOGS
   log::init("server.log");
+#else
+  log::init("server.log", log::info);
+#endif
   log::default_logger basic_lg = log::basic_lg::get();
   log::default_logger perf_lg = log::perf_lg::get();
 

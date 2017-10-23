@@ -25,13 +25,18 @@ void init() {
 }
 
 void init(const std::string &perflog) {
+  init(perflog, trace);
+}
+
+void init(const std::string &perflog, severity_level console_level) {
   if (was_inited) throw std::runtime_error("uep::log::init was called twice");
   else was_inited = true;
 
   logging::add_common_attributes();
 
   auto filter_perf =  expr::attr<channel_type>("Channel") == performance;
-  auto filter_basic =  expr::attr<channel_type>("Channel") == basic;
+  auto filter_basic =  expr::attr<channel_type>("Channel") == basic &&
+    expr::attr<severity_level>("Severity") >= console_level;
 
   auto formatter_perf = expr::stream
     << expr::format_date_time<boost::posix_time::ptime>("TimeStamp",

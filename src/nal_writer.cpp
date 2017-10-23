@@ -92,11 +92,12 @@ void nal_writer::enqueue_nals(bool must_end) {
 	nal_buf.clear();
       }
       else {
+	std::size_t drop_count = nal_buf.size() >= 3 ? nal_buf.size()-3 : 0;
 	BOOST_LOG_SEV(basic_lg, log::trace) << "Found no startcode:"
-					    << " drop " << nal_buf.size()-3
+					    << " drop " << drop_count
 					    << " bytes from the nal_buf";
 	// Leave 3 bytes (possible begin of startcode)
-	nal_buf.erase(nal_buf.begin(), nal_buf.end() - 3);
+	nal_buf.erase(nal_buf.begin(), nal_buf.begin() + drop_count);
       }
       return;
     }
@@ -130,8 +131,7 @@ void nal_writer::enqueue_nals(bool must_end) {
 					    << " bytes, clear the nal_buf";
 	const char *ic = &(*i);
 	size_t cnt = end-i;
-  file.write(ic, cnt);
-  file.flush();
+	file.write(ic, cnt);
 	nal_buf.clear();
       }
       else {
@@ -151,7 +151,6 @@ void nal_writer::enqueue_nals(bool must_end) {
     const char *ic = &(*i);
     size_t cnt = end-i;
     file.write(ic, cnt);
-    file.flush();    
     i = end;
     BOOST_LOG_SEV(basic_lg, log::trace) << "Advance i to " << (void*) &*i;
   }

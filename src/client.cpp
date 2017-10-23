@@ -242,7 +242,11 @@ using namespace uep::net;
 using namespace uep;
 
 int main(int argc, char* argv[]) {
+#ifdef UEP_VERBOSE_LOGS
   log::init("client.log");
+#else
+  log::init("client.log", log::info);
+#endif
   default_logger basic_lg(boost::log::keywords::channel = basic);
   default_logger perf_lg(boost::log::keywords::channel = performance);
 

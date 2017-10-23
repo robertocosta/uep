@@ -12,6 +12,7 @@ elseif(${CMAKE_BUILD_TYPE} STREQUAL Debug)
   add_compile_options(-O0 -ggdb)
   set(CMAKE_POSITION_INDEPENDENT_CODE False)
   add_definitions(-DBOOST_ASIO_ENABLE_HANDLER_TRACKING)
+  add_definitions(-DUEP_VERBOSE_LOGS)
 endif(${CMAKE_BUILD_TYPE} STREQUAL Release)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

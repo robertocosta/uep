@@ -48,7 +48,11 @@ typedef boost::log::sources::severity_channel_logger<
  *  once.
  */
 void init(const std::string &perflog);
-
+/** Setup the logging library. Write the basic messages to the console
+ *  if their severity is at least at the given value. Write the
+ *  performance messages to the given file.
+ */
+void init(const std::string &perflog, severity_level console_level);
 /** Setup the logging library. Write the basic messages to the console
  *  and the performance messages to `/dev/null`. Can be called only
  *  once.
