@@ -68,7 +68,8 @@ PREPARE_VIDEO=OK
 
 # Run
 pushd build/bin
-./server -K '[50, 950]' -R '[1, 1]' -E 1 -n 1080 > server_console.log 2>&1 &
+./server -K '[50, 950]' -R '[1, 1]' -E 1 -n 1080 -r 1000000 > server_console.log 2>&1 &
+sleep 10
 ./client -n stefan_cif_long -t 30 -p 0 > client_console.log 2>&1 &
 wait
 
