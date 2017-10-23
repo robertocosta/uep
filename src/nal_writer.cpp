@@ -92,11 +92,12 @@ void nal_writer::enqueue_nals(bool must_end) {
 	nal_buf.clear();
       }
       else {
+	std::size_t drop_count = nal_buf.size() >= 3 ? nal_buf.size()-3 : 0;
 	BOOST_LOG_SEV(basic_lg, log::trace) << "Found no startcode:"
-					    << " drop " << nal_buf.size()-3
+					    << " drop " << drop_count
 					    << " bytes from the nal_buf";
 	// Leave 3 bytes (possible begin of startcode)
-	nal_buf.erase(nal_buf.begin(), nal_buf.end() - 3);
+	nal_buf.erase(nal_buf.begin(), nal_buf.begin() + drop_count);
       }
       return;
     }
