@@ -31,7 +31,8 @@
                 "/usr/local/include",
                 "${workspaceRoot}",
                 "${workspaceRoot}/src",
-                "${workspaceRoot}/test"
+                "${workspaceRoot}/test",
+                "c:/usr/include/c++/4.8"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

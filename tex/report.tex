@@ -1,0 +1,129 @@
+\documentclass[italian, 11pt]{article}
+\usepackage{float}
+%%% font & looks %%%
+\usepackage{mathpazo}
+%\usepackage{palatino}
+%\usepackage{kpfonts}
+%\usepackage{times}
+%\usepackage{charter}
+%\usepackage{utopia}
+
+% list of fonts available here - http://www.tug.dk/FontCatalogue/
+% and here - https://www.sharelatex.com/learn/Font_typefaces
+
+\usepackage{microtype}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[parfill]{parskip}
+\usepackage[a4paper, left=25mm, top=25mm, right=25mm, bottom=25mm]{geometry}
+\usepackage{bm}
+\usepackage[labelfont=bf,font={small,it}]{caption}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+
+%%% boxes %%%
+\usepackage{framed}
+%\setlength\FrameSep{0.5em}
+
+% math
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm} 
+\usepackage{wasysym}
+
+% graphics
+\usepackage{multirow}
+\usepackage{placeins}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{pgfplots}
+  \pgfplotsset{compat=newest}
+  %% the following commands are needed for some matlab2tikz features
+  \usetikzlibrary{plotmarks}
+  \usetikzlibrary{arrows.meta}
+  \usepgfplotslibrary{patchplots}
+  \usepackage{grffile}
+  \usepackage{amsmath}
+  
+  
+% extra
+\usepackage{todonotes} %\todo{ note } , \listoftodos
+\usepackage{blindtext}
+\usepackage{lipsum}
+\usepackage{tikz}
+\usetikzlibrary{patterns}
+\usetikzlibrary{decorations.pathreplacing,angles,quotes}
+\usepackage{chemformula}
+\usepackage{textcomp}
+
+% better tables
+\usepackage{booktabs}
+
+%%% links %%%
+\usepackage{hyperref}
+\hypersetup{
+	linktocpage,
+	colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+\usepackage[framed,numbered]{matlab-prettifier}
+\tikzset{
+  font={\fontsize{9pt}{12}\selectfont}}
+
+%%% references %%%
+\usepackage[noabbrev,capitalize,nameinlink]{cleveref}
+
+% new commands
+\newcommand{\horline}{\rule{1\linewidth}{0.9pt}}
+\newcommand{\curl}{\nabla \times}
+\renewcommand{\div}{\nabla \cdot}
+\newcommand{\laplac}{\nabla^2}
+\newcommand{\grad}{\nabla}
+
+\newtheorem{p}{\\[5mm] \large Problem}
+\newenvironment{s}{%\small%
+        \begin{trivlist} \item \textbf{Solution}. }{%
+            \end{trivlist}}%
+\begin{document}
+\begin{center}
+	%\horline\\
+	\Large Wireless Systems And Networks\\
+	\huge \textbf{Project: Unequal Error Protection}\\[3mm]
+	\begin{framed}
+		\Large \textbf{Workgroup} \\[2mm]
+		\normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
+	\end{framed}
+	%\horline
+\end{center}	
+\FloatBarrier
+\section{Sommario}
+La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, regolando la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
+Verrà analizzata la correttezza della trasmissione (in termini di Bit Error Rate e PSNR) al variare della Bit Error Rate del canale. Verranno inoltre analizzate la complessità computazionale di codifica e decodifica e il tempo ad esse associato, al variare della ridondanza aggiunta.\\
+Il progetto è stato realizzato in C++; Python è stato usato per riportare graficamente i risultati ottenuti.
+\section{Introduzione}
+A livello applicazione, il protocollo di codifica video usato è H.264/SVC (Scalable Video Coding), in cui il flusso video è codificato in n diversi flussi con differente priorità.\\
+Il flusso video viene inizialmente segmentato in una serie di GOP (gruppi di immagini); successivamente, per ogni segmento, il flusso a priorità maggiore (layer 0) manda l'informazione relativa l'immagine iniziale e alla variazione delle basse frequenze della trasformata discreta di Fourier di ogni frame successivo; tale layer è indispensabile per la decodifica, mentre i flussi con priorità minore aggiungono qualità al video decodificato, ma non sono indispensabili per la decodifica.\\
+Per questo motivo il layer 0 necessita di una maggiore ridondanza, quando viene trasmesso attraverso il canale fisico.\\
+
+
+
+\section{Approccio tecnico}
+\subsection{Obbiettivi}
+\subsection{Diagramma}
+\subsection{Modelli matematici}
+i.i.d. channel w. Error rate\\
+
+\section{Risultati}
+
+\section{Conclusioni}
+
+\section{Bibliografia}
+%\begin{figure}[H]
+%	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
+%	\caption{Componenti di $\hat{s}$}\label{fig:s2}
+%\end{figure}
+
+\end{document}

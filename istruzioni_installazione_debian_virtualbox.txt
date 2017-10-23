@@ -18,3 +18,10 @@ sh /mnt/VBoxAdd/VBoxLinuxAdditions.run
 
 Shared folder
 mount -t vboxsf uep /mnt/d/git/uep
+
+
+for usb wifi adapter alfa network AWUS036NH
+add contrib non-free
+to each line of /etx/apt/sources.list
+aptitude
+search firmware-ralink
