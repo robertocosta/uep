@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -eu -o pipefail
-set -x
 
 script="$1"
 
@@ -65,7 +64,8 @@ else
 	    base64 -d <<< "${script_base64}" > "${script}"
 	    chmod a+x "${script}"
 	    sudo apt-get update
-	    sudo apt-get install -y screen
-	    screen -d -m -L screen.log bash "${script}"
+	    sudo apt-get install -y screen python3-numpy
+	    screen -d -m -L screen.log python3 "${script}"
 EOF
+    echo "Started ${script} at ${ipaddr}"
 fi
