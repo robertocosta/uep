@@ -311,6 +311,7 @@ int main(int argc, char **argv) {
       break;
     case 'n':
       srv_params.max_n_per_block = std::strtoull(optarg, nullptr, 10);
+      srv_params.ack = false;
       break;
     case 'l':
       srv_params.oneshot = false;
