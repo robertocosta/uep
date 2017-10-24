@@ -33,6 +33,30 @@ class overhead_scanner:
                                       "blockno=(\d+)[^\}]*"
                                       "size=(\d+).*?\}",
                                       lt_pkts_h)
+        self.base_layer = {"sizes": [], "padding": []}
+        self.enhancement_layers = {"sizes": [], "padding": []}
+        self.uep_pktsize = None
+        def nal_sizes_h(m):
+            size = int(m.group(1))
+            prio = int(m.group(2))
+            pad = int(m.group(3))
+            pktsize = int(m.group(4))
+
+            if prio == 0:
+                self.base_layer["sizes"].append(size)
+                self.base_layer["padding"].append(pad)
+            else:
+                self.enhancement_layers["sizes"].append(size)
+                self.enhancement_layers["padding"].append(pad)
+                if self.uep_pktsize is None:
+                    self.uep_pktsize = pktsize
+        self.server_scanner.add_regex("nal_reader::pack_nals.*after_padding.*"
+                                      "packed_size=(\d+).*"
+                                      "priority=(\d+).*"
+                                      "padding=(\d+).*"
+                                      "pkt_size=(\d+)",
+                                      nal_sizes_h)
+
 
     def scan(self):
         self.server_scanner.scan()
@@ -48,8 +72,41 @@ class overhead_scanner:
         print("Total UDP payload = {:f} MByte".format(self.tot_udp_size / 1024 / 1024))
         print("Total LT encoded data = {:f} MByte".format(self.tot_lt_size / 1024 / 1024))
         print("Total input LT blocks = {:d}".format(len(self.lt_blocks)))
-        
 
+        self.tot_bl_size = sum(self.base_layer["sizes"])
+        self.tot_bl_pad = sum(self.base_layer["padding"])
+        self.tot_el_size = sum(self.enhancement_layers["sizes"])
+        self.tot_el_pad = sum(self.enhancement_layers["padding"])
+        print("Total original size: BL = {:f} Mbyte, EL = {:f} MByte".format(self.tot_bl_size / 1024 /1024,
+                                                                             self.tot_el_size /1024 / 1024))
+        print("Total size = {:f} MByte".format((self.tot_bl_size + self.tot_el_size) / 1024 /1024))
+        self.tot_after_pad = (self.tot_bl_size + self.tot_el_size +
+                              self.tot_bl_pad + self.tot_el_pad)
+        self.uep_pkt_count = self.tot_after_pad / self.uep_pktsize
+        print("Total after padding {:f} MByte."
+              " UEP source packets = {:d} ({:d} bytes)."
+              " Padding = {:f} Mbyte.".format(self.tot_after_pad / 1024 / 1024,
+                                              self.uep_pkt_count,
+                                              self.uep_pktsize,
+                                              (self.tot_bl_pad + self.tot_el_pad) / 1024 / 1024))
+
+        self.avg_bl_size = np.mean(self.base_layer["sizes"])
+        self.avg_el_size = np.mean(self.enhancement_layers["sizes"])
+
+        self.avg_bl_pad = np.mean(self.base_layer["padding"])
+        self.avg_el_pad = np.mean(self.enhancement_layers["padding"])
+
+        self.bl_frac = self.avg_bl_size / (self.avg_bl_size + self.avg_el_size)
+        self.el_frac = self.avg_el_size / (self.avg_bl_size + self.avg_el_size)
+
+        print("Base layer: avg. size = {:e},"
+              " avg. padding = {:e}".format(self.avg_bl_size,
+                                            self.avg_bl_pad))
+        print("Enhancement layers: avg. size = {:e},"
+              " avg.padding = {:e}".format(self.avg_el_size,
+                                           self.avg_el_pad))
+        print("BL fraction = {:e},"
+              " EL fraction = {:e}".format(self.bl_frac, self.el_frac))
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -60,3 +117,18 @@ if __name__ == "__main__":
     clientlog = sys.argv[2]
     ohs = overhead_scanner(serverlog)
     ohs.scan()
+
+    plt.figure()
+    plt.hist(ohs.base_layer["sizes"])
+    plt.title("Chunk sizes - Base Layer")
+    plt.figure()
+    plt.hist(ohs.enhancement_layers["sizes"])
+    plt.title("Chunk sizes - Enhanc. Layers")
+    plt.figure()
+    plt.hist(ohs.base_layer["padding"])
+    plt.title("Padding - Base Layer")
+    plt.figure()
+    plt.hist(ohs.enhancement_layers["padding"])
+    plt.title("Padding - Enhanc. Layers")
+
+    plt.show()
