@@ -54,18 +54,19 @@ if [ -z "$script" ]; then
 	-o StrictHostKeyChecking=no \
 	admin@"$ipaddr"
 else
-    # Send the script
+    # Send the script, run while keeping the shell open
+    echo "Starting ${script} at ${ipaddr}"
     script_base64=$(base64 "$script")
     ssh -o ConnectTimeout=10 \
 	-o UserKnownHostsFile=/dev/null \
 	-o StrictHostKeyChecking=no \
 	admin@"$ipaddr" <<EOF
-	    set -eux -o pipefail
+	    set -eu -o pipefail
 	    base64 -d <<< "${script_base64}" > "${script}"
 	    chmod a+x "${script}"
 	    sudo apt-get update
-	    sudo apt-get install -y screen python3-numpy
-	    screen -d -m -L screen.log python3 "${script}"
+	    sudo apt-get install -y screen python3-numpy python3-boto3
+	    sleep 10
+	    screen -L screen.log python3 "${script}"
 EOF
-    echo "Started ${script} at ${ipaddr}"
 fi
