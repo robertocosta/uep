@@ -44,16 +44,21 @@ def build():
     global PROGRESS
 
     # Get dependencies
-    check_call(["sudo", "apt-get", "update"])
-    check_call(["sudo", "apt-get", "install" ,"-y",
-                "build-essential",
-                "cmake",
-                "git",
-                "libboost-all-dev",
-                "libprotobuf-dev",
-                "libpthread-stubs0-dev",
-                "p7zip",
-                "protobuf-compiler"])
+    while True:
+        try:
+            check_call(["sudo", "apt-get", "update"])
+            check_call(["sudo", "apt-get", "install" ,"-y",
+                        "build-essential",
+                        "cmake",
+                        "git",
+                        "libboost-all-dev",
+                        "libprotobuf-dev",
+                        "libpthread-stubs0-dev",
+                        "p7zip",
+                        "protobuf-compiler"])
+            break
+        except Exception as e:
+            continue
     print("Dependencies installed")
 
     # Clone repo
