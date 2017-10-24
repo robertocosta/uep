@@ -24,7 +24,7 @@ struct uep_client_parameters {
   std::string local_data_port;
   std::string remote_control_addr;
   std::string remote_control_port;
-  double drop_prob;
+  std::vector<double> drop_probs;
   double timeout;
 };
 
@@ -34,7 +34,7 @@ const uep_client_parameters DEFAULT_CLIENT_PARAMETERS{
   "12345",
   "127.0.0.1",
   "12312",
-  0,
+  {0,1},
   0
 };
 
@@ -178,7 +178,8 @@ private:
     //dc.expected_count(0);
     dc.timeout(client_params.timeout);
     //dc.add_stop_handler();
-    dc.drop_probability(client_params.drop_prob);
+    dc.channel_transition_probabilities(client_params.drop_probs[0],
+					client_params.drop_probs[1]);
     dc.bind(client_params.local_data_port);
   }
 
@@ -269,9 +270,18 @@ int main(int argc, char* argv[]) {
     case 'r':
       client_params.remote_control_port = optarg;
       break;
-    case 'p':
-      client_params.drop_prob = std::strtod(optarg, nullptr);
+    case 'p': {
+      std::istringstream iss(optarg);
+      if (iss.peek() == '[') {
+	iss >> client_params.drop_probs;
+      }
+      else {
+	double p;
+	iss >> p;
+	client_params.drop_probs = {p, 1-p};
+      }
       break;
+    }
     case 't':
       client_params.timeout = std::strtod(optarg, nullptr);
       break;
@@ -281,7 +291,7 @@ int main(int argc, char* argv[]) {
 		<< " [-s <server addr>]"
 		<< " [-l <local data port>]"
 		<< " [-r <remote control port>]"
-		<< " [-p <drop probability>]"
+		<< " [-p {<drop probability> | [<p_01>, <p_10>]}]"
 		<< " [-t <timeout>]"
 		<< std::endl;
       return 2;

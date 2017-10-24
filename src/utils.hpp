@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iostream>
 #include <iterator>
+#include <random>
 
 #include <boost/iterator/filter_iterator.hpp>
 
@@ -134,6 +135,59 @@ std::vector<T> read_list(std::istream &in) {
   if (c != ']') throw std::runtime_error("List parsing failed");
   return v;
 }
+
+/** Generate the random states of a 2-state Markov chain. */
+class markov2_distribution {
+public:
+  explicit markov2_distribution(double p) : markov2_distribution(p, 1-p) {
+  }
+
+  explicit markov2_distribution(double p01, double p10) :
+    tx_01(p01), tx_10(p10) {
+    std::bernoulli_distribution initial(p01 / (p01 + p10));
+    state = initial(rng) ? 1 : 0;
+  }
+
+  void set_tx_probs(double p01, double p10) {
+    using dist_t = decltype(tx_01);
+    tx_01 = dist_t(p01);
+    tx_10 = dist_t(p10);
+  }
+
+  f_uint operator()() {
+    switch (state) {
+    case 0:
+      state = tx_01(rng) ? 1 : 0;
+      break;
+    case 1:
+      state = tx_10(rng) ? 0 : 1;
+      break;
+    }
+    return state;
+  }
+
+  double stationary_p0() const {
+    return tx_10.p() / (tx_10.p() + tx_01.p());
+  }
+
+  double stationary_p1() const {
+    return tx_01.p() / (tx_10.p() + tx_01.p());
+  }
+
+  double p_01() const {
+    return tx_01.p();
+  }
+
+  double p_10() const {
+    return tx_10.p();
+  }
+
+private:
+  f_uint state;
+  std::random_device rng;
+  std::bernoulli_distribution tx_01;
+  std::bernoulli_distribution tx_10;
+};
 
 namespace std {
 

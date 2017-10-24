@@ -14,6 +14,7 @@
 #include "counter.hpp"
 #include "log.hpp"
 #include "packets_rw.hpp"
+#include "utils.hpp"
 
 namespace uep { namespace net {
 
@@ -96,6 +97,12 @@ public:
   void drop_probability(double p);
   /** Get the probability to drop a received packet. */
   double drop_probability() const;
+  /** Set the transition probabilties of the channel state. In state G
+   *  all packets are good, in state B all packets are dropped.
+   */
+  void channel_transition_probabilities(double p_GB, double p_BG);
+  /** Get the channel state transition probabilities. */
+  std::pair<double, double> channel_transition_probabilities() const;
 
   /** Add an handler that will be called when this client stops. */
   template <class H>
@@ -159,10 +166,9 @@ private:
 				 */
   std::atomic_bool is_stopped_;
 
-  std::random_device drop_rng; /**< RNG for packet dropping. */
-  std::bernoulli_distribution drop_dist; /**< Distribution of packet
-					  *   dropping.
-					  */
+  markov2_distribution drop_dist; /**< Distribution of packet
+				   *   dropping.
+				   */
 
   boost::asio::steady_timer timeout_timer; /**< Timer used to stop the
 					   *   reception after some
@@ -743,14 +749,24 @@ double data_client<Decoder,Sink>::timeout() const {
 
 template<typename Decoder, typename Sink>
 void data_client<Decoder,Sink>::drop_probability(double p) {
-  using param_t = typename decltype(drop_dist)::param_type;
-  auto param = param_t(p);
-  drop_dist.param(param);
+  drop_dist.set_tx_probs(p, 1-p);
 }
 
 template<typename Decoder, typename Sink>
 double data_client<Decoder,Sink>::drop_probability() const {
-  return drop_dist.p();
+  return drop_dist.stationary_p1();
+}
+
+template<typename Decoder, typename Sink>
+void data_client<Decoder,Sink>::channel_transition_probabilities(double p_GB,
+								 double p_BG) {
+  drop_dist.set_tx_probs(p_GB, p_BG);
+}
+
+template<typename Decoder, typename Sink>
+std::pair<double, double>
+data_client<Decoder,Sink>::channel_transition_probabilities() const {
+  return std::make_pair(drop_dist.p_01(), drop_dist.p_10());
 }
 
 template <class Decoder, class Sink>
@@ -966,7 +982,7 @@ void data_client<Decoder, Sink>::handle_stop() {
 
 template<typename Decoder, typename Sink>
 bool data_client<Decoder,Sink>::drop_packet(const fountain_packet &p) {
-  return drop_dist(drop_rng);
+  return drop_dist() == 1;
 }
 
 //	   data_server<Encoder,Source> template definitions
