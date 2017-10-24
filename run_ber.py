@@ -126,16 +126,18 @@ def run():
 
     os.chdir("uep/build/bin")
 
-    udp_bers = np.logspace(-8, -1, 40)
+    udp_bers = np.logspace(-4, -0.1, 24)
+    avg_bad_run = 500
     for (b_i, b) in enumerate(udp_bers):
         srv_clog = open("server_console.log", "wt")
         srv_tcp_port = 12312 + b_i
         srv_proc = Popen(["./server",
                           "-p", str(srv_tcp_port),
-                          "-K", "[100, 900]",
-                          "-R", "[3, 1]",
-                          "-E", "4",
-                          "-n", "6000"],
+                          "-K", "[200, 4000]",
+                          "-R", "[5, 1]",
+                          "-E", "1",
+                          "-n", "5500"
+                          "-r", "500000"],
                          stdout=srv_clog,
                          stderr=srv_clog)
 
@@ -148,7 +150,8 @@ def run():
                           "-r", str(srv_tcp_port),
                           "-n", "stefan_cif",
                           "-t", "30",
-                          "-p", str(b)],
+                          "-p", "[{:e}, {:e}]".format(1/avg_bad_run * b/(1-b),
+                                                      1/avg_bad_run)],
                          stdout=clt_clog,
                          stderr=clt_clog)
 
