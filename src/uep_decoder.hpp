@@ -21,8 +21,8 @@ public:
   /** The collection of parameters required to setup the decoder. */
   typedef lt_uep_parameter_set parameter_set;
 
-  static constexpr std::size_t MAX_BLOCKNO = lt_decoder::MAX_BLOCKNO;
   static constexpr std::size_t BLOCK_WINDOW = lt_decoder::BLOCK_WINDOW;
+  static constexpr std::size_t MAX_BLOCKNO = lt_decoder::MAX_BLOCKNO;
 
   explicit uep_decoder(const parameter_set &ps);
   template<typename KsIter, typename RFsIter>
@@ -127,12 +127,10 @@ public:
   /** True if all the decoded packets have been extracted. */
   bool operator!() const;
 
+  const uep_row_generator &row_generator() const;
+
 private:
   log::default_logger basic_lg, perf_lg;
-
-  std::vector<std::size_t> Ks; /**< Array of sub-block sizes. */
-  std::vector<std::size_t> RFs; /**< Array of repetition factors. */
-  std::size_t EF; /**< Expansion factor. */
 
   std::vector<queue_type> out_queues; /**< Hold the deduplicated
 					 packets with their
@@ -144,10 +142,6 @@ private:
   circular_counter<> seqno_ctr; /**< Counter for the sequence number
 				 *   of the UEP packets.
 				 */
-  position_mapper dec_pos_map; /**< Map of the positions from
-				*   the expanded block to the
-				*   original block.
-				*/
   std::unique_ptr<lt_decoder> std_dec; /**< The standard LT
 					*    decoder. Use a pointer to
 					*    delay the construction.
@@ -177,34 +171,27 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
 			 double delta) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ks_begin, ks_end),
-  RFs(rfs_begin, rfs_end),
-  EF(ef),
   empty_queued_count(0),
   seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
-  dec_pos_map(ks_begin, ks_end, rfs_begin, rfs_end, ef),
   tot_dec_count(0),
   tot_fail_count(0) {
-  if (Ks.size() != RFs.size()) {
-    throw std::invalid_argument("Ks, RFs sizes do not match");
-  }
-  out_queues.resize(Ks.size());
-
   auto uep_rowgen = std::make_unique<uep_row_generator>(ks_begin, ks_end,
 							rfs_begin, rfs_end,
 							ef,
 							c,
 							delta);
+  out_queues.resize(uep_rowgen->Ks().size());
+
   std_dec = std::make_unique<lt_decoder>(std::move(uep_rowgen));
-  
+
   seqno_ctr.set(0);
 
   BOOST_LOG_SEV(basic_lg, log::debug) << "Constructed a uep_decoder."
-				      << " Ks=" << Ks
-				      << " RFs=" << RFs
-				      << " EF=" << EF
-				      << " c=" << c
-				      << " delta=" << delta;
+				      << " Ks=" << row_generator().Ks()
+				      << " RFs=" << row_generator().RFs()
+				      << " EF=" << row_generator().EF()
+				      << " c=" << row_generator().c()
+				      << " delta=" << row_generator().delta();
 }
 
 template <class Iter>

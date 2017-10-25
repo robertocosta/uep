@@ -224,4 +224,8 @@ void lt_decoder::enqueue_partially_decoded() {
       "Decoder enqueued a partially decoded block";
 }
 
+const base_row_generator &lt_decoder::row_generator() const {
+  return the_block_decoder.row_generator();
+}
+
 }

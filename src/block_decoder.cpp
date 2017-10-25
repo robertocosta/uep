@@ -155,4 +155,8 @@ void block_decoder::run_message_passing() {
   //		     << received_pkts.size();
 }
 
+const base_row_generator &block_decoder::row_generator() const {
+  return *rowgen;
+}
+
 }

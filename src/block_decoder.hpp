@@ -134,6 +134,8 @@ public:
   /** Return true when the encoder does not have decoded a full block. */
   bool operator!() const;
 
+  const base_row_generator &row_generator() const;
+  
 private:
   log::default_logger basic_lg, perf_lg;
 
