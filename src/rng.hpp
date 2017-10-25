@@ -126,6 +126,92 @@ private:
   std::uniform_int_distribution<std::size_t> packet_distr;
 };
 
+namespace uep {
+
+/** Map the positions from the UEP expanded block to the positions in
+ *  the original block.
+ */
+class position_mapper {
+public:
+  template<typename KsIter, typename RFsIter>
+  explicit position_mapper(KsIter ks_begin, KsIter ks_end,
+			   RFsIter rfs_begin, RFsIter rfs_end,
+			   std::size_t EF) {
+    std::vector<std::size_t> Ks(ks_begin, ks_end);
+    std::vector<std::size_t> RFs(rfs_begin, rfs_end);
+
+    std::size_t K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
+						RFs.cbegin(), 0);
+    map.resize(K_out);
+    auto i = map.begin();
+    std::size_t offset = 0;
+
+    for (std::size_t k = 0; k < Ks.size(); ++k) {
+      std::iota(i, i + Ks[k], offset);
+      auto sb_start = i;
+      i += Ks[k];
+      for (std::size_t r = 1; r < RFs[k]; ++r){
+	i = std::copy(sb_start, sb_start + Ks[k], i);
+      }
+      offset += Ks[k];
+    }
+
+    auto first_rep_end = i;
+    for (std::size_t e = 1; e < EF; ++e) {
+      i = std::copy(map.begin(), first_rep_end, i);
+    }
+  }
+
+  std::size_t operator()(std::size_t pos) const {
+    return map.at(pos);
+  }
+
+private:
+  std::vector<std::size_t> map;
+};
+
+/** Generate row indices according to the UEP method. */
+class uep_row_generator : public base_row_generator {
+  using base_row_generator::rng_type;
+  using base_row_generator::row_type;
+
+public:
+  template<typename KsIter, typename RFsIter>
+  explicit uep_row_generator(KsIter ks_begin, KsIter ks_end,
+			     RFsIter rfs_begin, RFsIter rfs_end,
+			     std::size_t ef,
+			     double c,
+			     double delta);
+
+  virtual ~uep_row_generator() override = default;
+
+  virtual row_type next_row() override;
+  virtual std::size_t K() const override;
+
+  std::size_t K_in() const;
+  std::size_t K_out() const;
+  const std::vector<std::size_t> &Ks() const;
+  const std::vector<std::size_t> &RFs() const;
+  std::size_t EF() const;
+  double c() const;
+  double delta() const;
+private:
+  std::vector<std::size_t> _ks;
+  std::vector<std::size_t> _rfs;
+  std::size_t _ef;
+  double _c;
+  double _delta;
+
+  std::size_t _k_in;
+  std::size_t _k_out;
+
+  robust_soliton_distribution _deg_dist;
+  std::uniform_int_distribution<std::size_t> _p_dist;
+  position_mapper _pos_map;
+};
+
+}
+
 /** Shorthand to build an lt_row_generator using a
  *  robust_soliton_distribution
  */
@@ -136,6 +222,34 @@ lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double de
 template<class Gen>
 std::size_t degree_distribution::operator()(Gen &g) {
   return distrib(g) + 1;
+}
+
+	   //// uep_row_generator template definitions ////
+namespace uep {
+
+template<typename KsIter, typename RFsIter>
+uep_row_generator::uep_row_generator(KsIter ks_begin, KsIter ks_end,
+				     RFsIter rfs_begin, RFsIter rfs_end,
+				     std::size_t ef,
+				     double c,
+				     double delta) :
+_ks(ks_begin, ks_end),
+_rfs(rfs_begin, rfs_end),
+_ef(ef),
+_c(c),
+_delta(delta),
+_k_in(std::accumulate(_ks.cbegin(), _ks.cend(), 0)),
+_k_out(_ef * std::inner_product(_ks.cbegin(), _ks.cend(),
+				_rfs.cbegin(), 0)),
+_deg_dist(_k_out, _c, _delta),
+_p_dist(0, _k_out - 1),
+_pos_map(ks_begin, ks_end, rfs_begin, rfs_end, ef) {
+  if (_ks.size() != _rfs.size())
+    throw std::invalid_argument("Ks, RFs size mismatch");
+  if (_ks.empty())
+    throw std::invalid_argument("Empty Ks, RFs");
+}
+
 }
 
 #endif

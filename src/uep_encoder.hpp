@@ -185,7 +185,14 @@ uep_encoder<Gen>::uep_encoder(KsIter ks_begin, KsIter ks_end,
   K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
 				  RFs.cbegin(), 0);
   K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
-  std_enc = std::make_unique<lt_encoder<Gen>>(K_out, c, delta);
+
+  auto uep_rowgen = std::make_unique<uep_row_generator>(ks_begin, ks_end,
+							rfs_begin, rfs_end,
+							ef,
+							c,
+							delta);
+  std_enc = std::make_unique<lt_encoder<Gen>>(std::move(uep_rowgen));
+
   seqno_ctr.set(0);
 }
 
@@ -290,7 +297,7 @@ void uep_encoder<Gen>::next_block(std::size_t bn) {
   }
 
   // Push `dist-1` empty blocks
-  for (std::size_t i = 0; i < block_size_out() * (dist - 1); ++i) {
+  for (std::size_t i = 0; i < block_size_in() * (dist - 1); ++i) {
     std_enc->push(packet());
   }
 
@@ -362,7 +369,7 @@ std::size_t uep_encoder<Gen>::queue_size() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::size() const {
-  std::size_t enc_size = std_enc->size() / block_size_out() * block_size_in();
+  std::size_t enc_size = std_enc->size(); // / block_size_out() * block_size_in();
   return queue_size() + enc_size;
 }
 
@@ -421,7 +428,7 @@ void uep_encoder<Gen>::check_has_block() {
   }
 
   std::vector<packet> the_block;
-  the_block.resize(block_size_out());
+  the_block.resize(block_size_in());
   auto block_iter = the_block.begin();
 
   // Count the non-padding packets for each sub-block
@@ -440,24 +447,7 @@ void uep_encoder<Gen>::check_has_block() {
       *block_iter++ = p.to_packet();
     }
     auto subblock_end = block_iter;
-
-    // Repeat the sub-block RF-1 times
-    for (std::size_t j = 1; j < RF; ++j) {
-      // Shallow-copy the sub-block
-      for (auto l = subblock_start; l != subblock_end; ++l) {
-	*block_iter++ = l->shallow_copy();
-      }
-    }
     q.pop_block();
-  }
-
-  // Expand EF-1 times
-  auto first_rep_end = block_iter;
-  for (std::size_t i = 1; i < EF; ++i) {
-    // Shallow-copy the first repetition
-    for (auto j = the_block.begin(); j != first_rep_end; ++j) {
-      *block_iter++ = j->shallow_copy();
-    }
   }
 
   BOOST_LOG(perf_lg) << "uep_encoder::check_has_block"

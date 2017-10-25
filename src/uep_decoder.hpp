@@ -9,50 +9,6 @@
 
 namespace uep {
 
-/** Map the positions from the UEP expanded block to the positions in
- *  the original block.
- */
-class position_mapper {
-public:
-  template<typename KsIter, typename RFsIter>
-  explicit position_mapper(KsIter ks_begin, KsIter ks_end,
-			   RFsIter rfs_begin, RFsIter rfs_end,
-			   std::size_t ef) {
-    std::vector<std::size_t> Ks(ks_begin, ks_end);
-    std::vector<std::size_t> RFs(rfs_begin, rfs_end);
-    std::size_t EF(ef);
-
-    //std::size_t K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
-    std::size_t K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
-						RFs.cbegin(), 0);
-    map.resize(K_out);
-    auto i = map.begin();
-    std::size_t offset = 0;
-
-    for (std::size_t k = 0; k < Ks.size(); ++k) {
-      std::iota(i, i + Ks[k], offset);
-      auto sb_start = i;
-      i += Ks[k];
-      for (std::size_t r = 1; r < RFs[k]; ++r){
-	i = std::copy(sb_start, sb_start + Ks[k], i);
-      }
-      offset += Ks[k];
-    }
-
-    auto first_rep_end = i;
-    for (std::size_t e = 1; e < EF; ++e) {
-      i = std::copy(map.begin(), first_rep_end, i);
-    }
-  }
-
-  std::size_t operator()(std::size_t pos) const {
-    return map.at(pos);
-  }
-
-private:
-  std::vector<std::size_t> map;
-};
-
 /** Unequal error protection decoder.
  *  This class wraps an lt_decoder and deduplicates the packets of the
  *  expanded blocks. The output blocks are enqueued in a FIFO queue
@@ -233,7 +189,14 @@ uep_decoder::uep_decoder(KsIter ks_begin, KsIter ks_end,
     throw std::invalid_argument("Ks, RFs sizes do not match");
   }
   out_queues.resize(Ks.size());
-  std_dec = std::make_unique<lt_decoder>(block_size_in(), c, delta);
+
+  auto uep_rowgen = std::make_unique<uep_row_generator>(ks_begin, ks_end,
+							rfs_begin, rfs_end,
+							ef,
+							c,
+							delta);
+  std_dec = std::make_unique<lt_decoder>(std::move(uep_rowgen));
+  
   seqno_ctr.set(0);
 
   BOOST_LOG_SEV(basic_lg, log::debug) << "Constructed a uep_decoder."

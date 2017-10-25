@@ -674,11 +674,11 @@ BOOST_AUTO_TEST_CASE(check_decoder_counters) {
   BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
 
   // Current block does not increment counters until complete
-  for (size_t i = 0; i < K-1; ++i)
+  for (size_t i = 0; i < K_uep-1; ++i)
     dec.push(enc.next_coded());
-  BOOST_CHECK_EQUAL(dec.received_count(), K-1);
+  BOOST_CHECK_EQUAL(dec.received_count(), K_uep-1);
   //BOOST_CHECK(dec.decoded_count() > 0);
-  BOOST_CHECK_EQUAL(dec.total_received_count(), K-1);
+  BOOST_CHECK_EQUAL(dec.total_received_count(), K_uep-1);
   BOOST_CHECK_EQUAL(dec.total_decoded_count(), 0);
   BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
 
@@ -687,7 +687,7 @@ BOOST_AUTO_TEST_CASE(check_decoder_counters) {
     dec.push(enc.next_coded());
   enc.next_block();
   //BOOST_CHECK_EQUAL(dec.decoded_count(), K);
-  BOOST_CHECK_GE(dec.total_received_count(), K);
+  BOOST_CHECK_GE(dec.total_received_count(), K_uep);
   BOOST_CHECK_EQUAL(dec.total_decoded_count(), K_uep);
   BOOST_CHECK_EQUAL(dec.total_failed_count(), 0);
 

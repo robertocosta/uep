@@ -180,12 +180,12 @@ void uep_decoder::deduplicate_queued() {
   while (std_dec->has_queued_packets()) {
     std::size_t decoded = 0;
     std::size_t padding = 0;
-    for (std::size_t i = 0; i != block_size_in(); ++i) {
+    for (std::size_t i = 0; i != block_size_out(); ++i) {
       packet p = std_dec->next_decoded();
       if (p.empty()) continue;
       if (decoded == out_block.size()) continue;
 
-      std::size_t out_i = dec_pos_map(i);
+      std::size_t out_i = i;//dec_pos_map(i);
 
       if (out_block[out_i].buffer().empty()) {
 	uep_packet up = uep_packet::from_packet(p);

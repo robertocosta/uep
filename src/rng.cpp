@@ -143,3 +143,76 @@ void base_row_generator::reset(rng_type::result_type seed) {
 lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double delta) {
   return lt_row_generator(robust_soliton_distribution(K, c, delta));
 }
+
+namespace uep {
+
+base_row_generator::row_type uep_row_generator::next_row() {
+  row_type s_mapped;
+  row_type s;
+
+  do {
+    std::size_t degree = _deg_dist(rng);
+    s_mapped.reserve(degree);
+    s.reserve(degree);
+
+    // Generate `degree` unique indices in [0, Kout)
+    s.clear();
+    for (std::size_t i = 0; i < degree; ++i) {
+      std::size_t index;
+      do {
+	index = _p_dist(rng);
+      } while (find(s.cbegin(), s.cend(), index) != s.cend());
+      s.push_back(index);
+    }
+
+    // Remap in [0, Kin). Elide duplicates
+    s_mapped.clear();
+    for (std::size_t i = 0; i < degree; ++i) {
+      std::size_t index = _pos_map(s[i]);
+      auto j = std::find(s_mapped.cbegin(), s_mapped.cend(), index);
+      if (j == s_mapped.cend()) {
+	s_mapped.push_back(index);
+      }
+      else {
+	s_mapped.erase(j);
+      }
+    }
+  } while (s_mapped.empty()); // Redo if all edges were elided
+
+  ++sel_count;
+  return s_mapped;
+}
+
+std::size_t uep_row_generator::K() const {
+  return _k_in;
+}
+
+std::size_t uep_row_generator::K_in() const {
+  return _k_in;
+}
+
+std::size_t uep_row_generator::K_out() const {
+  return _k_out;
+}
+
+const std::vector<std::size_t> &uep_row_generator::Ks() const {
+  return _ks;
+}
+
+const std::vector<std::size_t> &uep_row_generator::RFs() const {
+  return _rfs;
+}
+
+std::size_t uep_row_generator::EF() const {
+  return _ef;
+}
+
+double uep_row_generator::c() const {
+  return _c;
+}
+
+double uep_row_generator::delta() const {
+  return _delta;
+}
+
+}
