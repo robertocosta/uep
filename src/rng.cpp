@@ -92,27 +92,29 @@ double robust_soliton_distribution::beta() const {
   return beta(K(), K_S, S_delta);
 }
 
+base_row_generator::base_row_generator(rng_type::result_type seed) :
+  rng(seed), sel_count(0), last_seed(seed) {
+}
+
 lt_row_generator::lt_row_generator(const degree_distribution &deg) :
-  degree_distr(deg),
-  packet_distr(0, deg.K()-1),
-  sel_count(0),
-  last_seed(rng_type::default_seed) {}
+  lt_row_generator(deg, rng_type::default_seed) {
+}
 
 lt_row_generator::lt_row_generator(const degree_distribution &deg,
 				   rng_type::result_type seed) :
-  lt_row_generator(deg) {
-  generator.seed(seed);
-  last_seed = seed;
+  base_row_generator(seed),
+  degree_distr(deg),
+  packet_distr(0, deg.K()-1) {
 }
 
 lt_row_generator::row_type lt_row_generator::next_row() {
-  size_t degree = degree_distr(generator);
+  size_t degree = degree_distr(rng);
   row_type s;
   s.reserve(degree);
   for (size_t i = 0; i < degree; ++i) {
     size_t si;
     do {
-      si = packet_distr(generator);
+      si = packet_distr(rng);
     }	while (find(s.begin(), s.end(), si) != s.end());
     s.push_back(si);
   }
@@ -120,7 +122,7 @@ lt_row_generator::row_type lt_row_generator::next_row() {
   return s;
 }
 
-std::size_t lt_row_generator::generated_rows() const {
+std::size_t base_row_generator::generated_rows() const {
   return sel_count;
 }
 
@@ -128,20 +130,14 @@ std::size_t lt_row_generator::K() const {
   return degree_distr.K();
 }
 
-lt_row_generator::rng_type::result_type lt_row_generator::seed() const {
+base_row_generator::rng_type::result_type base_row_generator::seed() const {
   return last_seed;
 }
 
-void lt_row_generator::reset() {
-  generator.seed();
-  last_seed = rng_type::default_seed;
+void base_row_generator::reset(rng_type::result_type seed) {
+  rng.seed(seed);
   sel_count = 0;
-}
-
-void lt_row_generator::reset(rng_type::result_type seed) {
-  generator.seed(seed);
   last_seed = seed;
-  sel_count = 0;
 }
 
 lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double delta) {

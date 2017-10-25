@@ -40,6 +40,8 @@ public:
   explicit lt_decoder(const degree_distribution &distr);
   /** Construct using the given row generator. */
   explicit lt_decoder(const lt_row_generator &rg);
+  /** Construct using the given row generator. */
+  explicit lt_decoder(std::unique_ptr<base_row_generator> &&rg);
 
   /** Pass a received packet. \sa push(fountain_packet&&) */
   void push(const fountain_packet &p);
@@ -131,8 +133,8 @@ public:
 private:
   log::default_logger basic_lg, perf_lg;
 
-  block_decoder the_block_decoder;
   output_block_queue the_output_queue;
+  block_decoder the_block_decoder;
   circular_counter<std::size_t> blockno_counter;
   bool has_enqueued; /**< Set to true when the current block has been
 			decoded and enqueued in the_output_queue. */
