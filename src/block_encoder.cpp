@@ -47,8 +47,8 @@ std::size_t block_encoder::block_size() const {
   return rowgen->K();
 }
 
-lt_row_generator block_encoder::row_generator() const {
-  return dynamic_cast<const lt_row_generator&>(*rowgen);
+base_row_generator &block_encoder::row_generator() const {
+  return *rowgen;
 }
 
 std::size_t block_encoder::output_count() const {

@@ -47,8 +47,8 @@ public:
   /** Return the fixed block size. */
   std::size_t block_size() const;
 
-  /** Return a copy of the row generator being used. */
-  lt_row_generator row_generator() const;
+  /** Return a const reference to the row generator being used. */
+  base_row_generator &row_generator() const;
   /** Return the number of encoded packets generated for the current block. */
   std::size_t output_count() const;
 
@@ -68,7 +68,7 @@ private:
   std::size_t out_count;
 };
 
-// Template definitions
+		    //// Template definitions ////
 
 template <class InputIt>
 void block_encoder::set_block(InputIt first, InputIt last) {

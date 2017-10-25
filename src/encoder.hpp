@@ -194,8 +194,8 @@ public:
   /** Total number of packets held by the encoder. */
   std::size_t size() const { return the_input_queue.size(); }
 
-  /** Return a copy of the lt_row_generator used. */
-  lt_row_generator row_generator() const {
+  /** Return the lt_row_generator used. */
+  const base_row_generator &row_generator() const {
     return the_block_encoder.row_generator();
   }
   /** Return a copy of the RNG used to produce the block seeds. */
