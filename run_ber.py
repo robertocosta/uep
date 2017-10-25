@@ -126,32 +126,30 @@ def run():
 
     os.chdir("uep/build/bin")
 
-    udp_bers = np.logspace(-4, -0.1, 24)
-    avg_bad_run = 500
-    for (b_i, b) in enumerate(udp_bers):
+    overheads = np.linspace(0, 0.4, 40)
+    for (i, oh) in enumerate(overheads):
+        n = int(1000 * (1 + oh))
         srv_clog = open("server_console.log", "wt")
-        srv_tcp_port = 12312 + b_i
+        srv_tcp_port = 12312 + i
         srv_proc = Popen(["./server",
                           "-p", str(srv_tcp_port),
-                          "-K", "[200, 4000]",
-                          "-R", "[5, 1]",
-                          "-E", "1",
-                          "-n", "5500"
-                          "-r", "500000"],
+                          "-K", "[100, 900]",
+                          "-R", "[3, 1]",
+                          "-E", "4",
+                          "-n", str(n),
+                          "-r", "75000"],
                          stdout=srv_clog,
                          stderr=srv_clog)
 
         time.sleep(10)
 
         clt_clog = open("client_console.log", "wt")
-        clt_udp_port = 12345 + b_i
+        clt_udp_port = 12345 + i
         clt_proc = Popen(["./client",
                           "-l", str(clt_udp_port),
                           "-r", str(srv_tcp_port),
-                          "-n", "stefan_cif",
-                          "-t", "30",
-                          "-p", "[{:e}, {:e}]".format(1/avg_bad_run * b/(1-b),
-                                                      1/avg_bad_run)],
+                          "-n", "stefan_cif_long",
+                          "-t", "30"],
                          stdout=clt_clog,
                          stderr=clt_clog)
 
@@ -161,12 +159,15 @@ def run():
         if not (srv_proc.wait() == 0):
             raise subprocess.CalledProcessError(srv_proc.returncode,
                                                 srv_proc.args)
-        print("Run ({:d}/{:d}) with udp_ber={:e} OK".format(b_i+1, len(udp_bers), b))
+        #print("Run ({:d}/{:d}) with udp_ber={:e} OK".format(i+1, len(udp_bers), b))
+        print("Run ({:d}/{:d})"
+              " with overhead={:f}"
+              " (n={:d}) OK".format(i+1, len(overheads), oh, n))
 
         logfiles = glob.glob("*[!0-9].log") # Exclude the already renamed ones
         for l in logfiles:
             m = re.match("(.*)\.log", l)
-            new_l = "{!s}_{:02d}.log".format(m.group(1), b_i)
+            new_l = "{!s}_{:02d}.log".format(m.group(1), i)
             os.replace(l, new_l)
             check_call(["tar", "-cJf", new_l + ".tar.xz", new_l])
             os.remove(new_l)

@@ -27,9 +27,9 @@ if __name__ == "__main__":
     udp_err_rates = []
     uep_err_rates = []
 
-    udp_bers = np.logspace(-8, -1, 10)
-    for (b_i, b) in enumerate(udp_bers):
-        srvname = "server_{:02d}.log".format(b_i)
+    overheads = np.linspace(0, 0.4, 40)
+    for (i, oh) in enumerate(overheads):
+        srvname = "server_{:02d}.log".format(i)
         srvkey = "simulation_logs/{!s}/{!s}.tar.xz".format(s3dir, srvname)
         serverlog = s3.download_file(Bucket='uep.zanol.eu',
                                      Key=srvkey,
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         check_call(["tar", "-xJf", srvname + ".tar.xz"])
         os.remove(srvname + ".tar.xz")
 
-        clientname = "client_{:02d}.log".format(b_i)
+        clientname = "client_{:02d}.log".format(i)
         clientkey = "simulation_logs/{!s}/{!s}.tar.xz".format(s3dir, clientname)
         clientlog = s3.download_file(Bucket='uep.zanol.eu',
                                      Key=clientkey,
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         udp_err_rates.append(bs.udp_err_rate)
         uep_err_rates.append(bs.uep_err_rates)
 
-        print("{:02d} OK".format(b_i))
+        print("{:02d} OK".format(i))
         os.remove(srvname)
         os.remove(clientname)
 
@@ -60,9 +60,14 @@ if __name__ == "__main__":
     lib_err_rates = list(map(lambda x: x[1], uep_err_rates))
 
     plt.figure()
-    plt.scatter(udp_err_rates, mib_err_rates)
-    plt.gca().set_xscale('log')
+    plt.plot(overheads, mib_err_rates, label='MIB')
+    #plt.gca().set_xscale('log')
     plt.gca().set_yscale('log')
-    plt.scatter(udp_err_rates, lib_err_rates)
+    plt.plot(overheads, lib_err_rates, label='LIB')
     plt.ylim(1e-8, 1)
+    plt.legend()
+
+    plt.figure()
+    plt.plot(overheads, udp_err_rates)
+
     plt.show()
