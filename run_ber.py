@@ -3,10 +3,11 @@
 import datetime
 import glob
 import os
+import os.path
 import re
 import subprocess
-import time
 import sys
+import time
 
 import boto3
 import botocore
@@ -62,9 +63,12 @@ def build():
     print("Dependencies installed")
 
     # Clone repo
-    check_call(["git", "clone", "--recursive",
-                "https://github.com/riccz/uep.git"])
-    print("Repo cloned")
+    if not os.path.exists('uep'):
+        check_call(["git", "clone", "--recursive",
+                    "https://github.com/riccz/uep.git"])
+        print("Repo cloned")
+    else:
+        print("Repo already exists")
 
     # Build
     check_call('''
@@ -81,6 +85,11 @@ def build():
 
 def prepare_video():
     global PROGRESS
+
+    if os.path.exists('uep/dataset/stefan_cif_long.264'):
+        print("Dataset already in place")
+        PROGRESS['PREPARE_VIDEO'] = "CACHED"
+        return
 
     config = botocore.client.Config(read_timeout=300)
     s3 = boto3.resource('s3', region_name='us-east-1', config=config)
@@ -126,7 +135,7 @@ def run():
 
     os.chdir("uep/build/bin")
 
-    overheads = np.linspace(0, 0.4, 40)
+    overheads = np.linspace(0, 0.4, 20)
     for (i, oh) in enumerate(overheads):
         n = int(1000 * (1 + oh))
         srv_clog = open("server_console.log", "wt")
@@ -137,7 +146,7 @@ def run():
                           "-R", "[3, 1]",
                           "-E", "4",
                           "-n", str(n),
-                          "-r", "75000"],
+                          "-r", "500000"],
                          stdout=srv_clog,
                          stderr=srv_clog)
 
@@ -149,7 +158,7 @@ def run():
                           "-l", str(clt_udp_port),
                           "-r", str(srv_tcp_port),
                           "-n", "stefan_cif_long",
-                          "-t", "30"],
+                          "-t", "10"],
                          stdout=clt_clog,
                          stderr=clt_clog)
 
