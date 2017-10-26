@@ -18,11 +18,11 @@ instance_id=$(aws ec2 run-instances \
 		  grep 'InstanceId' | sed 's/.*: "\(.*\)".*/\1/')
 
 while true; do
+    set +e +o pipefail
     descr_out=$(aws ec2 describe-instances \
 		 --region us-east-1 \
 		 --instance-ids "$instance_id")
 
-    set +e +o pipefail
     ipaddr=$(grep 'PublicIpAddress' <<< "$descr_out" | \
 		 sed 's/.*: "\(.*\)".*/\1/')
     set -e -o pipefail
