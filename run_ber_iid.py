@@ -147,8 +147,9 @@ def run():
                               "-K", "[100, 900]",
                               "-R", "[3, 1]",
                               "-E", "4",
+                              "-L", "512",
                               "-n", str(n),
-                              "-r", "500000"],
+                              "-r", "1000000"],
                              stdout=srv_clog,
                              stderr=srv_clog)
 
@@ -159,7 +160,7 @@ def run():
             clt_proc = Popen(["./client",
                               "-l", str(clt_udp_port),
                               "-r", str(srv_tcp_port),
-                              "-n", "stefan_cif",
+                              "-n", "stefan_cif_long",
                               "-t", "10",
                               "-p", str(p)],
                              stdout=clt_clog,
@@ -174,7 +175,11 @@ def run():
             print("Run ({:d}/{:d})"
                   " with overhead={:f},"
                   " iid err.p={:e},"
-                  " (n={:d}) OK".format(j*i+1, len(overheads)*len(iid_err_ps), oh, p, n))
+                  " (n={:d}) OK".format(j*len(overheads) + i + 1,
+                                        len(overheads)*len(iid_err_ps),
+                                        oh,
+                                        p,
+                                        n))
 
             logfiles = glob.glob("*[!0-9].log") # Exclude the already renamed ones
             for l in logfiles:
