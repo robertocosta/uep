@@ -658,6 +658,21 @@ void data_client<Decoder,Sink>::bind(unsigned short port) {
 
   BOOST_LOG_SEV(basic_lg, log::info) << "Client bound to UDP: "
 				     << socket_.local_endpoint();
+
+  boost::asio::socket_base::receive_buffer_size get_recvsize_opt;
+  socket_.get_option(get_recvsize_opt);
+  int size = get_recvsize_opt.value();
+  int newsize = 50000000; // Debian stretch default max
+  boost::asio::socket_base::receive_buffer_size set_recvsize_opt(newsize);
+  socket_.set_option(set_recvsize_opt);
+
+  get_recvsize_opt = boost::asio::socket_base::receive_buffer_size();
+  socket_.get_option(get_recvsize_opt);
+  newsize = get_recvsize_opt.value();
+  BOOST_LOG_SEV(basic_lg, log::info) << "UDP default receive buffer size ("
+				     << size
+				     << " bytes) increased to "
+				     << newsize << " bytes";
 }
 
 template <class Decoder, class Sink>
