@@ -41,15 +41,41 @@ class ber_scanner:
                                       "received_block.*"
                                       "pkt_counts=(\[[\d, ]+?\])",
                                       recvd_subblocks_h)
+        self.last_block_sent = 0
+        def last_block_sent_h(m):
+            self.last_block_sent += 1
+        def last_block_sent_reset(m):
+            self.last_block_sent = 0
+        self.server_scanner.add_regex("uep_encoder::check_has_block.*"
+                                      "new_block",
+                                      last_block_sent_reset)
+        self.server_scanner.add_regex("data_server::handle_sent.*udp_pkt_sent",
+                                      last_block_sent_h)
+        self.last_block_recvd = None
+        def last_block_recvd_h(m):
+            self.last_block_recvd = int(m.group(1))
+        self.client_scanner.add_regex("mp_context::run.*"
+                                 "output_size=(\d+)",
+                                 last_block_recvd_h)
 
     def scan(self):
         self.server_scanner.scan()
         self.client_scanner.scan()
 
+        # Exclude the last block
+        self.recvd_pkts -= self.last_block_recvd
+        self.sent_pkts -= self.last_block_sent
+        print("Excluding the last block in the BER"
+              " UDP sent = {:d}, recvd = {:d}".format(self.last_block_sent,
+                                                      self.last_block_recvd))
+
         self.udp_err_rate = 1 - self.recvd_pkts / self.sent_pkts
         print("Total UDP sent packets = {:d}".format(self.sent_pkts))
         print("Total UDP received packets = {:d}".format(self.recvd_pkts))
         print("UDP packet error rate = {:e}".format(self.udp_err_rate))
+
+        self.recvd_pkts += self.last_block_recvd
+        self.sent_pkts += self.last_block_sent
 
         self.tot_sent = list(functools.reduce(lambda t, a: map(sum, zip(t, a)),
                                          self.sent_subblocks,
