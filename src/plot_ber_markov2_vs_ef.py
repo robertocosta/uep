@@ -29,14 +29,14 @@ if __name__ == "__main__":
     s3 = boto3.client('s3', config=config, region_name='us-east-1')
 
     fixed_err_p = 1e-4
-    ks = [1000, 5000, 10000]
+    efs = [2, 4, 8]
     bad_runs = np.linspace(500, 12500, 20)
 
     uep_err_rates = [] # Measured UEP err rates
     uep_err_rates_ci = []
     udp_real_err_rates = [] # Measured UDP err rates
 
-    for (j, k) in enumerate(ks):
+    for (j, ef) in enumerate(efs):
         uep_err_rates.append([])
         uep_err_rates_ci.append([])
         udp_real_err_rates.append([])
@@ -102,16 +102,16 @@ if __name__ == "__main__":
         plt.errorbar(bad_runs,
                      mib_err_rates[i],
                      yerr=mib_yerr,
-                     label="MIB K={:d}".format(ks[i]))
+                     label="MIB EF={:d}".format(efs[i]))
         plt.errorbar(bad_runs,
                      lib_err_rates[i],
                      yerr=lib_yerr,
-                     label="LIB K={:d}".format(ks[i]))
+                     label="LIB EF={:d}".format(efs[i]))
 
     plt.ylim(1e-8, 1)
     plt.legend()
 
-    plt.savefig("plot_ber_markov2_vs_k.pdf", format="pdf")
+    plt.savefig("plot_ber_markov2_vs_ef.pdf", format="pdf")
     shelf.close()
 
     plt.show()
