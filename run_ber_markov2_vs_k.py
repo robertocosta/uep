@@ -169,7 +169,7 @@ def run():
             clt_proc = Popen(["./client",
                               "-l", str(clt_udp_port),
                               "-r", str(srv_tcp_port),
-                              "-n", "stefan_cif",
+                              "-n", "stefan_cif_long",
                               "-t", "10",
                               "-p", "[{:e}, {:e}]".format(p_GB, p_BG)],
                              stdout=clt_clog,
