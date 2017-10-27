@@ -127,6 +127,7 @@ set(python_files
   ber
   overhead
   plot_ber_iid
+  plot_ber_markov2_vs_k
   plot_decodeable
   plot_required
   plot_time
