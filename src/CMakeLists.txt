@@ -126,7 +126,7 @@ set(python_files
   avg_nal_segsizes
   ber
   overhead
-  plot_ber
+  plot_ber_iid
   plot_decodeable
   plot_required
   plot_time
