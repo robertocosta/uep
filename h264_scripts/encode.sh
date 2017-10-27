@@ -9,7 +9,7 @@ BSEXTR="$(realpath ../jsvm/bin/BitStreamExtractorStaticd)"
 
 DATADIR="../dataset"
 STREAMNAME="stefan_cif"
-LONG_FRAMENO=4000
+LONG_FRAMENO=40000
 CFGDIR="$PWD"
 pushd "$DATADIR"
 cp "$CFGDIR"/${STREAMNAME}.cfg "$CFGDIR"/${STREAMNAME}_*.cfg ./
@@ -34,7 +34,7 @@ rm "${STREAMNAME}_gops.264"
 
 "$BSEXTR" -pt "${STREAMNAME}_long.trace" "${STREAMNAME}_long.264" > "${STREAMNAME}_long_trace.log" 2>&1
 
-"$H264DECODE" "${STREAMNAME}.264" "${STREAMNAME}_out.yuv" > "${STREAMNAME}_decode.log" 2>&1
-"$H264DECODE" "${STREAMNAME}_long.264" "${STREAMNAME}_long_out.yuv" > "${STREAMNAME}_long_decode.log" 2>&1
+#"$H264DECODE" "${STREAMNAME}.264" "${STREAMNAME}_out.yuv" > "${STREAMNAME}_decode.log" 2>&1
+#"$H264DECODE" "${STREAMNAME}_long.264" "${STREAMNAME}_long_out.yuv" > "${STREAMNAME}_long_decode.log" 2>&1
 
 popd
