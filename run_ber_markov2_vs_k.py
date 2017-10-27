@@ -138,7 +138,7 @@ def run():
     fixed_err_p = 1e-4
     fixed_oh = 0.2
     ks = [1000, 5000, 10000]
-    bad_runs = np.logspace(0, 5, 20)
+    bad_runs = np.linspace(500, 12500, 20)
 
     for (j, K) in enumerate(ks):
         for (i, br) in enumerate(bad_runs):

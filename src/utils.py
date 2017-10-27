@@ -1,4 +1,7 @@
+import math
 import re
+
+import numpy as np
 
 class line_scanner:
     def __init__(self, fname):
@@ -35,3 +38,9 @@ def read_trace_line(filename):
         traceline["discardable"] = (next(fields) == "Yes")
         traceline["truncatable"] = (next(fields) == "Yes")
         yield traceline
+
+def success_ci(z, n):
+    d = 1.96/n * math.sqrt(z*(1 - z/n))
+    l = z/n - d
+    u = z/n + d
+    return (l, u)

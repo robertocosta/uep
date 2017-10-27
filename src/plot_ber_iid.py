@@ -120,4 +120,5 @@ if __name__ == "__main__":
     plt.ylim(1e-8, 1)
     plt.legend()
 
+    plt.savefig("plot_ber_iid.pdf", format="pdf")
     plt.show()
