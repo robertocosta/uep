@@ -598,7 +598,7 @@ void nal_reader::pack_nals() {
   if (!trace) {
     BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader finished";
     if (use_eos) {
-      static const std::array<byte, 3> nal_sc{0x00, 0x00, 0x01};
+      static const std::array<char, 3> nal_sc{0x00, 0x00, 0x01};
       assert(EOS_NAL.size() + nal_sc.size() <= pkt_size);
       fountain_packet fp;
       fp.setPriority(0);

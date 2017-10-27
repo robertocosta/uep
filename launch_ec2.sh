@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -eu -o pipefail
-set -x
 
 script="$1"
 
@@ -61,11 +60,13 @@ else
 	-o UserKnownHostsFile=/dev/null \
 	-o StrictHostKeyChecking=no \
 	admin@"$ipaddr" <<EOF
-	    set -eux -o pipefail
+	    set -eu -o pipefail
 	    base64 -d <<< "${script_base64}" > "${script}"
 	    chmod a+x "${script}"
 	    sudo apt-get update
-	    sudo apt-get install -y screen
-	    screen -d -m -L screen.log bash "${script}"
+	    sudo apt-get install -y screen python3-numpy python3-boto3
+	    sleep 10
+	    screen -d -m -L screen.log python3 "${script}"
 EOF
+    echo "Started ${script} at ${ipaddr}"
 fi

@@ -75,12 +75,16 @@ public:
   explicit lt_encoder(const degree_distribution &distr) :
     lt_encoder(lt_row_generator(distr)) {}
 
-  /** Construct with the row_generator rg. */
   explicit lt_encoder(const lt_row_generator &rg) :
+    lt_encoder(std::make_unique<lt_row_generator>(rg)) {
+  }
+
+  /** Construct with the row_generator rg. */
+  explicit lt_encoder(std::unique_ptr<base_row_generator> &&rg) :
     basic_lg(boost::log::keywords::channel = log::basic),
     perf_lg(boost::log::keywords::channel = log::performance),
-    the_input_queue(rg.K()),
-    the_block_encoder(rg),
+    the_input_queue(rg->K()),
+    the_block_encoder(std::move(rg)),
     seqno_counter(MAX_SEQNO),
     blockno_counter(MAX_BLOCKNO),
     tot_coded_count(0) {
@@ -190,8 +194,8 @@ public:
   /** Total number of packets held by the encoder. */
   std::size_t size() const { return the_input_queue.size(); }
 
-  /** Return a copy of the lt_row_generator used. */
-  lt_row_generator row_generator() const {
+  /** Return the lt_row_generator used. */
+  const base_row_generator &row_generator() const {
     return the_block_encoder.row_generator();
   }
   /** Return a copy of the RNG used to produce the block seeds. */

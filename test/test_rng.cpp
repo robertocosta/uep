@@ -1,7 +1,9 @@
 #define BOOST_TEST_MODULE rng_test
 #include <boost/test/unit_test.hpp>
 
+#include "counter.hpp"
 #include "rng.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,6 +11,7 @@
 #include <vector>
 
 using namespace std;
+using namespace uep;
 
 BOOST_AUTO_TEST_CASE(soliton_pmd) {
   BOOST_CHECK_EQUAL(soliton_distribution::soliton_pmd(10000, 1), 1/10000.0);
@@ -111,4 +114,119 @@ BOOST_AUTO_TEST_CASE(row_generation) {
   BOOST_CHECK_CLOSE(outdeg_one,
 		    robust_soliton_distribution::robust_pmd(K,c,delta,1) * nrows,
 		    1);
+}
+
+BOOST_AUTO_TEST_CASE(markov2_iid_05) {
+  markov2_distribution m2(0.5);
+  f_uint zeros = 0;
+  f_uint ones = 0;
+  for (f_uint i = 0; i < 1000000; ++i) {
+    f_uint s = m2();
+    if (s == 0) ++zeros;
+    else if (s == 1) ++ones;
+    else BOOST_ERROR("Must be zero or one");
+  }
+  BOOST_CHECK_CLOSE((double) zeros / (zeros + ones), 0.5, 5);
+}
+
+BOOST_AUTO_TEST_CASE(markov2_iid_good) {
+  markov2_distribution m2(0.001);
+  f_uint zeros = 0;
+  f_uint ones = 0;
+  for (f_uint i = 0; i < 1000000; ++i) {
+    f_uint s = m2();
+    if (s == 0) ++zeros;
+    else if (s == 1) ++ones;
+    else BOOST_ERROR("Must be zero or one");
+  }
+  BOOST_CHECK_CLOSE((double) zeros / (zeros + ones), 0.999, 5);
+}
+
+BOOST_AUTO_TEST_CASE(markov2_iid_bad) {
+  markov2_distribution m2(0.99);
+  f_uint zeros = 0;
+  f_uint ones = 0;
+  for (f_uint i = 0; i < 1000000; ++i) {
+    f_uint s = m2();
+    if (s == 0) ++zeros;
+    else if (s == 1) ++ones;
+    else BOOST_ERROR("Must be zero or one");
+  }
+  BOOST_CHECK_CLOSE((double) zeros / (zeros + ones), 0.01, 5);
+}
+
+BOOST_AUTO_TEST_CASE(markov2_longruns) {
+  markov2_distribution m2(0.1, 0.1);
+  f_uint zeros = 0;
+  f_uint ones = 0;
+  stat::average_counter avg_zero_run;
+  stat::average_counter avg_one_run;
+  f_uint last_run = 0;
+  f_uint last_state;
+  for (f_uint i = 0; i < 3000000; ++i) {
+    f_uint s = m2();
+    if (s == 0) ++zeros;
+    else if (s == 1) ++ones;
+    else BOOST_ERROR("Must be zero or one");
+
+    if (last_run == 0) {
+      last_state = s;
+      last_run = 1;
+    }
+    else if (last_state == s) {
+      ++last_run;
+    }
+    else {
+      if (last_state == 0) {
+	avg_zero_run.add_sample(last_run);
+      }
+      else {
+	avg_one_run.add_sample(last_run);
+      }
+      last_run = 1;
+      last_state = s;
+    }
+  }
+  BOOST_CHECK_CLOSE((double) zeros / (zeros + ones), 0.5, 5);
+  BOOST_CHECK_CLOSE((double) ones / (zeros + ones), 0.5, 5);
+  BOOST_CHECK_CLOSE(avg_zero_run.value(), 10.0, 5);
+  BOOST_CHECK_CLOSE(avg_one_run.value(), 10.0, 5);
+}
+
+BOOST_AUTO_TEST_CASE(markov2_asymmetric) {
+  markov2_distribution m2(0.01, 0.6);
+  f_uint zeros = 0;
+  f_uint ones = 0;
+  stat::average_counter avg_zero_run;
+  stat::average_counter avg_one_run;
+  f_uint last_run = 0;
+  f_uint last_state;
+  for (f_uint i = 0; i < 5000000; ++i) {
+    f_uint s = m2();
+    if (s == 0) ++zeros;
+    else if (s == 1) ++ones;
+    else BOOST_ERROR("Must be zero or one");
+
+    if (last_run == 0) {
+      last_state = s;
+      last_run = 1;
+    }
+    else if (last_state == s) {
+      ++last_run;
+    }
+    else {
+      if (last_state == 0) {
+	avg_zero_run.add_sample(last_run);
+      }
+      else {
+	avg_one_run.add_sample(last_run);
+      }
+      last_run = 1;
+      last_state = s;
+    }
+  }
+  BOOST_CHECK_CLOSE((double) zeros / (zeros + ones), 0.987, 5);
+  BOOST_CHECK_CLOSE((double) ones / (zeros + ones), 0.016, 5);
+  BOOST_CHECK_CLOSE(avg_zero_run.value(), 100.0, 5);
+  BOOST_CHECK_CLOSE(avg_one_run.value(), 1.667, 5);
 }

@@ -22,10 +22,14 @@ lt_decoder::lt_decoder(const degree_distribution &distr) :
 }
 
 lt_decoder::lt_decoder(const lt_row_generator &rg) :
+  lt_decoder(std::make_unique<lt_row_generator>(rg)) {
+}
+
+lt_decoder::lt_decoder(std::unique_ptr<base_row_generator> &&rg) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  the_block_decoder(rg),
-  the_output_queue(rg.K()),
+  the_output_queue(rg->K()),
+  the_block_decoder(std::move(rg)),
   blockno_counter(MAX_BLOCKNO, BLOCK_WINDOW),
   has_enqueued(false),
   uniq_recv_count(0),
@@ -218,6 +222,10 @@ void lt_decoder::enqueue_partially_decoded() {
   else
     BOOST_LOG_SEV(basic_lg, log::debug) <<
       "Decoder enqueued a partially decoded block";
+}
+
+const base_row_generator &lt_decoder::row_generator() const {
+  return the_block_decoder.row_generator();
 }
 
 }

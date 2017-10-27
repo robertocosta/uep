@@ -92,27 +92,29 @@ double robust_soliton_distribution::beta() const {
   return beta(K(), K_S, S_delta);
 }
 
+base_row_generator::base_row_generator(rng_type::result_type seed) :
+  rng(seed), sel_count(0), last_seed(seed) {
+}
+
 lt_row_generator::lt_row_generator(const degree_distribution &deg) :
-  degree_distr(deg),
-  packet_distr(0, deg.K()-1),
-  sel_count(0),
-  last_seed(rng_type::default_seed) {}
+  lt_row_generator(deg, rng_type::default_seed) {
+}
 
 lt_row_generator::lt_row_generator(const degree_distribution &deg,
 				   rng_type::result_type seed) :
-  lt_row_generator(deg) {
-  generator.seed(seed);
-  last_seed = seed;
+  base_row_generator(seed),
+  degree_distr(deg),
+  packet_distr(0, deg.K()-1) {
 }
 
 lt_row_generator::row_type lt_row_generator::next_row() {
-  size_t degree = degree_distr(generator);
+  size_t degree = degree_distr(rng);
   row_type s;
   s.reserve(degree);
   for (size_t i = 0; i < degree; ++i) {
     size_t si;
     do {
-      si = packet_distr(generator);
+      si = packet_distr(rng);
     }	while (find(s.begin(), s.end(), si) != s.end());
     s.push_back(si);
   }
@@ -120,7 +122,7 @@ lt_row_generator::row_type lt_row_generator::next_row() {
   return s;
 }
 
-std::size_t lt_row_generator::generated_rows() const {
+std::size_t base_row_generator::generated_rows() const {
   return sel_count;
 }
 
@@ -128,22 +130,89 @@ std::size_t lt_row_generator::K() const {
   return degree_distr.K();
 }
 
-lt_row_generator::rng_type::result_type lt_row_generator::seed() const {
+base_row_generator::rng_type::result_type base_row_generator::seed() const {
   return last_seed;
 }
 
-void lt_row_generator::reset() {
-  generator.seed();
-  last_seed = rng_type::default_seed;
+void base_row_generator::reset(rng_type::result_type seed) {
+  rng.seed(seed);
   sel_count = 0;
-}
-
-void lt_row_generator::reset(rng_type::result_type seed) {
-  generator.seed(seed);
   last_seed = seed;
-  sel_count = 0;
 }
 
 lt_row_generator make_robust_lt_row_generator(std::size_t K, double c, double delta) {
   return lt_row_generator(robust_soliton_distribution(K, c, delta));
+}
+
+namespace uep {
+
+base_row_generator::row_type uep_row_generator::next_row() {
+  row_type s_mapped;
+  row_type s;
+
+  do {
+    std::size_t degree = _deg_dist(rng);
+    s_mapped.reserve(degree);
+    s.reserve(degree);
+
+    // Generate `degree` unique indices in [0, Kout)
+    s.clear();
+    for (std::size_t i = 0; i < degree; ++i) {
+      std::size_t index;
+      do {
+	index = _p_dist(rng);
+      } while (find(s.cbegin(), s.cend(), index) != s.cend());
+      s.push_back(index);
+    }
+
+    // Remap in [0, Kin). Elide duplicates
+    s_mapped.clear();
+    for (std::size_t i = 0; i < degree; ++i) {
+      std::size_t index = _pos_map(s[i]);
+      auto j = std::find(s_mapped.cbegin(), s_mapped.cend(), index);
+      if (j == s_mapped.cend()) {
+	s_mapped.push_back(index);
+      }
+      else {
+	s_mapped.erase(j);
+      }
+    }
+  } while (s_mapped.empty()); // Redo if all edges were elided
+
+  ++sel_count;
+  return s_mapped;
+}
+
+std::size_t uep_row_generator::K() const {
+  return _k_in;
+}
+
+std::size_t uep_row_generator::K_in() const {
+  return _k_in;
+}
+
+std::size_t uep_row_generator::K_out() const {
+  return _k_out;
+}
+
+const std::vector<std::size_t> &uep_row_generator::Ks() const {
+  return _ks;
+}
+
+const std::vector<std::size_t> &uep_row_generator::RFs() const {
+  return _rfs;
+}
+
+std::size_t uep_row_generator::EF() const {
+  return _ef;
+}
+
+double uep_row_generator::c() const {
+  return _c;
+}
+
+double uep_row_generator::delta() const {
+  return _delta;
+}
+
 }

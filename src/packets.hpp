@@ -280,6 +280,7 @@ public:
    *  number. This packet contains random data.
    */
   static uep_packet make_padding(std::size_t size, seqno_type seqno);
+  static uep_packet make_padding(std::size_t size);
 
   /** Construct a uep_packet with an empty buffer, seqno 0 and priority 0. */
   uep_packet();
@@ -328,7 +329,10 @@ public:
 private:
   static std::independent_bits_engine<std::default_random_engine,
 				      8,
-				      byte> padding_rng;
+				      unsigned char> padding_rng;
+  static std::independent_bits_engine<std::default_random_engine,
+				      31,
+				      seqno_type> seqno_rng;
 
   std::shared_ptr<buffer_type> shared_buf;
   f_uint priority_lvl;

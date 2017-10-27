@@ -48,7 +48,7 @@ private:
   /** Type of the underlying message passing context. */
   typedef mp::mp_context<sym_t> mp_ctx_t;
   /** Type of the container used to cache the row generator output. */
-  typedef std::vector<lt_row_generator::row_type> link_cache_t;
+  typedef std::vector<base_row_generator::row_type> link_cache_t;
 
 public:
   /** Iterator over the input packets, either decoded or empty. */
@@ -60,8 +60,10 @@ public:
   /** Type of the seed used by the row generator. */
   typedef lt_row_generator::rng_type::result_type seed_t;
 
-  /** Construct with the given row generator. */
+  /** Construct with a copy of the given lt_row_generator. */
   explicit block_decoder(const lt_row_generator &rg);
+  /** Construct with the given row generator. */
+  explicit block_decoder(std::unique_ptr<base_row_generator> &&rg);
 
   /** Reset the decoder to the initial state. */
   void reset();
@@ -132,10 +134,12 @@ public:
   /** Return true when the encoder does not have decoded a full block. */
   bool operator!() const;
 
+  const base_row_generator &row_generator() const;
+  
 private:
   log::default_logger basic_lg, perf_lg;
 
-  lt_row_generator rowgen;
+  std::unique_ptr<base_row_generator> rowgen;
   std::set<std::size_t> received_seqnos;
   link_cache_t link_cache;
   std::forward_list<fountain_packet> last_received;
@@ -197,7 +201,7 @@ std::size_t block_decoder::push(Iter in_first, Iter in_last) {
     size_t prev_size = link_cache.size();
     link_cache.resize(max_seqno+1);
     for (size_t i = prev_size; i < max_seqno+1; ++i) {
-      link_cache[i] = rowgen.next_row();
+      link_cache[i] = rowgen->next_row();
     }
   }
 

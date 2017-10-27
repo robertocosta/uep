@@ -27,9 +27,9 @@ public:
   /** Iterator over the current block. */
   //typedef typename lt_encoder<Gen>::const_block_iterator const_block_iterator;
 
-  static constexpr std::size_t MAX_SEQNO = uep_packet::MAX_SEQNO;
-  static constexpr std::size_t MAX_BLOCKNO = lt_encoder<Gen>::MAX_BLOCKNO;
   static constexpr std::size_t BLOCK_WINDOW = lt_encoder<Gen>::BLOCK_WINDOW;
+  static constexpr std::size_t MAX_BLOCKNO = lt_encoder<Gen>::MAX_BLOCKNO;
+  static constexpr std::size_t MAX_SEQNO = uep_packet::MAX_SEQNO;
 
   /** Construct using the given parameter set. */
   explicit uep_encoder(const parameter_set &ps);
@@ -97,8 +97,8 @@ public:
   /** Total number of (input) packets held by the encoder. */
   std::size_t size() const;
 
-  /** Return a copy of the lt_row_generator used. */
-  lt_row_generator row_generator() const;
+  /** Return the lt_row_generator used. */
+  const uep_row_generator &row_generator() const;
   /** Return a copy of the RNG used to produce the block seeds. */
   seed_generator_type seed_generator() const;
 
@@ -128,13 +128,6 @@ public:
 private:
   log::default_logger basic_lg, perf_lg;
 
-  std::vector<std::size_t> Ks; /**< Array of sub-block sizes. */
-  std::vector<std::size_t> RFs; /**< Array of repetition factors. */
-  std::size_t EF; /**< Expansion factor. */
-
-  std::size_t K_in; /**< Block-size at the input of the UEP encoder. */
-  std::size_t K_out; /**< Block-size at the output of the UEP encoder. */
-
   std::vector<queue_type> inp_queues; /**< The queues that
 				       *   store the packets
 				       *   belonging to
@@ -150,6 +143,7 @@ private:
 					     *	 non-movable seed
 					     *	 generators.
 					     */
+
   std::size_t pktsize; /**< The size of the pushed packets. */
   stat::sum_counter<std::size_t> padding_cnt; /**< Number of padding
 					       *   packets.
@@ -170,23 +164,22 @@ uep_encoder<Gen>::uep_encoder(KsIter ks_begin, KsIter ks_end,
 			      double delta) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  Ks(ks_begin, ks_end),
-  RFs(rfs_begin, rfs_end),
-  EF(ef),
   seqno_ctr(std::numeric_limits<uep_packet::seqno_type>::max()),
   pktsize(0) {
-  if (Ks.size() != RFs.size()) {
-    throw std::invalid_argument("Ks, RFs sizes do not match");
-  }
+  auto uep_rowgen = std::make_unique<uep_row_generator>(ks_begin, ks_end,
+							rfs_begin, rfs_end,
+							ef,
+							c,
+							delta);
+  const auto &Ks = uep_rowgen->Ks();
   inp_queues.reserve(Ks.size());
-  for (std::size_t s : Ks) {
-    inp_queues.emplace_back(s);
+  for (std::size_t Ki : Ks) {
+    inp_queues.emplace_back(Ki);
   }
-  K_out = EF * std::inner_product(Ks.cbegin(), Ks.cend(),
-				  RFs.cbegin(), 0);
-  K_in = std::accumulate(Ks.cbegin(), Ks.cend(), 0);
-  std_enc = std::make_unique<lt_encoder<Gen>>(K_out, c, delta);
+
   seqno_ctr.set(0);
+
+  std_enc = std::make_unique<lt_encoder<Gen>>(std::move(uep_rowgen));
 }
 
 template<typename Gen>
@@ -254,7 +247,7 @@ void uep_encoder<Gen>::pad_partial_block() {
   for (queue_type &q : inp_queues) {
     while (!q.has_block()) {
       // Don't give the padding pkts a seqno
-      q.push(uep_packet::make_padding(pktsize, 0));
+      q.push(uep_packet::make_padding(pktsize));
       ++pad_cnt;
     }
   }
@@ -290,7 +283,7 @@ void uep_encoder<Gen>::next_block(std::size_t bn) {
   }
 
   // Push `dist-1` empty blocks
-  for (std::size_t i = 0; i < block_size_out() * (dist - 1); ++i) {
+  for (std::size_t i = 0; i < K() * (dist - 1); ++i) {
     std_enc->push(packet());
   }
 
@@ -306,12 +299,12 @@ bool uep_encoder<Gen>::has_block() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::block_size_out() const {
-  return K_out;
+  return row_generator().K_out();
 }
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::block_size() const {
-  return K_in;
+  return row_generator().K_in();
 }
 
 template <class Gen>
@@ -326,7 +319,7 @@ std::size_t uep_encoder<Gen>::K() const {
 
 template <class Gen>
 const std::vector<std::size_t> &uep_encoder<Gen>::block_sizes() const {
-  return Ks;
+  return row_generator().Ks();
 }
 
 template <class Gen>
@@ -362,13 +355,12 @@ std::size_t uep_encoder<Gen>::queue_size() const {
 
 template <class Gen>
 std::size_t uep_encoder<Gen>::size() const {
-  std::size_t enc_size = std_enc->size() / block_size_out() * block_size_in();
-  return queue_size() + enc_size;
+  return queue_size() + std_enc->size();
 }
 
 template <class Gen>
-lt_row_generator uep_encoder<Gen>::row_generator() const {
-  return std_enc->row_generator();
+const uep_row_generator &uep_encoder<Gen>::row_generator() const {
+  return static_cast<const uep_row_generator&>(std_enc->row_generator());
 }
 
 template <class Gen>
@@ -411,7 +403,7 @@ bool uep_encoder<Gen>::operator!() const {
 
 template <class Gen>
 void uep_encoder<Gen>::check_has_block() {
-  if (*std_enc) return; // Already has a block
+  if (std_enc->has_block()) return; // Already has a block
   if (std::any_of(inp_queues.cbegin(),
 		  inp_queues.cend(),
 		  [](const queue_type &q){
@@ -420,54 +412,25 @@ void uep_encoder<Gen>::check_has_block() {
     return; // Not all sub-blocks are available
   }
 
-  std::vector<packet> the_block;
-  the_block.resize(block_size_out());
-  auto block_iter = the_block.begin();
-
   // Count the non-padding packets for each sub-block
   std::vector<std::size_t> pkt_counts(inp_queues.size(), 0);
 
   // Iterate over all queues
   for (std::size_t i = 0; i < inp_queues.size(); ++i) {
     queue_type &q = inp_queues[i];
-    std::size_t RF = RFs[i];
 
     // Convert the sub-block to packets
-    auto subblock_start = block_iter;
     for (auto l = q.block_begin(); l != q.block_end(); ++l) {
       const uep_packet &p = *l;
       if (!p.padding()) ++pkt_counts[i];
-      *block_iter++ = p.to_packet();
-    }
-    auto subblock_end = block_iter;
-
-    // Repeat the sub-block RF-1 times
-    for (std::size_t j = 1; j < RF; ++j) {
-      // Shallow-copy the sub-block
-      for (auto l = subblock_start; l != subblock_end; ++l) {
-	*block_iter++ = l->shallow_copy();
-      }
+      std_enc->push(p.to_packet());
     }
     q.pop_block();
-  }
-
-  // Expand EF-1 times
-  auto first_rep_end = block_iter;
-  for (std::size_t i = 1; i < EF; ++i) {
-    // Shallow-copy the first repetition
-    for (auto j = the_block.begin(); j != first_rep_end; ++j) {
-      *block_iter++ = j->shallow_copy();
-    }
   }
 
   BOOST_LOG(perf_lg) << "uep_encoder::check_has_block"
 		     << " new_block"
 		     << " non_padding_pkts=" << pkt_counts;
-
-  // Pass to the standard encoder
-  for (packet &p : the_block) {
-    std_enc->push(std::move(p));
-  }
 }
 
 template<typename Gen>

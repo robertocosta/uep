@@ -16,11 +16,14 @@ namespace uep {
  */
 class block_encoder {
 public:
-  typedef lt_row_generator::rng_type::result_type seed_t;
+  typedef base_row_generator::rng_type::result_type seed_t;
   typedef std::vector<packet>::const_iterator const_block_iterator;
   typedef std::vector<packet>::iterator block_iterator;
 
+  /** Construct using a copy of the given lt_row_generator. */
   explicit block_encoder(const lt_row_generator &rg);
+  /** Construct using the given row generator. */
+  explicit block_encoder(std::unique_ptr<base_row_generator> &&rg);
 
   /** Reset the row generator with the specified seed. */
   void set_seed(seed_t seed);
@@ -44,8 +47,8 @@ public:
   /** Return the fixed block size. */
   std::size_t block_size() const;
 
-  /** Return a copy of the row generator being used. */
-  lt_row_generator row_generator() const;
+  /** Return a const reference to the row generator being used. */
+  base_row_generator &row_generator() const;
   /** Return the number of encoded packets generated for the current block. */
   std::size_t output_count() const;
 
@@ -60,12 +63,12 @@ public:
 private:
   log::default_logger basic_lg, perf_lg;
 
-  lt_row_generator rowgen;
+  std::unique_ptr<base_row_generator> rowgen;
   std::vector<packet> block;
   std::size_t out_count;
 };
 
-// Template definitions
+		    //// Template definitions ////
 
 template <class InputIt>
 void block_encoder::set_block(InputIt first, InputIt last) {

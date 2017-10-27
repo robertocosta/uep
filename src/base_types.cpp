@@ -26,7 +26,3 @@ void inplace_xor(buffer_type &lhs, const buffer_type &rhs) {
   }
 }
 }
-
-// Explicit instantiation of the extern templates
-template class base_buffer<true>;
-template class base_buffer<false>;

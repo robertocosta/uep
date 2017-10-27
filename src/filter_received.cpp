@@ -28,7 +28,7 @@ public:
     std::size_t nal_offset = 0;
     while(in_trace) {
       streamTrace st = read_trace_line();
-      unique_buffer buf(st.len);
+      buffer_type buf(st.len);
       read_nal(st, buf);
 
       BOOST_LOG_SEV(basic_lg, log::trace) << "Read a NAL with qid="
@@ -51,7 +51,7 @@ public:
 					  << nal_offset
 					  << " length=" << st.len;
       st.startPos = nal_offset;
-      out_file.write(buf.data<char>(), st.len);
+      out_file.write(buf.data(), st.len);
       nal_offset += st.len;
       write_trace_line(st);
     }
@@ -172,12 +172,12 @@ private:
     out_trace << std::endl;
   }
 
-  void read_nal(const streamTrace &st, buffer &buf) {
-    buf = buf.slice(0, st.len);
+  void read_nal(const streamTrace &st, buffer_type &buf) {
+    buf.resize(st.len);
     if (in_file.tellg() != st.startPos) {
       in_file.seekg(st.startPos);
     }
-    in_file.read(buf.data<char>(), buf.size());
+    in_file.read(buf.data(), buf.size());
     assert(in_file.gcount() == st.len);
   }
 };

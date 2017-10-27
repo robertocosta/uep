@@ -455,12 +455,18 @@ void uep_packet::sequence_number(seqno_type sn) {
 }
 
 uep_packet uep_packet::make_padding(std::size_t size, seqno_type seqno) {
-  uep_packet p{};
+  auto up = make_padding(size);
+  up.sequence_number(seqno);
+  return up;
+}
+
+uep_packet uep_packet::make_padding(std::size_t size) {
+  uep_packet p;
   p.buffer().resize(size);
-  p.sequence_number(seqno);
+  p.sequence_number(seqno_rng() & 0x7fffffff);
   p.padding(true);
-  for (byte *i = reinterpret_cast<byte*>(p.buffer().data());
-       i != reinterpret_cast<byte*>(p.buffer().data()) + size;
+  for (char *i = p.buffer().data();
+       i != p.buffer().data() + size;
        ++i) {
     *i = padding_rng();
   }
@@ -482,7 +488,11 @@ bool uep_packet::padding() const {
 
 std::independent_bits_engine<std::default_random_engine,
 			     8,
-			     byte> uep_packet::padding_rng;
+			     unsigned char> uep_packet::padding_rng;
+std::independent_bits_engine<std::default_random_engine,
+			     31,
+			     uep_packet::seqno_type> uep_packet::seqno_rng;
+
 
 
 }

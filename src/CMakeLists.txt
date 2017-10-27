@@ -119,11 +119,14 @@ target_link_libraries(uep_mp_plots
 
 set(python_libs
   utils
+  ber
 )
 
 set(python_files
   avg_nal_segsizes
   ber
+  overhead
+  plot_ber
   plot_decodeable
   plot_required
   plot_time

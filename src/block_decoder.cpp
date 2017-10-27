@@ -10,19 +10,23 @@ using namespace std::chrono;
 namespace uep {
 
 block_decoder::block_decoder(const lt_row_generator &rg) :
+  block_decoder(std::make_unique<lt_row_generator>(rg)) {
+}
+
+block_decoder::block_decoder(std::unique_ptr<base_row_generator> &&rg) :
   basic_lg(boost::log::keywords::channel = log::basic),
   perf_lg(boost::log::keywords::channel = log::performance),
-  rowgen(rg),
-  mp_ctx(rg.K()),
-  mp_pristine(rg.K()) {
-  link_cache.reserve(rg.K());
+  rowgen(std::move(rg)),
+  mp_ctx(rowgen->K()),
+  mp_pristine(rowgen->K()) {
+  link_cache.reserve(rowgen->K());
 }
 
 void block_decoder::check_correct_block(const fountain_packet &p) {
   // First packet: set blockno, length, seed
   if (received_seqnos.empty()) {
     blockno = p.block_number();
-    rowgen.reset(p.block_seed());
+    rowgen->reset(p.block_seed());
     pktsize = p.size();
   }
   // Other packets: check blockno, seed
@@ -50,7 +54,7 @@ bool block_decoder::push(const fountain_packet &p) {
 }
 
 void block_decoder::reset() {
-  rowgen.reset();
+  rowgen->reset();
   received_seqnos.clear();
   link_cache.clear();
   last_received.clear();
@@ -62,7 +66,7 @@ void block_decoder::reset() {
 
 block_decoder::seed_t block_decoder::seed() const {
   if (received_seqnos.empty()) throw std::runtime_error("No received packets");
-  return rowgen.seed();
+  return rowgen->seed();
 }
 
 std::size_t block_decoder::block_number() const {
@@ -83,7 +87,7 @@ std::size_t block_decoder::received_count() const {
 }
 
 std::size_t block_decoder::block_size() const {
-  return rowgen.K();
+  return rowgen->K();
 }
 
 block_decoder::const_block_iterator block_decoder::block_begin() const {
@@ -127,7 +131,7 @@ void block_decoder::run_message_passing() {
 
   for (auto i = last_received.cbegin(); i != last_received.cend(); ++i) {
     // Update the context
-    const lt_row_generator::row_type &row = link_cache[i->sequence_number()];
+    const base_row_generator::row_type &row = link_cache[i->sequence_number()];
     mp_pristine.add_output(sym_t(std::move(i->buffer())), row.cbegin(), row.cend());
   }
   last_received.clear();
@@ -149,6 +153,10 @@ void block_decoder::run_message_passing() {
   //		     << mp_ctx.decoded_count()
   //		     << " received_pkts="
   //		     << received_pkts.size();
+}
+
+const base_row_generator &block_decoder::row_generator() const {
+  return *rowgen;
 }
 
 }

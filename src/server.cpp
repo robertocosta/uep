@@ -301,7 +301,7 @@ int main(int argc, char **argv) {
 
   int c;
   opterr = 0;
-  while ((c = getopt(argc, argv, "p:r:n:lK:R:E:c:d:")) != -1) {
+  while ((c = getopt(argc, argv, "p:r:n:lK:R:E:c:d:L:")) != -1) {
     switch (c) {
     case 'p':
       srv_params.tcp_port_num = optarg;
@@ -311,6 +311,7 @@ int main(int argc, char **argv) {
       break;
     case 'n':
       srv_params.max_n_per_block = std::strtoull(optarg, nullptr, 10);
+      srv_params.ack = false;
       break;
     case 'l':
       srv_params.oneshot = false;
