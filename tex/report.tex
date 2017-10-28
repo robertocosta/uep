@@ -1,10 +1,14 @@
-\documentclass[italian, 12pt]{article}
+\documentclass[italian, a4paper, 12pt]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{babel}
 
+\usepackage[left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+\renewcommand{\baselinestretch}{1.5}
+
 \usepackage{float}
+
 %%% font & looks %%%
 \usepackage{mathpazo}
 %\usepackage{palatino}
@@ -19,7 +23,7 @@
 \usepackage{microtype}
 
 \usepackage[parfill]{parskip}
-\usepackage[a4paper, left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+
 \usepackage{bm}
 \usepackage[labelfont=bf,font={small,it}]{caption}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
@@ -36,10 +40,11 @@
 \usepackage{amssymb}
 %\usepackage{amsthm}
 \usepackage{wasysym}
+%\usepackage{siunitx}
 
 % graphics
 \usepackage{multirow}
-\usepackage{placeins}
+\usepackage[section]{placeins}
 \usepackage{graphicx}
 \usepackage{epstopdf}
 \usepackage{pgfplots}
@@ -62,6 +67,7 @@
 \usetikzlibrary{decorations.pathreplacing,angles,quotes}
 \usepackage{chemformula}
 \usepackage{textcomp}
+\usepackage{subcaption}
 
 % better tables
 \usepackage{booktabs}
