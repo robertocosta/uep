@@ -111,7 +111,7 @@ if __name__ == "__main__":
                 bs = iidshelf["bs_{:02d}_{:02d}".format(j,i)]
 
             udp_real_err_rates[-1].append(bs.udp_err_rate)
-            uep_err_rates_ci[-1].append(bs.uep_err_rates)
+            uep_err_rates_ci[-1].append(bs.uep_err_rates_ci)
             uep_err_rates[-1].append(bs.uep_err_rates)
 
             print("{:02d}_{:02d} OK".format(j,i))
@@ -131,13 +131,10 @@ if __name__ == "__main__":
     lib_err_rates = np.array(uep_err_rates)[:, :, 1]
     lib_err_rates_ci = np.array(uep_err_rates_ci)[:, :, 1]
 
-    print(mib_err_rates.shape)
-    print(mib_err_rates_ci[:,:,0].shape)
-
-    mib_err_rates_ci[:, :, 0] = -(mib_err_rates_ci[:, :, 0] - mib_err_rates)
-    mib_err_rates_ci[:, :, 1] -= mib_err_rates
-    lib_err_rates_ci[:, :, 0] = -(lib_err_rates_ci[:, :, 0] - lib_err_rates)
-    lib_err_rates_ci[:, :, 1] -= lib_err_rates
+    mib_err_rates_ci -= mib_err_rates[:,:,np.newaxis]
+    mib_err_rates_ci[:,:,0] = -mib_err_rates_ci[:,:,0]
+    lib_err_rates_ci -= lib_err_rates[:,:,np.newaxis]
+    lib_err_rates_ci[:,:,0] = -lib_err_rates_ci[:,:,0]
 
     plt.figure()
     plt.gca().set_yscale('log')

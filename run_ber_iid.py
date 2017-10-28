@@ -136,7 +136,9 @@ def run():
     os.chdir("uep/build/bin")
 
     iid_err_ps = [1e-4, 1e-2, 1e-1]
-    overheads = np.linspace(0, 0.4, 20)
+    overheads = np.linspace(0, 0.2, 10)
+    overheads.resize(15)
+    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
     for (j, p) in enumerate(iid_err_ps):
         for (i, oh) in enumerate(overheads):
             n = int(1000 * (1 + oh))

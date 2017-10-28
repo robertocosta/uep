@@ -135,7 +135,9 @@ def run():
 
     os.chdir("uep/build/bin")
 
-    overheads = np.linspace(0, 0.4, 20)
+    overheads = np.linspace(0, 0.2, 10)
+    overheads.resize(15)
+    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
     for (i, oh) in enumerate(overheads):
         n = int(1000 * (1 + oh))
         srv_clog = open("server_console.log", "wt")
