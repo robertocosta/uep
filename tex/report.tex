@@ -183,7 +183,7 @@ P_{BG} & P_{BB}
 1-p & p \\
 q & 1-q
 \end{pmatrix}$$
-Le probabilità stazionarie sono definite come 
+Le probabilità stazionarie sono definite come
 $$\bm{\pi} = \begin{pmatrix}
 \pi_G\\\pi_B
 \end{pmatrix} = \begin{pmatrix}
@@ -221,41 +221,78 @@ Di seguito la rappresentazione Markoviana.
 \subsubsection{Codici a fontana}
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
     \caption{Schema dei codici a fontana}
     \label{fig:FC}
 \end{figure}
 \subsubsection{UEP}
+\label{sec:uep}
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
     \caption{Schema della protezione non uniforme}
     \label{fig:UEP}
 \end{figure}
 \section{Risultati}
 L'algoritmo per la protezione non uniforme esposto nel
-paragrafo~\ref{sec:modelli} è stato testato nei due casi di canale
-senza memoria e di canale Markoviano.
+paragrafo~\ref{sec:uep} è stato testato nei due casi di canale senza
+memoria e di canale Markoviano per determinare la packet error rate
+ottenibile in queste due condizioni.
 
-\subsection{Canale senza memoria}
+Sono stati inoltre misurati i tempi necessari alla codifica e
+decodifica dei pacchetti in funzione dell'overhead desiderato.
+
+Infine è stato misurato il PSNR ...
+
+\subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
 applicazione ottenuta variando l'overhead e considerando diversi
 valori per la packet error rate del canale.
+%
+Facendo riferimento alla figura~\ref{fig:UDP}, la PER di livello
+applicazione è misurata come la frazione di pacchetti forniti all'UEP
+encoder che raggiungono l'uscita dell'UEP decoder.
+%
+L'overhead è definito, in modo analogo a \cite{uep}, come $t =
+\frac{N-K}{K}$, cioè come l'aumento relativo del numero di pacchetti
+trasmessi dovuto alla codifica.
+%
+Per permettere l'esecuzione di un gran numero di test, il server e il
+client sono stati eseguiti sullo stesso computer, simulando un canale
+senza memoria che scarta i pacchetti con una data probabilità $e$.
 
-Sono stati usati gli stessi valori per i parametri del paper
-\cite{uep} per permettere un confronto tra i risulati ottenuti in
-questo progetto e i risultati di \cite{uep} e di verificare la
-correttezza dell'implementazione.
+Sono stati usati gli stessi valori per i parametri specificati da
+\cite{uep} per permettere un confronto con i risulati ottenuti in
+questa tesina e di verificare la correttezza dell'implementazione.
 %
 I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
 pacchetti importanti e $K_1 = 900$ pacchetti non importanti; il blocco
 virtuale è stato costruito ripetendo $RF_0 = 3$ volte il primo
-sotto-blocco e $RF_1 = 1$ il secondo, oltre a una ulteriore
-ripetizione di $EF = 4$ volte del blocco così ottenuto. La lunghezza
-del blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 +
-RF_1 \cdot K_1 \right) = 4800$ pacchetti.
+sotto-blocco, $RF_1 = 1$ il secondo ed espandendo la sequenza di
+pacchetti così ottenuta di un fattore $EF = 4$. La lunghezza del
+blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
+\cdot K_1 \right) = 4800$ pacchetti.
 %
-Il numero di pacchetti prodotti è fatto variare da 1000 a
+L'overhead è stato fatto variare nello stesso intervallo di
+\cite{uep}, cioè $[0, 0.4]$, a cui corrisponde un numero di pacchetti
+inviati $N \in [1000, 1400]$ per ogni blocco di $K$ pacchetti.
+%
+La probabilità di errore è stata impostata ai valori $\left\{ 0,
+10^{-4}, 10^{-2},10^{_1} \right\}$.
+
+Trasmettendo un video H264 di 16000 frame sono state ottenute le
+quattro curve mostrate in figura~\ref{plot:iid}.
+%
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
+  \caption{IID PER}
+  \label{plot:iid}
+\end{figure}
+%
+Le curve corrispondenti a $e=0$ sono coerenti con \cite{uep}, mentre è
+possibile osservare che negli altri tre casi sono semplicemente
+traslate a destra e mntengono la stessa forma.
 
 \subsection{Canale Markoviano}
 
