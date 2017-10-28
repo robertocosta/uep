@@ -9,7 +9,7 @@ BSEXTR="$(realpath ../jsvm/bin/BitStreamExtractorStaticd)"
 
 DATADIR="../dataset"
 STREAMNAME="stefan_cif"
-LONG_FRAMENO=40000
+LONG_FRAMENO=16000
 CFGDIR="$PWD"
 pushd "$DATADIR"
 cp "$CFGDIR"/${STREAMNAME}.cfg "$CFGDIR"/${STREAMNAME}_*.cfg ./
