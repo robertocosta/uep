@@ -1,4 +1,9 @@
-\documentclass[italian, 11pt]{article}
+\documentclass[italian, 12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+
 \usepackage{float}
 %%% font & looks %%%
 \usepackage{mathpazo}
@@ -12,8 +17,7 @@
 % and here - https://www.sharelatex.com/learn/Font_typefaces
 
 \usepackage{microtype}
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
+
 \usepackage[parfill]{parskip}
 \usepackage[a4paper, left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
 \usepackage{bm}
@@ -30,7 +34,7 @@
 % math
 %\usepackage{amsmath}
 \usepackage{amssymb}
-%\usepackage{amsthm} 
+%\usepackage{amsthm}
 \usepackage{wasysym}
 
 % graphics
@@ -46,7 +50,7 @@
   \usepgfplotslibrary{patchplots}
   \usepackage{grffile}
   \usepackage{amsmath}
-  
+
 \usepackage{pdfpages}
 
 % extra
@@ -65,8 +69,8 @@
 %%% links %%%
 \usepackage{hyperref}
 \hypersetup{
-	linktocpage,
-	colorlinks,
+        linktocpage,
+        colorlinks,
     citecolor=black,
     filecolor=black,
     linkcolor=black,
@@ -76,6 +80,9 @@
 \usepackage[framed,numbered]{matlab-prettifier}
 \tikzset{
   font={\fontsize{9pt}{12}\selectfont}}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{report.bib}
 
 %%% references %%%
 \usepackage[noabbrev,capitalize,nameinlink]{cleveref}
@@ -93,15 +100,15 @@
             \end{trivlist}}%
 \begin{document}
 \begin{center}
-	%\horline\\
-	\Large Wireless Systems And Networks\\
-	\huge \textbf{Project: Unequal Error Protection}\\[3mm]
-	\begin{framed}
-		\Large \textbf{Workgroup} \\[2mm]
-		\normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
-	\end{framed}
-	%\horline
-\end{center}	
+        %\horline\\
+        \Large Wireless Systems And Networks\\
+        \huge \textbf{Project: Unequal Error Protection}\\[3mm]
+        \begin{framed}
+                \Large \textbf{Workgroup} \\[2mm]
+                \normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
+        \end{framed}
+        %\horline
+\end{center}
 \FloatBarrier
 \section{Sommario}
 La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, utilizzando un codice di correzione degli errori a fontana, il quale regola la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
@@ -124,7 +131,7 @@ Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel 
 Il canale considerato nelle simulazioni presenta errori i.i.d. con probabilità $e \in [10^{-8},10^{-1}]$.
 \section{Approccio tecnico}
 \subsection{Obbiettivi}
-La finalità del progetto è testare l'algoritmo di trasmissione su un canale non privo di errori per dimostrare che.
+La finalità del progetto è l'implementazione dell'algoritmo di trasmissione e la verifica delle sue prestazioni su un canale con errori indipendenti o correlati.
 
 \subsection{Diagramma}
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
@@ -165,13 +172,38 @@ Di seguito la rappresentazione Markoviana.
     \label{fig:Channel}
 \end{figure}
 \section{Risultati}
+L'algoritmo per la protezione non uniforme esposto nel
+paragrafo~\ref{sec:modelli} è stato testato nei due casi di canale
+senza memoria e di canale Markoviano.
+
+\subsection{Canale senza memoria}
+In questo caso è stata misurata la packet error rate a livello di
+applicazione ottenuta variando l'overhead e considerando diversi
+valori per la packet error rate del canale.
+
+Sono stati usati gli stessi valori per i parametri del paper
+\cite{uep} per permettere un confronto tra i risulati ottenuti in
+questo progetto e i risultati di \cite{uep} e di verificare la
+correttezza dell'implementazione.
+%
+I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
+pacchetti importanti e $K_1 = 900$ pacchetti non importanti; il blocco
+virtuale è stato costruito ripetendo $RF_0 = 3$ volte il primo
+sotto-blocco e $RF_1 = 1$ il secondo, oltre a una ulteriore
+ripetizione di $EF = 4$ volte del blocco così ottenuto. La lunghezza
+del blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 +
+RF_1 \cdot K_1 \right) = 4800$ pacchetti.
+%
+Il numero di pacchetti prodotti è fatto variare da 1000 a
+
+\subsection{Canale Markoviano}
 
 \section{Conclusioni}
 
-\section{Bibliografia}
+
 %\begin{figure}[H]
 %	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
 %	\caption{Componenti di $\hat{s}$}\label{fig:s2}
 %\end{figure}
-
+\printbibliography[heading=bibnumbered, title=Bibliografia]
 \end{document}
