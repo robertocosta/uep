@@ -117,7 +117,7 @@ def prepare_video():
         cd ..
         tar -cJf dataset.tar.xz dataset/
         ''', shell=True)
-        r = dataset.put(body=open('dataset.tar.xz', 'rb'))
+        bucket.upload_file('uep/dataset.tar.xz', 'dataset.tar.xz')
         print("Uploaded dataset")
         PROGRESS['PREPARE_VIDEO'] = "OK"
     else:
