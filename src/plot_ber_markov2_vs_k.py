@@ -59,8 +59,8 @@ if __name__ == "__main__":
                 os.remove(clientname + ".tar.xz")
 
                 bs = ber_scanner(srvname, clientname)
-                shelf["bs_{:02d}_{:02d}".format(j,i)] = bs
                 bs.scan()
+                shelf["bs_{:02d}_{:02d}".format(j,i)] = bs
             else:
                 bs = shelf["bs_{:02d}_{:02d}".format(j,i)]
 

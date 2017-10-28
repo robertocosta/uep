@@ -61,8 +61,8 @@ if __name__ == "__main__":
             os.remove(clientname + ".tar.xz")
 
             bs = ber_scanner(srvname, clientname)
-            zeroshelf["bs_{:02d}".format(i)] = bs
             bs.scan()
+            zeroshelf["bs_{:02d}".format(i)] = bs
         else:
             bs = zeroshelf["bs_{:02d}".format(i)]
 
@@ -80,6 +80,7 @@ if __name__ == "__main__":
           " +- {:e} (ci95%)".format(0,
                                     np.mean(udp_real_err_rates[0]),
                                     1.96*np.std(udp_real_err_rates[0])))
+    zeroshelf.sync()
 
     for (j, p) in enumerate(udp_err_rates[1:]):
         uep_err_rates.append([])
@@ -104,10 +105,10 @@ if __name__ == "__main__":
                 os.remove(clientname + ".tar.xz")
 
                 bs = ber_scanner(srvname, clientname)
-                zeroshelf["bs_{:02d}_{:02d}".format(j,i)] = bs
                 bs.scan()
+                iidshelf["bs_{:02d}_{:02d}".format(j,i)] = bs
             else:
-                bs = zeroshelf["bs_{:02d}_{:02d}".format(j,i)]
+                bs = iidshelf["bs_{:02d}_{:02d}".format(j,i)]
 
             udp_real_err_rates[-1].append(bs.udp_err_rate)
             uep_err_rates_ci[-1].append(bs.uep_err_rates)
@@ -123,16 +124,20 @@ if __name__ == "__main__":
               " +- {:e} (ci95%)".format(p,
                                         np.mean(udp_real_err_rates[-1]),
                                         1.96*np.std(udp_real_err_rates[-1])))
+    iidshelf.sync()
 
     mib_err_rates = np.array(uep_err_rates)[:, :, 0]
     mib_err_rates_ci = np.array(uep_err_rates_ci)[:, :, 0]
     lib_err_rates = np.array(uep_err_rates)[:, :, 1]
     lib_err_rates_ci = np.array(uep_err_rates_ci)[:, :, 1]
 
-    mib_err_rates_ci -= mib_err_rates
-    mib_err_rates_ci[:,:,0] = -mib_err_rates_ci[:,:,0]
-    lib_err_rates_ci -= lib_err_rates
-    lib_err_rates_ci[:,:,0] = -lib_err_rates_ci[:,:,0]
+    print(mib_err_rates.shape)
+    print(mib_err_rates_ci[:,:,0].shape)
+
+    mib_err_rates_ci[:, :, 0] = -(mib_err_rates_ci[:, :, 0] - mib_err_rates)
+    mib_err_rates_ci[:, :, 1] -= mib_err_rates
+    lib_err_rates_ci[:, :, 0] = -(lib_err_rates_ci[:, :, 0] - lib_err_rates)
+    lib_err_rates_ci[:, :, 1] -= lib_err_rates
 
     plt.figure()
     plt.gca().set_yscale('log')
