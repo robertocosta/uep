@@ -2,11 +2,12 @@
 
 set -eu -o pipefail
 
-script="$1"
+script="${1-}"
 
 instance_id=$(aws ec2 run-instances \
 		  --region us-east-1 \
 		  --image-id ami-5cbe7326 \
+		  --block-device-mappings "DeviceName=xvda,Ebs={DeleteOnTermination=true,VolumeSize=32,VolumeType=gp2}" \
 		  --count 1 \
 		  --instance-type c4.large \
 		  --subnet-id 'subnet-0c601120' \
