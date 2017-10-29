@@ -39,8 +39,6 @@ def read_trace_line(filename):
         traceline["truncatable"] = (next(fields) == "Yes")
         yield traceline
 
-def success_ci(z, n):
+def success_err(z, n):
     d = 1.96/n * math.sqrt(z*(1 - z/n))
-    l = z/n - d
-    u = z/n + d
-    return (l, u)
+    return (d, d)

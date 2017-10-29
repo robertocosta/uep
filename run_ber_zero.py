@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
 import datetime
+import decimal
 import glob
+import lzma
 import os
 import os.path
+import pickle
+import random
 import re
 import subprocess
 import sys
@@ -13,7 +17,13 @@ import boto3
 import botocore
 import numpy as np
 
+from boto3.dynamodb.conditions import Attr
+from decimal import Decimal
 from subprocess import check_call, check_output, Popen, call
+
+if 'uep/src' not in sys.path:
+    sys.path.append('uep/src')
+from ber import *
 
 PROGRESS = {"BUILD": "FAILED",
             "PREPARE_VIDEO": "FAILED",
@@ -32,56 +42,14 @@ def send_aws_mail(msg):
         msg += "RUN = {!s}\n".format(run_data["RUN"])
         msg += "PROCESS_OUTPUT = {!s}\n".format(run_data["PROCESS_OUTPUT"])
 
-        msg += "--- UPLOADED_FILES ---\n"
-        for f in run_data["UPLOADED_FILES"]:
-            msg += "{!s}: {!s}\n".format(f[0], f[1])
+        # msg += "--- UPLOADED_FILES ---\n"
+        # for f in run_data["UPLOADED_FILES"]:
+        #     msg += "{!s}: {!s}\n".format(f[0], f[1])
 
     client = boto3.client('sns', region_name='us-east-1')
     r = client.publish(TopicArn='arn:aws:sns:us-east-1:402432167722:NotifyMe',
                        Message=msg)
     if not r['MessageId']: raise RuntimeError("SNS publish failed")
-
-def build():
-    global PROGRESS
-
-    # Get dependencies
-    while True:
-        try:
-            check_call(["sudo", "apt-get", "update"])
-            check_call(["sudo", "apt-get", "install" ,"-y",
-                        "build-essential",
-                        "cmake",
-                        "git",
-                        "libboost-all-dev",
-                        "libprotobuf-dev",
-                        "libpthread-stubs0-dev",
-                        "p7zip",
-                        "protobuf-compiler"])
-            break
-        except Exception as e:
-            continue
-    print("Dependencies installed")
-
-    # Clone repo
-    if not os.path.exists('uep'):
-        check_call(["git", "clone", "--recursive",
-                    "https://github.com/riccz/uep.git"])
-        print("Repo cloned")
-    else:
-        print("Repo already exists")
-
-    # Build
-    check_call('''
-    set -e
-    cd uep
-    git checkout master
-    mkdir -p build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
-    make
-    ''', shell=True)
-    print("UEP built")
-    PROGRESS['BUILD'] = 'OK'
 
 def prepare_video():
     global PROGRESS
@@ -134,22 +102,40 @@ def run():
     global PROGRESS
 
     os.chdir("uep/build/bin")
+    git_sha1 = subprocess.check_output(["git", "log",
+                                        "-1",
+                                        "--format=%H"])
+    git_sha1 = git_sha1.strip().decode()
+
+    s3 = boto3.resource('s3', region_name='us-east-1')
+    dynamo = boto3.resource('dynamodb', region_name='us-east-1')
+    sim_tab = dynamo.Table('uep_sim_results')
+
+    k0 = 100
+    k1 = 900
+    rf0 = 3
+    rf1 = 1
+    ef = 4
+    pktsize = 512
+    send_rate = 1000000
+    stream_name = 'stefan_cif_long'
 
     overheads = np.linspace(0, 0.2, 10)
     overheads.resize(15)
     overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
+    print("Run with overheads = {!s}".format(overheads))
     for (i, oh) in enumerate(overheads):
         n = int(1000 * (1 + oh))
         srv_clog = open("server_console.log", "wt")
         srv_tcp_port = 12312 + i
         srv_proc = Popen(["./server",
                           "-p", str(srv_tcp_port),
-                          "-K", "[100, 900]",
-                          "-R", "[3, 1]",
-                          "-E", "4",
-                          "-L", "512",
+                          "-K", "[{:d}, {:d}]".format(k0, k1),
+                          "-R", "[{:d}, {:d}]".format(rf0, rf1),
+                          "-E", str(ef),
+                          "-L", str(pktsize),
                           "-n", str(n),
-                          "-r", "1000000"],
+                          "-r", str(send_rate)],
                          stdout=srv_clog,
                          stderr=srv_clog)
 
@@ -160,7 +146,7 @@ def run():
         clt_proc = Popen(["./client",
                           "-l", str(clt_udp_port),
                           "-r", str(srv_tcp_port),
-                          "-n", "stefan_cif_long",
+                          "-n", stream_name,
                           "-t", "10"],
                          stdout=clt_clog,
                          stderr=clt_clog)
@@ -171,30 +157,52 @@ def run():
         if not (srv_proc.wait() == 0):
             raise subprocess.CalledProcessError(srv_proc.returncode,
                                                 srv_proc.args)
-        #print("Run ({:d}/{:d}) with udp_ber={:e} OK".format(i+1, len(udp_bers), b))
         print("Run ({:d}/{:d})"
               " with overhead={:f}"
               " (n={:d}) OK".format(i+1, len(overheads), oh, n))
 
-        logfiles = glob.glob("*[!0-9].log") # Exclude the already renamed ones
-        for l in logfiles:
-            m = re.match("(.*)\.log", l)
-            new_l = "{!s}_{:02d}.log".format(m.group(1), i)
-            os.replace(l, new_l)
-            check_call(["tar", "-cJf", new_l + ".tar.xz", new_l])
-            os.remove(new_l)
+        bs = ber_scanner("server.log", "client.log")
+        bs.scan()
 
-    # Upload logs
-    subdir_name = format(datetime.datetime.now(), "%Y-%m-%d_%H-%M-%S")
-    s3 = boto3.client('s3', region_name='us-east-1')
-    for l in glob.glob("*.log.tar.xz"):
-        objname = "simulation_logs/{!s}/{!s}".format(subdir_name, l)
-        s3.put_object(Body=open(l, 'rb'), Bucket='uep.zanol.eu', Key=objname)
-        publink = s3.generate_presigned_url('get_object',
-                                            Params={'Bucket': 'uep.zanol.eu',
-                                                    'Key': objname},
-                                            ExpiresIn=31536000)
-        PROGRESS['UPLOADED_FILES'].append((l, publink))
+        for logfile in ["server.log", "client.log"]:
+            check_call(["tar", "-cJf", logfile + ".tar.xz", logfile])
+
+        newid = random.getrandbits(64)
+        ts = datetime.datetime.now().timestamp()
+        bs_dump = pickle.dumps(bs)
+        lzout = lzma.compress(bs_dump)
+
+        s3.meta.client.upload_file('server.log.tar.xz',
+                                   'uep.zanol.eu',
+                                   "sim_logs/{:d}_server.log.tar.xz".format(newid))
+        s3.meta.client.upload_file('client.log.tar.xz',
+                                   'uep.zanol.eu',
+                                   "sim_logs/{:d}_client.log.tar.xz".format(newid))
+        s3.meta.client.put_object(Body=lzout,
+                                  Bucket='uep.zanol.eu',
+                                  Key="sim_scans/{:d}_ber_scanner.pickle.xz".format(newid))
+
+        sim_tab.put_item(Item={'result_id': newid,
+                               'timestamp': Decimal(ts).quantize(Decimal('1e-3')),
+                               'git_commit': git_sha1,
+                               's3_server_log': "sim_logs/{:d}_server.log.tar.xz".format(newid),
+                               's3_client_log': "sim_logs/{:d}_client.log.tar.xz".format(newid),
+                               's3_ber_scanner': "sim_scans/{:d}_ber_scanner.pickle.xz".format(newid),
+                               'iid_per': 0,
+                               'overhead': Decimal(oh).quantize(Decimal('1e-4')),
+                               'k0': k0,
+                               'k1': k1,
+                               'rf0': rf0,
+                               'rf1': rf1,
+                               'ef': ef,
+                               'pktsize': pktsize,
+                               'n': n,
+                               'send_rate': Decimal(send_rate).quantize(Decimal('1e2')),
+                               'stream_name': stream_name},
+                         ConditionExpression=Attr('result_id').not_exists())
+
+        for logfile in ["server.log", "client.log"]:
+           os.remove(logfile + ".tar.xz")
 
     os.chdir("../..")
     PROGRESS['RUN'] = "OK"
@@ -219,7 +227,6 @@ def process_output():
 
 if __name__ == "__main__":
     try:
-        build()
         prepare_video()
         run()
         # process_output()
