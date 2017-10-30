@@ -12,8 +12,13 @@
 # Makefile.in
 # \.deps/
 # \.dirstamp
+*.264
+*.7z
+*.cfg
 *.cmake
+*.log
 *.pyc
+*.yuv
 /*/CMakeFiles/
 /.lock-waf_*
 /.waf-*/
@@ -31,11 +36,17 @@
 /src/*.a
 /src/*.pb.cc
 /src/*.pb.h
+/tex/*-blx.bib
+/tex/*.aux
+/tex/*.bbl
+/tex/*.bcf
+/tex/*.bib-stamp
+/tex/*.blg
+/tex/*.log
+/tex/*.out
+/tex/*.pdf
+/tex/*.run.xml
+/tex/*.synctex.gz
 Makefile
-jsvm-prefix/
-*.cfg
-*.264
-*.yuv
-*.7z
 cmake_defines.hpp
-*.log
+jsvm-prefix/
