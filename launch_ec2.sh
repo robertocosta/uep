@@ -78,6 +78,7 @@ else
                     python3-boto3 \
                     python3-matplotlib \
                     python3-numpy \
+                    python3-scipy \
                     screen && \
                 break
             done
