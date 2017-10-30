@@ -53,7 +53,8 @@ if __name__ == "__main__":
             q = sim_tab.query(IndexName='iid_per-overhead-index',
                               KeyConditionExpression=Key('iid_per').eq(dec_p) &
                               Key('overhead').eq(dec_oh),
-                              FilterExpression=Attr('k0').eq(100) &
+                              FilterExpression=Attr('masked').ne(True) &
+                              Attr('k0').eq(100) &
                               Attr('k1').eq(900) &
                               Attr('rf0').eq(3) &
                               Attr('rf1').eq(1) &
@@ -65,16 +66,24 @@ if __name__ == "__main__":
             p_uep_err_rates = []
             p_uep_err_counts = None
             p_uep_tot_pkts = None
-            for p in q['Items']:
-                bs_o = uep_bucket.Object(p['s3_ber_scanner']).get()
+            for pt in q['Items']:
+                bs_o = uep_bucket.Object(pt['s3_ber_scanner']).get()
                 bs = pickle.loads(lzma.decompress(bs_o['Body'].read()))
 
+                print("[{!s}] iid_per = {:f},"
+                      " overhead = {:f}"
+                      " results:".format(pt['result_id'], dec_p, dec_oh))
+
                 p_udp_err_rates.append(bs.udp_err_rate)
+                print("UDP err rate = {:e}".format(bs.udp_err_rate))
                 p_uep_err_rates.append(bs.uep_err_rates)
+                print("UEP err rates = {!s}".format(bs.uep_err_rates))
 
                 errs = list(map(operator.sub,
                                 bs.tot_sent,
                                 bs.tot_recvd))
+                print("UEP err counts = {!s}".format(errs))
+                print("UEP pkt counts = {!s}".format(bs.tot_sent))
                 if p_uep_err_counts is None:
                     p_uep_err_counts = errs
                     p_uep_tot_pkts = bs.tot_sent
