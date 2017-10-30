@@ -9,54 +9,55 @@ import sys
 from utils import *
 
 class ber_scanner:
+    def sent_pkts_h(self, m):
+        self.sent_pkts += 1
+    def sent_subblocks_h(self, m):
+        a = json.loads(m.group(1))
+        self.sent_subblocks.append(a)
+    def recvd_pkts_h(self, m):
+        self.recvd_pkts += int(m.group(1))
+    def recvd_subblocks_h(self, m):
+        a = json.loads(m.group(1))
+        self.recvd_subblocks.append(a)
+    def last_block_sent_h(self, m):
+        self.last_block_sent += 1
+    def last_block_sent_reset(self, m):
+        self.last_block_sent = 0
+    def last_block_recvd_h(self, m):
+        self.last_block_recvd = int(m.group(1))
+
     def __init__(self, serverlog, clientlog):
         self.server_scanner = line_scanner(serverlog)
         self.client_scanner = line_scanner(clientlog)
 
         self.sent_pkts = 0
-        def sent_pkts_h(m):
-            self.sent_pkts += 1
         self.server_scanner.add_regex("data_server::handle_sent.*udp_pkt_sent",
-                                      sent_pkts_h)
+                                      self.sent_pkts_h)
         self.sent_subblocks = []
-        def sent_subblocks_h(m):
-            a = json.loads(m.group(1))
-            self.sent_subblocks.append(a)
         self.server_scanner.add_regex("uep_encoder::check_has_block.*"
                                       "new_block.*"
                                       "non_padding_pkts=(\[[\d, ]+?\])",
-                                      sent_subblocks_h)
+                                      self.sent_subblocks_h)
 
         self.recvd_pkts = 0
-        def recvd_pkts_h(m):
-            self.recvd_pkts += int(m.group(1))
         self.client_scanner.add_regex("data_client::handle_receive.*"
                                       "received_count=(\d+)",
-                                      recvd_pkts_h)
+                                      self.recvd_pkts_h)
         self.recvd_subblocks = []
-        def recvd_subblocks_h(m):
-            a = json.loads(m.group(1))
-            self.recvd_subblocks.append(a)
         self.client_scanner.add_regex("uep_decoder::deduplicate_queued.*"
                                       "received_block.*"
                                       "pkt_counts=(\[[\d, ]+?\])",
-                                      recvd_subblocks_h)
+                                      self.recvd_subblocks_h)
         self.last_block_sent = 0
-        def last_block_sent_h(m):
-            self.last_block_sent += 1
-        def last_block_sent_reset(m):
-            self.last_block_sent = 0
         self.server_scanner.add_regex("uep_encoder::check_has_block.*"
                                       "new_block",
-                                      last_block_sent_reset)
+                                      self.last_block_sent_reset)
         self.server_scanner.add_regex("data_server::handle_sent.*udp_pkt_sent",
-                                      last_block_sent_h)
+                                      self.last_block_sent_h)
         self.last_block_recvd = None
-        def last_block_recvd_h(m):
-            self.last_block_recvd = int(m.group(1))
         self.client_scanner.add_regex("mp_context::run.*"
                                  "output_size=(\d+)",
-                                 last_block_recvd_h)
+                                 self.last_block_recvd_h)
 
     def scan(self):
         self.server_scanner.scan()
@@ -84,7 +85,11 @@ class ber_scanner:
                                          self.recvd_subblocks,
                                          [0,0]))
         self.uep_err_rates = list(map(lambda a: 1 - a[0] / a[1],
-                                 zip(self.tot_recvd, self.tot_sent)))
+                                      zip(self.tot_recvd, self.tot_sent)))
+
+        self.uep_err_rates_ci = list(map(lambda a: success_ci(a[1] - a[0], a[1]),
+                                         zip(self.tot_recvd, self.tot_sent)))
+
         print("Total UEP source pkts = {!s}".format(self.tot_sent))
         print("Total UEP decoded pkts = {!s}".format(self.tot_recvd))
         print("UEP packet error rate: prio 0 = {:e}"

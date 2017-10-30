@@ -111,24 +111,29 @@ def run():
     dynamo = boto3.resource('dynamodb', region_name='us-east-1')
     sim_tab = dynamo.Table('uep_sim_results')
 
-    k0 = 100
-    k1 = 900
     rf0 = 3
     rf1 = 1
     ef = 4
     pktsize = 512
     send_rate = 1000000
     stream_name = 'stefan_cif_long'
+    fixed_err_p = 1e-1
+    fixed_oh = 0.3
+    ks = [1000]#, 5000, 10000]
+    bad_runs = np.linspace(1, 1500, 10)
 
-    iid_err_ps = [1e-4, 1e-2, 1e-1]
-    overheads = np.linspace(0, 0.2, 10)
-    overheads.resize(15)
-    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
-    print("Run with overheads =\n {!s}\n"
-          "and iid_err_ps =\n {!s}".format(overheads, iid_err_ps))
-    for (j, p) in enumerate(iid_err_ps):
-        for (i, oh) in enumerate(overheads):
-            n = int(1000 * (1 + oh))
+    print("Run with bad_runs =\n {!s}\n"
+          "and ks =\n {!s}".format(bad_runs, ks))
+
+    for (j, K) in enumerate(ks):
+        for (i, br) in enumerate(bad_runs):
+            k0 = int(0.1 * K)
+            k1 = K - K0
+            n = int(K * (1 + fixed_oh))
+
+            p_BG = 1/br
+            p_GB = p_BG * fixed_err_p / (1 - fixed_err_p)
+
             srv_clog = open("server_console.log", "wt")
             srv_tcp_port = 12312 + i
             srv_proc = Popen(["./server",
@@ -147,13 +152,13 @@ def run():
             clt_clog = open("client_console.log", "wt")
             clt_udp_port = 12345 + i
             clt_proc = Popen(["./client",
-                  "-l", str(clt_udp_port),
-                  "-r", str(srv_tcp_port),
-                  "-n", stream_name,
-                  "-p", str(p),
-                  "-t", "10"],
-                 stdout=clt_clog,
-                 stderr=clt_clog)
+                              "-l", str(clt_udp_port),
+                              "-r", str(srv_tcp_port),
+                              "-n", stream_name,
+                              "-p", "[{:e}, {:e}]".format(p_GB, p_BG),
+                              "-t", "10"],
+                             stdout=clt_clog,
+                             stderr=clt_clog)
 
             if not (clt_proc.wait() == 0):
                 raise subprocess.CalledProcessError(clt_proc.returncode,
@@ -162,13 +167,13 @@ def run():
                 raise subprocess.CalledProcessError(srv_proc.returncode,
                                                     srv_proc.args)
             print("Run ({:d}/{:d})"
-                  " with overhead={:f},"
-                  " iid err.p={:e},"
-                  " (n={:d}) OK".format(j*len(overheads) + i + 1,
-                                        len(overheads)*len(iid_err_ps),
-                                        oh,
-                                        p,
-                                        n))
+                  " with K={:d},"
+                  " br={:f}"
+                  " (p_GB={:e},"
+                  " p_BG={:e})"
+                  " OK".format(j*len(bad_runs) + i + 1,
+                               len(bad_runs)*len(ks),
+                               K, br, p_GB, p_BG))
 
             bs = ber_scanner("server.log", "client.log")
             bs.scan()
@@ -197,10 +202,12 @@ def run():
                                    's3_server_log': "sim_logs/{:d}_server.log.tar.xz".format(newid),
                                    's3_client_log': "sim_logs/{:d}_client.log.tar.xz".format(newid),
                                    's3_ber_scanner': "sim_scans/{:d}_ber_scanner.pickle.xz".format(newid),
-                                   'iid_per': Decimal(p).quantize(Decimal('1e-8')),
-                                   'overhead': Decimal(oh).quantize(Decimal('1e-4')),
+                                   'avg_per': Decimal(fixed_err_p).quantize(Decimal('1e-8')),
+                                   'avg_bad_run': Decimal(br).quantize(Decimal('1e-4')),
+                                   'overhead': Decimal(fixed_oh).quantize(Decimal('1e-4')),
                                    'k0': k0,
                                    'k1': k1,
+                                   'k': K,
                                    'rf0': rf0,
                                    'rf1': rf1,
                                    'ef': ef,

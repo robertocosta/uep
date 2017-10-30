@@ -1,5 +1,14 @@
-\documentclass[italian, 11pt]{article}
+\documentclass[italian, a4paper, 12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+
+\usepackage[left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+\renewcommand{\baselinestretch}{1.5}
+
 \usepackage{float}
+
 %%% font & looks %%%
 \usepackage{mathpazo}
 %\usepackage{palatino}
@@ -12,10 +21,9 @@
 % and here - https://www.sharelatex.com/learn/Font_typefaces
 
 \usepackage{microtype}
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
+
 \usepackage[parfill]{parskip}
-\usepackage[a4paper, left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+
 \usepackage{bm}
 \usepackage[labelfont=bf,font={small,it}]{caption}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
@@ -30,12 +38,13 @@
 % math
 %\usepackage{amsmath}
 \usepackage{amssymb}
-%\usepackage{amsthm} 
+%\usepackage{amsthm}
 \usepackage{wasysym}
+%\usepackage{siunitx}
 
 % graphics
 \usepackage{multirow}
-\usepackage{placeins}
+\usepackage[section]{placeins}
 \usepackage{graphicx}
 \usepackage{epstopdf}
 \usepackage{pgfplots}
@@ -46,7 +55,7 @@
   \usepgfplotslibrary{patchplots}
   \usepackage{grffile}
   \usepackage{amsmath}
-  
+
 \usepackage{pdfpages}
 
 % extra
@@ -58,6 +67,7 @@
 \usetikzlibrary{decorations.pathreplacing,angles,quotes}
 \usepackage{chemformula}
 \usepackage{textcomp}
+\usepackage{subcaption}
 
 % better tables
 \usepackage{booktabs}
@@ -65,8 +75,8 @@
 %%% links %%%
 \usepackage{hyperref}
 \hypersetup{
-	linktocpage,
-	colorlinks,
+        linktocpage,
+        colorlinks,
     citecolor=black,
     filecolor=black,
     linkcolor=black,
@@ -76,6 +86,9 @@
 \usepackage[framed,numbered]{matlab-prettifier}
 \tikzset{
   font={\fontsize{9pt}{12}\selectfont}}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{report.bib}
 
 %%% references %%%
 \usepackage[noabbrev,capitalize,nameinlink]{cleveref}
@@ -100,15 +113,15 @@
             \end{trivlist}}%
 \begin{document}
 \begin{center}
-	%\horline\\
-	\Large Wireless Systems And Networks\\
-	\huge \textbf{Project: Unequal Error Protection}\\[3mm]
-	\begin{framed}
-		\Large \textbf{Workgroup} \\[2mm]
-		\normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
-	\end{framed}
-	%\horline
-\end{center}	
+        %\horline\\
+        \Large Wireless Systems And Networks\\
+        \huge \textbf{Project: Unequal Error Protection}\\[3mm]
+        \begin{framed}
+                \Large \textbf{Workgroup} \\[2mm]
+                \normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
+        \end{framed}
+        %\horline
+\end{center}
 \FloatBarrier
 \section{Sommario}
 La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, utilizzando un codice di correzione degli errori a fontana, il quale regola la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
@@ -131,7 +144,7 @@ Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel 
 Il canale considerato nelle simulazioni presenta errori i.i.d. con probabilità $e \in [10^{-8},10^{-1}]$.
 \section{Approccio tecnico}
 \subsection{Obbiettivi}
-La finalità del progetto è testare l'algoritmo di trasmissione su un canale non privo di errori per dimostrare che.
+La finalità del progetto è l'implementazione dell'algoritmo di trasmissione e la verifica delle sue prestazioni su un canale con errori indipendenti o correlati.
 
 \subsection{Diagramma}
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
@@ -170,7 +183,7 @@ P_{BG} & P_{BB}
 1-p & p \\
 q & 1-q
 \end{pmatrix}$$
-Le probabilità stazionarie sono definite come 
+Le probabilità stazionarie sono definite come
 $$\bm{\pi} = \begin{pmatrix}
 \pi_G\\\pi_B
 \end{pmatrix} = \begin{pmatrix}
@@ -208,25 +221,98 @@ Di seguito la rappresentazione Markoviana.
 \subsubsection{Codici a fontana}
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
     \caption{Schema dei codici a fontana}
     \label{fig:FC}
 \end{figure}
 \subsubsection{UEP}
+\label{sec:uep}
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
     \caption{Schema della protezione non uniforme}
     \label{fig:UEP}
 \end{figure}
 \section{Risultati}
+L'algoritmo per la protezione non uniforme esposto nel
+paragrafo~\ref{sec:uep} è stato testato nei due casi di canale senza
+memoria e di canale Markoviano per determinare la packet error rate
+ottenibile in queste due condizioni.
+
+Sono stati inoltre misurati i tempi necessari alla codifica e
+decodifica dei pacchetti in funzione dell'overhead desiderato.
+
+Infine è stato misurato il PSNR ...
+
+\subsection{Packet error rate su un canale senza memoria}
+In questo caso è stata misurata la packet error rate a livello di
+applicazione ottenuta variando l'overhead e considerando diversi
+valori per la packet error rate del canale.
+%
+Facendo riferimento alla figura~\ref{fig:UDP}, la PER di livello
+applicazione è misurata come la frazione di pacchetti forniti all'UEP
+encoder che raggiungono l'uscita dell'UEP decoder.
+%
+L'overhead è definito, in modo analogo a \cite{uep}, come $t =
+\frac{N-K}{K}$, cioè come l'aumento relativo del numero di pacchetti
+trasmessi dovuto alla codifica.
+%
+Per permettere l'esecuzione di un gran numero di test, il server e il
+client sono stati eseguiti sullo stesso computer, simulando un canale
+senza memoria che scarta i pacchetti con una data probabilità $e$.
+
+Sono stati usati gli stessi valori per i parametri specificati da
+\cite{uep} per permettere un confronto con i risulati ottenuti in
+questa tesina e di verificare la correttezza dell'implementazione.
+%
+I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
+pacchetti importanti e $K_1 = 900$ pacchetti non importanti; il blocco
+virtuale è stato costruito ripetendo $RF_0 = 3$ volte il primo
+sotto-blocco, $RF_1 = 1$ il secondo ed espandendo la sequenza di
+pacchetti così ottenuta di un fattore $EF = 4$. La lunghezza del
+blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
+\cdot K_1 \right) = 4800$ pacchetti.
+%
+L'overhead è stato fatto variare nello stesso intervallo di
+\cite{uep}, cioè $[0, 0.4]$, a cui corrisponde un numero di pacchetti
+inviati $N \in [1000, 1400]$ per ogni blocco di $K$ pacchetti.
+%
+La probabilità di errore è stata impostata ai valori $\left\{ 0,
+10^{-4}, 10^{-2},10^{-1} \right\}$.
+
+Trasmettendo un video H264 segmentato in circa 400000 pacchetti,
+ciascuno lungo 512 byte, attraverso il sistema UEP sono stati ottenuti
+i risultati mostrati in figura~\ref{plot:iid}.
+%
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
+  \caption{Packet error rate misurata su un canale iid al variare
+    dell'overhead.}
+  \label{plot:iid}
+\end{figure}
+%
+Come è possibile osservare, le curve corrispondenti al canale senza
+errori ($e=0$) sono coerenti con \cite{uep}. Negli altri tre casi,
+invece, la PER segue lo stesso andamento del caso senza errori ed è
+semplicemente traslata verso destra.
+%
+Si può anche notare come nel caso $e = 10^{-4}$ l'algoritmo testato
+abbia già delle prestazioni molto vicine a quelle ottenibili su un
+canale senza errori.
+%
+Anche nel caso $10^{-1}$ è possibile ottenere una packet error rate
+inferiore a $10^{-8}$ per entrambi i tipi di pacchetti usando solo un
+overhead del 40 \%.
+
+\subsection{Canale Markoviano}
 
 \section{Conclusioni}
 
-\section{Bibliografia}
+
 %\begin{figure}[H]
 %	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
 %	\caption{Componenti di $\hat{s}$}\label{fig:s2}
 %\end{figure}
-
+\printbibliography[heading=bibnumbered, title=Bibliografia]
 \end{document}
