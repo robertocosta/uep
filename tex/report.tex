@@ -167,6 +167,7 @@ La finalità del progetto è l'implementazione dell'algoritmo di trasmissione e 
 
 \subsection{Modelli matematici}
 \subsubsection{Canale}
+\label{sec:markov}
 Il canale è rappresentato da una catena di Markov a 2 stati: buono (G) e cattivo (B).\\
 Lo stato del sistema all'indice temporale $n$ (slot $n$) è indicato con $X(n)$, o $X_n$.\\
 Sono stati effettuati test con due tipi di canale:
@@ -297,7 +298,7 @@ errori ($e=0$) sono coerenti con \cite{uep}. Negli altri tre casi,
 invece, la PER segue lo stesso andamento del caso senza errori ed è
 semplicemente traslata verso destra.
 %
-Si può anche notare come nel caso $e = 10^{-4}$ l'algoritmo testato
+Si può anche notare come nel caso $e = 10^{-2}$ l'algoritmo testato
 abbia già delle prestazioni molto vicine a quelle ottenibili su un
 canale senza errori.
 %
@@ -305,7 +306,19 @@ Anche nel caso $10^{-1}$ è possibile ottenere una packet error rate
 inferiore a $10^{-8}$ per entrambi i tipi di pacchetti usando solo un
 overhead del 40 \%.
 
-\subsection{Canale Markoviano}
+\subsection{Packet error rate su un canale Markoviano}
+Nel caso del canale Markoviano, descritto nel
+paragrafo~\ref{sec:markov}, sono state eseguite misure della packet
+error rate variando la lunghezza media di una sequenza di slot cattivi
+consecutivi e considerando diversi valori per la dimensione del blocco
+$K$.
+%
+La frazione di pacchetti importanti presente in ogni blocco è stata
+impostata al 10 \%, come per il caso iid, e anche per gli altri
+parametri ($RF_i$ e $EF$) sono stati usati gli stessi valori dei test
+precedenti.
+%
+
 
 \section{Conclusioni}
 
