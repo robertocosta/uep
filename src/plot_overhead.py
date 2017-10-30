@@ -22,31 +22,43 @@ def run_nal_overhead(n, L):
 
 if __name__ == "__main__":
     shelf = shelve.open("plot_overhead_data")
-    
-    Ls = list(np.linspace(1, 1500, 256, dtype=int))
-    Ls += range(330, 560)
-    Ls = sorted(set(Ls))
-    print(Ls)
-    strname = "stefan_cif_long"
-    uep_hdr = 4
-    lt_hdr = 11
 
-    ohs = []
-    for L in Ls:
-        d = run_nal_overhead(strname, L)
-        tot_src = d['size0'] + d['size1']
-        tot_udp = (d['npkts0'] + d['npkts1']) * (L + uep_hdr + lt_hdr)
-        oh = (tot_udp - tot_src) / tot_src
-        ohs.append(oh)
+    if 'Ls' in shelf and 'ohs' in shelf:
+        Ls = shelf['Ls']
+        ohs = shelf['ohs']
+    else:
+        Ls = list(np.linspace(1, 1500, 256, dtype=int))
+        Ls += range(330, 560)
+        Ls = sorted(set(Ls))
 
-    shelf['Ls'] = Ls
-    shelf['ohs'] = ohs
+        strname = "stefan_cif_long"
+        uep_hdr = 4
+        lt_hdr = 11
+
+        ohs = []
+        for L in Ls:
+            d = run_nal_overhead(strname, L)
+            tot_src = d['size0'] + d['size1']
+            tot_udp = (d['npkts0'] + d['npkts1']) * (L + uep_hdr + lt_hdr)
+            oh = (tot_udp - tot_src) / tot_src
+            ohs.append(oh)
+
+        shelf['Ls'] = Ls
+        shelf['ohs'] = ohs
 
     shelf.close()
-    
+
+    i_min = np.argmin(ohs)
+    print("Best packet size = {:d}".format(Ls[i_min]))
+    print("Min overhead = {:f}".format(ohs[i_min]))
+
     plt.figure();
     plt.plot(Ls, ohs)
 
-    plt.ylim(0, 1)
+    plt.ylim(0, 0.2)
+    plt.xlim(1, 1500)
+    plt.grid()
+    plt.xlabel("L [byte]")
+    plt.ylabel("overhead")
     plt.savefig("plot_overhead.pdf", format='pdf')
     plt.show();
