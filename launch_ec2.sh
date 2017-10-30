@@ -64,20 +64,23 @@ else
             set -eu -o pipefail
             base64 -d <<< "${script_base64}" > "${script}"
             chmod a+x "${script}"
-            sudo apt-get update
-            sudo apt-get install -y \
-                 build-essential \
-                 cmake \
-                 git \
-                 libboost-all-dev \
-                 libprotobuf-dev \
-                 libpthread-stubs0-dev \
-                 p7zip \
-                 protobuf-compiler \
-                 python3-boto3 \
-                 python3-matplotlib \
-                 python3-numpy \
-                 screen
+            while true; do
+                sudo apt-get update && \
+                sudo apt-get install -y \
+                    build-essential \
+                    cmake \
+                    git \
+                    libboost-all-dev \
+                    libprotobuf-dev \
+                    libpthread-stubs0-dev \
+                    p7zip \
+                    protobuf-compiler \
+                    python3-boto3 \
+                    python3-matplotlib \
+                    python3-numpy \
+                    screen && \
+                break
+            done
             git clone --recursive "https://github.com/riccz/uep.git"
             pushd uep
             git checkout master
