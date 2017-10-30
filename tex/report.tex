@@ -278,21 +278,32 @@ L'overhead è stato fatto variare nello stesso intervallo di
 inviati $N \in [1000, 1400]$ per ogni blocco di $K$ pacchetti.
 %
 La probabilità di errore è stata impostata ai valori $\left\{ 0,
-10^{-4}, 10^{-2},10^{_1} \right\}$.
+10^{-4}, 10^{-2},10^{-1} \right\}$.
 
-Trasmettendo un video H264 di 16000 frame sono state ottenute le
-quattro curve mostrate in figura~\ref{plot:iid}.
+Trasmettendo un video H264 segmentato in circa 400000 pacchetti,
+ciascuno lungo 512 byte, attraverso il sistema UEP sono stati ottenuti
+i risultati mostrati in figura~\ref{plot:iid}.
 %
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{plot_ber_iid}
-  \caption{IID PER}
+  \caption{Packet error rate misurata su un canale iid al variare
+    dell'overhead.}
   \label{plot:iid}
 \end{figure}
 %
-Le curve corrispondenti a $e=0$ sono coerenti con \cite{uep}, mentre è
-possibile osservare che negli altri tre casi sono semplicemente
-traslate a destra e mntengono la stessa forma.
+Come è possibile osservare, le curve corrispondenti al canale senza
+errori ($e=0$) sono coerenti con \cite{uep}. Negli altri tre casi,
+invece, la PER segue lo stesso andamento del caso senza errori ed è
+semplicemente traslata verso destra.
+%
+Si può anche notare come nel caso $e = 10^{-4}$ l'algoritmo testato
+abbia già delle prestazioni molto vicine a quelle ottenibili su un
+canale senza errori.
+%
+Anche nel caso $10^{-1}$ è possibile ottenere una packet error rate
+inferiore a $10^{-8}$ per entrambi i tipi di pacchetti usando solo un
+overhead del 40 \%.
 
 \subsection{Canale Markoviano}
 
