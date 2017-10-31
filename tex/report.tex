@@ -113,15 +113,15 @@
 \end{trivlist}}%
 \begin{document}
 \begin{center}
-	%\horline\\
-	\Large Wireless Systems And Networks\\
-	\huge \textbf{Project: Unequal Error Protection}\\[3mm]
-	\begin{framed}
-		\Large \textbf{Workgroup} \\[2mm]
-		\normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
-	\end{framed}
-	%\horline
-\end{center}	
+        %\horline\\
+        \Large Wireless Systems And Networks\\
+        \huge \textbf{Project: Unequal Error Protection}\\[3mm]
+        \begin{framed}
+                \Large \textbf{Workgroup} \\[2mm]
+                \normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
+        \end{framed}
+        %\horline
+\end{center}
 \FloatBarrier
 \section*{Sommario}
 La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, utilizzando un codice di correzione degli errori a fontana, il quale regola la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
@@ -184,7 +184,7 @@ P_{BG} & P_{BB}
 1-p & p \\
 q & 1-q
 \end{pmatrix}$$
-Le probabilità stazionarie sono definite come 
+Le probabilità stazionarie sono definite come
 $$\bm{\pi} = \begin{pmatrix}
 \pi_G\\\pi_B
 \end{pmatrix} = \lim_{n \to\infty} \begin{pmatrix}
@@ -224,9 +224,9 @@ I codici a fontana sono una classe di codici di correzione degli errori che aggi
 %L'overhead introdotto dalla codifica è dato da $t = \frac{N-K}{K}$.\\
 Fissando la lunghezza del messaggio codificato, $N$, per ogni messaggio originale di lunghezza $K<N$, è possibile schematizzare la codifica di canale lineare attraverso la seguente equazione
 \begin{equation}
-\bm{y} = 
+\bm{y} =
 \begin{pmatrix}
-y_1 \\y_2 \\y_3 \\\vdots \\y_N 
+y_1 \\y_2 \\y_3 \\\vdots \\y_N
 \end{pmatrix} = \underbrace{\begin{pmatrix}
 g_{11}	&g_{12}	&\cdots	&g_{1K}\\
 g_{21}	&g_{22}	&\cdots	&g_{2K}\\
@@ -243,23 +243,23 @@ La codifica dell'$i-$esimo pacchetto avviene attraverso l'operazione di \textit{
 Se $G$ è invertibile, è possibile recuperare il vettore $\bm{x}$ da $\bm{y}$ attraverso la risoluzione di un sistema lineare.\\
 I codici a fontana non prevedono la risoluzione di un sistema lineare per la decodifica, bensì un algoritmo di \textit{message passing}: con riferimento alla figura (\ref{fig:FC})
 \begin{itemize}
-	\item SE esiste un simbolo codificato $e_n$ con un solo arco entrante (come $e_4$)\begin{itemize}
-		\item	Decodifica il simbolo di informazione corrispondente $i_k=e_n$ ($i_5$ in questo caso)
-		\item	Rimpiazza tutti i simboli codificati $e_{n'}$ aventi un arco entrante da $i_k$ con $e_{n'}^{\text{new}} = e_{n'} \textit{ XOR } i_k$
-		\item 	Rimuovi gli archi da $i_k$
-		\item 	SE ci sono altri simboli di informazione da decodificare \begin{itemize}
-			\item Torna all'inizio
-		\end{itemize}
-		\item ALTRIMENTI\begin{itemize}
-			\item Decodifica riuscita
-		\end{itemize}
-	\end{itemize}
-	
-	\item ALTRIMENTI Decodifica fallita
+        \item SE esiste un simbolo codificato $e_n$ con un solo arco entrante (come $e_4$)\begin{itemize}
+                \item	Decodifica il simbolo di informazione corrispondente $i_k=e_n$ ($i_5$ in questo caso)
+                \item	Rimpiazza tutti i simboli codificati $e_{n'}$ aventi un arco entrante da $i_k$ con $e_{n'}^{\text{new}} = e_{n'} \textit{ XOR } i_k$
+                \item   Rimuovi gli archi da $i_k$
+                \item   SE ci sono altri simboli di informazione da decodificare \begin{itemize}
+                        \item Torna all'inizio
+                \end{itemize}
+                \item ALTRIMENTI\begin{itemize}
+                        \item Decodifica riuscita
+                \end{itemize}
+        \end{itemize}
+
+        \item ALTRIMENTI Decodifica fallita
 \end{itemize}
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
     \caption{Schema: \textit{message passing}}
     \label{fig:FC}
 \end{figure}
@@ -271,7 +271,7 @@ Il risultato della giustapposizione delle parti ripetute viene a sua volta ripet
 Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti originali del messaggio originale e viene inviato al codificatore a fontana. Di seguito uno schema rappresentativo con $p=2$, $RF_1 = 2$,$RF_2=1$, $EF=2$.
 \begin{figure}[H]
     \centering
-	\makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
+        \makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
     \caption{Schema della protezione non uniforme}
     \label{fig:UEP}
 \end{figure}
@@ -286,6 +286,39 @@ Sono stati inoltre misurati i tempi necessari alla codifica e
 decodifica dei pacchetti in funzione dell'overhead desiderato.
 
 Infine è stato misurato il PSNR ...
+
+\subsection{Scelta della dimensione dei paccchetti}
+Il paper \cite{uep} considera simboli di 1 byte durante la codifica,
+ma questa scelta non è praticabile nel caso di questa tesina. Il
+motivo è dato dall'overhead introdotto aggiungendo degli header a ogni
+pacchetto, infatti una dimensione di pacchetto $L=1$ comporterebbe un
+overhead del 1500 \% dovuto solo agli header.
+
+Questo overhead decresce all'aumentare della dimensione dei pacchetti
+$L$, tuttavia bisogna cohnsiderare l'overhead introdotto dalla
+segmentazione del video H264.
+%
+Il video H264 è composto da pacchetti (detti NALU) di dimensioni
+variabili che devono essere aggregati o segmentati in pacchetti di
+dimensione fissa $L$. Il fatto di considerare due diverse classi di
+priorità per le NALU richiede di inserire un certo numero di byte di
+padding, ogni volta che termina una sequenza consecutiva di NALU con
+la stessa priorità, per ottenere un numero intero di pacchetti di
+lunghezza $L$.
+
+Tenendo conto di entrambi questi contributi all'overhead si ottiene il
+grafico mostrato in figura~\ref{fig:pktsize} ed è possibile
+individuare il valore $L = 388$ che minimizza l'overhead dovuto al
+padding e agli header.
+% Best packet size = 388
+% Min overhead = 0.069367
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_overhead}
+  \caption{Overhead introdotto dalla segmentazione al variare della
+    dimensione $L$ dei pacchetti.}
+  \label{fig:pktsize}
+\end{figure}
 
 \subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
@@ -316,18 +349,16 @@ pacchetti così ottenuta di un fattore $EF = 4$. La lunghezza del
 blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
 \cdot K_1 \right) = 4800$ pacchetti.
 %
-L'overhead è stato fatto variare nello stesso intervallo di
-\cite{uep}, cioè $[0, 0.4]$, a cui corrisponde un numero di pacchetti
-inviati $N \in [1000, 1400]$ per ogni blocco di $K=K_0+K_1$ pacchetti.
+L'overhead è stato fatto variare nell'intervallo $[0, 0.75]$, a cui
+corrisponde un numero di pacchetti inviati $N \in [1000, 1750]$ per
+ogni blocco di $K=K_0+K_1$ pacchetti.
 %
-La probabilità di errore del canale è stata impostata ai valori $\left\{ 0,
-10^{-4}, 10^{-2},10^{-1} \right\}$.
+La probabilità di errore del canale è stata impostata ai valori
+$\left\{ 0, 10^{-2}, 10^{-1}, 3 \cdot 10^{-1} \right\}$.
 
 Trasmettendo un video H264 segmentato in circa 400000 pacchetti,
 ciascuno lungo 512 byte, attraverso il sistema UEP sono stati ottenuti
-
-
-i risultati mostrati in figura~\ref{plot:iid}.
+i risultati mostrati in figura~\ref{fig:iid}.
 %
 \begin{figure}[H]
     \centering
@@ -336,26 +367,18 @@ i risultati mostrati in figura~\ref{plot:iid}.
     dell'overhead}
     \label{fig:iid}
 \end{figure}
-%\begin{figure}[htbp]
-%  \centering
-%  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
-%  \caption{Packet error rate misurata su un canale iid al variare
-%    dell'overhead.}
-%  \label{plot:iid}
-%\end{figure}
 %
 Come è possibile osservare, le curve corrispondenti al canale senza
 errori ($e=0$) sono coerenti con \cite{uep}. Negli altri tre casi,
 invece, la PER segue lo stesso andamento del caso senza errori ed è
-semplicemente traslata verso destra.
+semplicemente traslata verso destra di una lunghezza pari alla PER del
+canale.
 %
-Si può anche notare come nel caso $e = 10^{-2}$ l'algoritmo testato
-abbia già delle prestazioni molto vicine a quelle ottenibili su un
-canale senza errori.
-%
-Anche nel caso $10^{-1}$ è possibile ottenere una packet error rate
-inferiore a $10^{-8}$ per entrambi i tipi di pacchetti usando solo un
-overhead del 40 \%.
+Si può infatti notare come nel caso $e = 10^{-2}$ l'algoritmo testato
+abbia delle prestazioni molto vicine a quelle ottenibili su un canale
+senza errori, mentre nei casi con PER $e = 10^{-1}$ ed $e = 3\cdot
+10^{-1}$ le curve siano traslate, rispettivamente, di $0.1$ e $0.3$
+rispetto al caso senza errori.
 
 \subsection{Packet error rate su un canale Markoviano}
 Nel caso del canale Markoviano, descritto nel
