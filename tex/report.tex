@@ -113,21 +113,21 @@
             \end{trivlist}}%
 \begin{document}
 \begin{center}
-        %\horline\\
-        \Large Wireless Systems And Networks\\
-        \huge \textbf{Project: Unequal Error Protection}\\[3mm]
-        \begin{framed}
-                \Large \textbf{Workgroup} \\[2mm]
-                \normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
-        \end{framed}
-        %\horline
-\end{center}
+	%\horline\\
+	\Large Wireless Systems And Networks\\
+	\huge \textbf{Project: Unequal Error Protection}\\[3mm]
+	\begin{framed}
+		\Large \textbf{Workgroup} \\[2mm]
+		\normalsize \textbf{Costa} Roberto -- \textbf{Zanol} Riccardo
+	\end{framed}
+	%\horline
+\end{center}	
 \FloatBarrier
-\section{Sommario}
+\section*{Sommario}
 La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, utilizzando un codice di correzione degli errori a fontana, il quale regola la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
 Verrà analizzata la correttezza della trasmissione (in termini di Bit Error Rate e di PSNR) al variare della Bit Error Rate del canale. Verranno inoltre analizzate la complessità computazionale di codifica e decodifica e il tempo ad esse associato, al variare della ridondanza aggiunta.\\
 Il progetto è stato realizzato in C++; Python è stato usato per riportare graficamente i risultati ottenuti.
-
+\newpage
 \section{Introduzione}
 Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire il video a qualità arbitraria.\\
 Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplemenari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
@@ -144,7 +144,7 @@ Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel 
 Il canale considerato nelle simulazioni presenta errori i.i.d. con probabilità $e \in [10^{-8},10^{-1}]$.
 \section{Approccio tecnico}
 \subsection{Obbiettivi}
-La finalità del progetto è l'implementazione dell'algoritmo di trasmissione e la verifica delle sue prestazioni su un canale con errori indipendenti o correlati.
+La finalità del progetto è testare l'algoritmo di trasmissione su un canale non privo di errori per dimostrare che.
 
 \subsection{Diagramma}
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
@@ -164,7 +164,7 @@ La finalità del progetto è l'implementazione dell'algoritmo di trasmissione e 
     \label{fig:UDP}
 \end{figure}
 %\includepdf{TCP.pdf}
-
+\newpage
 \subsection{Modelli matematici}
 \subsubsection{Canale}
 \label{sec:markov}
@@ -184,12 +184,12 @@ P_{BG} & P_{BB}
 1-p & p \\
 q & 1-q
 \end{pmatrix}$$
-Le probabilità stazionarie sono definite come
+Le probabilità stazionarie sono definite come 
 $$\bm{\pi} = \begin{pmatrix}
 \pi_G\\\pi_B
-\end{pmatrix} = \begin{pmatrix}
-\lim_{n \to\infty} P[X(n)=G]\\
-\lim_{n \to\infty} P[X(n)=B]
+\end{pmatrix} = \lim_{n \to\infty} \begin{pmatrix}
+P[X(n)=G]\\
+P[X(n)=B]
 \end{pmatrix}$$
 e possono essere ricavate dall'equazione
 $$P^T\cdot \bm{\pi} = \bm{\pi} \Leftrightarrow \begin{pmatrix}
@@ -202,7 +202,7 @@ $$P^T\cdot \bm{\pi} = \bm{\pi} \Leftrightarrow \begin{pmatrix}
 \end{pmatrix}$$
 La probabilità stazionaria che il canale sia nello stato B è la probabilità d'errore media:
 $$E[P_e] = \pi_B$$
-Può essere definita la variabile aleatoria $\#_B$ che definisce il numero di slot in cui il sistema resta nello stato B, la cui distribuzione di probabilità può essere scritta come:
+Può essere definita la variabile aleatoria $\#_B$ che indica il numero di slot in cui il sistema resta nello stato B, la cui distribuzione di probabilità può essere scritta come:
 $$P[\#_B=k]= \left(P_{BB}\right)^{k-1}P_{BG} = (1-q)^{k-1} q$$
 Il valore atteso di $\#_B$ è l'inverso della probabilità di transizione da B a G:
 $$E[\#_B] = \sum_{k=0}^{+\infty} k \cdot (1-q)^{k-1} q = q \cdot \frac{1}{(1-(1-q))^2} = \frac{1}{q}$$
@@ -219,24 +219,66 @@ Di seguito la rappresentazione Markoviana.
     \caption{Rappresentazione Markoviana dei due tipi di canale analizzati}
     \label{fig:Channel}
 \end{figure}
-\subsubsection{Codici a fontana}
+\subsubsection{Codici a fontana}\label{FCsection}
+I codici a fontana sono una classe di codici di correzione degli errori che aggiunge a un messaggio $\bm{x}\in\mathcal{A}^K$, di lunghezza $K$, una quantità di ridondanza potenzialmente infinita, aumentando la lunghezza del messaggio codificato $\bm{y}\in\mathcal{A}^N$, in modo tale che sia possibile recuperare il messaggio originale da un sottoinsieme di cardinalità leggermente maggiore di $K$ (e minore di $N$) del messaggio codificato.\\
+%L'overhead introdotto dalla codifica è dato da $t = \frac{N-K}{K}$.\\
+Fissando la lunghezza del messaggio codificato, $N$, per ogni messaggio originale di lunghezza $K<N$, è possibile schematizzare la codifica di canale lineare attraverso la seguente equazione
+\begin{equation}
+\bm{y} = 
+\begin{pmatrix}
+y_1 \\y_2 \\y_3 \\\vdots \\y_N 
+\end{pmatrix} = \underbrace{\begin{pmatrix}
+g_{11}	&g_{12}	&\cdots	&g_{1K}\\
+g_{21}	&g_{22}	&\cdots	&g_{2K}\\
+g_{31}	&g_{32}	&\cdots	&g_{3K}\\
+\vdots &\ddots & \ddots &\vdots\\
+g_{N1}	&g_{N2}	&\cdots	&g_{NK}
+\end{pmatrix}}_{=G} \begin{pmatrix}
+x_1 \\x_2 \\\vdots \\x_K
+\end{pmatrix} = G \cdot \bm{x}
+\end{equation}
+dove $G$ è la matrice di codifica, $g_{ij}\in\{0,1\}$, $x_i\in\mathcal{X}$, $y_i\in\mathcal{Y}$.\\
+La $i-$esima riga della matrice $G$ è casuale e il suo grado (la distanza di hamming dall'origine) segue una distribuzione di probailità nota: la Robust Soliton Distribution.\\
+La codifica dell'$i-$esimo pacchetto avviene attraverso l'operazione di \textit{OR esclusivo} tra i pacchetti di informazione indicati dalla $i-$esima riga di $G$.\\
+Se $G$ è invertibile, è possibile recuperare il vettore $\bm{x}$ da $\bm{y}$ attraverso la risoluzione di un sistema lineare.\\
+I codici a fontana non prevedono la risoluzione di un sistema lineare per la decodifica, bensì un algoritmo di \textit{message passing}: con riferimento alla figura (\ref{fig:FC})
+\begin{itemize}
+	\item SE esiste un simbolo codificato $e_n$ con un solo arco entrante (come $e_4$)\begin{itemize}
+		\item	Decodifica il simbolo di informazione corrispondente $i_k=e_n$ ($i_5$ in questo caso)
+		\item	Rimpiazza tutti i simboli codificati $e_{n'}$ aventi un arco entrante da $i_k$ con $e_{n'}^{\text{new}} = e_{n'} \textit{ XOR } i_k$
+		\item 	Rimuovi gli archi da $i_k$
+		\item 	SE ci sono altri simboli di informazione da decodificare \begin{itemize}
+			\item Torna all'inizio
+		\end{itemize}
+		\item ALTRIMENTI\begin{itemize}
+			\item Decodifica riuscita
+		\end{itemize}
+	\end{itemize}
+	
+	\item ALTRIMENTI Decodifica fallita
+\end{itemize}
 \begin{figure}[H]
     \centering
-        \makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
-    \caption{Schema dei codici a fontana}
+	\makebox[\textwidth][c]{\includegraphics[width=6cm]{fc.png}}
+    \caption{Schema: \textit{message passing}}
     \label{fig:FC}
 \end{figure}
-\subsubsection{UEP}
-\label{sec:uep}
+\newpage
+\subsubsection{UEP}\label{UEPsection}
+La protezione non uniforme di un messaggio prevede la divisione dello stesso in $p$ parti di diversa importanza.\\
+Ogni parte viene ripetuta un numero $RF_i$ di volte, con $i\in\{1,\cdots,p\}$, in base alla sua importanza.\\
+Il risultato della giustapposizione delle parti ripetute viene a sua volta ripetuto un numero $EF$ di volte.\\
+Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti originali del messaggio originale e viene inviato al codificatore a fontana. Di seguito uno schema rappresentativo con $p=2$, $RF_1 = 2$,$RF_2=1$, $EF=2$.
 \begin{figure}[H]
     \centering
-        \makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
+	\makebox[\textwidth][c]{\includegraphics[width=8cm]{uep.png}}
     \caption{Schema della protezione non uniforme}
     \label{fig:UEP}
 \end{figure}
+\newpage
 \section{Risultati}
 L'algoritmo per la protezione non uniforme esposto nel
-paragrafo~\ref{sec:uep} è stato testato nei due casi di canale senza
+paragrafo~\ref{UEPsection} è stato testato nei due casi di canale senza
 memoria e di canale Markoviano per determinare la packet error rate
 ottenibile in queste due condizioni.
 
@@ -276,22 +318,29 @@ blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
 %
 L'overhead è stato fatto variare nello stesso intervallo di
 \cite{uep}, cioè $[0, 0.4]$, a cui corrisponde un numero di pacchetti
-inviati $N \in [1000, 1400]$ per ogni blocco di $K$ pacchetti.
+inviati $N \in [1000, 1400]$ per ogni blocco di $K=K_0+K_1$ pacchetti.
 %
-La probabilità di errore è stata impostata ai valori $\left\{ 0,
+La probabilità di errore del canale è stata impostata ai valori $\left\{ 0,
 10^{-4}, 10^{-2},10^{-1} \right\}$.
 
 Trasmettendo un video H264 segmentato in circa 400000 pacchetti,
 ciascuno lungo 512 byte, attraverso il sistema UEP sono stati ottenuti
 i risultati mostrati in figura~\ref{plot:iid}.
 %
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
-  \caption{Packet error rate misurata su un canale iid al variare
-    dell'overhead.}
-  \label{plot:iid}
+\begin{figure}[H]
+    \centering
+        \includegraphics[clip, trim=0cm 0cm 0cm 0cm, width=0.80\textwidth]{plot_ber_iid.pdf}
+    \caption{Packet error rate misurata su un canale iid al variare
+    dell'overhead}
+    \label{fig:iid}
 \end{figure}
+%\begin{figure}[htbp]
+%  \centering
+%  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
+%  \caption{Packet error rate misurata su un canale iid al variare
+%    dell'overhead.}
+%  \label{plot:iid}
+%\end{figure}
 %
 Come è possibile osservare, le curve corrispondenti al canale senza
 errori ($e=0$) sono coerenti con \cite{uep}. Negli altri tre casi,
@@ -318,7 +367,6 @@ impostata al 10 \%, come per il caso iid, e anche per gli altri
 parametri ($RF_i$ e $EF$) sono stati usati gli stessi valori dei test
 precedenti.
 %
-
 
 \section{Conclusioni}
 
