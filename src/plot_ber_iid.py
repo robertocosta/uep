@@ -19,9 +19,13 @@ import botocore
 
 from boto3.dynamodb.conditions import Attr, Key
 from decimal import Decimal
+from operator import itemgetter
 from subprocess import check_call
 
 from ber import *
+
+def update_average(m, sumw, s, w):
+    return m / (1 + w/sumw) + s / (w + sumw)
 
 if __name__ == "__main__":
     config = botocore.client.Config(read_timeout=300)
@@ -30,120 +34,120 @@ if __name__ == "__main__":
     dyn = boto3.resource('dynamodb', region_name='us-east-1')
     sim_tab = dyn.Table('uep_sim_results')
 
-    udp_err_rates = [0, 1e-4, 1e-2, 1e-1] # Set err rates
-    overheads = np.linspace(0, 0.2, 10)
-    overheads.resize(15)
-    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
+    # Get all the iid points with given params, partition by iid_per
+    udp_err_rates = []
+    points = []
+    q = sim_tab.scan(IndexName='iid_per-overhead-index',
+                     FilterExpression=Attr('k0').eq(100) &
+                     Attr('k1').eq(900) &
+                     Attr('rf0').eq(3) &
+                     Attr('rf1').eq(1) &
+                     Attr('ef').eq(4))# &
+                     #Attr('stream_name').eq('stefan_cif_long'))# &
+                     #Attr('masked').ne(True))
+    for p in q['Items']:
+        per = p['iid_per']
+        if per not in udp_err_rates:
+            udp_err_rates.append(per)
+            points.append([])
 
-    udp_real_err_rates = [] # Measured UDP err rates
-    uep_err_rates = [] # Measured UEP err rates
-    uep_err_counts = [] # Cumulative err count for each sub-block
-    uep_tot_pkts = []
+        i = udp_err_rates.index(per)
+        points[i].append(p)
 
-    for (j, p) in enumerate(udp_err_rates):
-        dec_p = Decimal(p).quantize(Decimal('1e-8'))
-        udp_real_err_rates.append([])
-        uep_err_rates.append([])
-        uep_err_counts.append([])
-        uep_tot_pkts.append([])
+    overheads = [ [] for p in points ]
+    udp_real_err_rates = [ [] for p in points ] # Measured UDP err rates
+    uep_err_rates = [ [] for p in points ] # Measured UEP err rates
+    uep_err_counts = [ [] for p in points ] # Cumulative err count for each sub-block
+    uep_tot_pkts = [ [] for p in points ]
 
-        for (i, oh) in enumerate(overheads):
-            dec_oh = Decimal(oh).quantize(Decimal('1e-4'))
+    for (j, per) in enumerate(udp_err_rates):
+        for p in points[j]:
+            bs_o = uep_bucket.Object(p['s3_ber_scanner']).get()
+            bs = pickle.loads(lzma.decompress(bs_o['Body'].read()))
+            print("[{!s}] iid_per = {:f}, overhead = {:f}"
+                  " results:".format(p['result_id'],
+                                     p['iid_per'],
+                                     p['overhead']))
 
-            q = sim_tab.query(IndexName='iid_per-overhead-index',
-                              KeyConditionExpression=Key('iid_per').eq(dec_p) &
-                              Key('overhead').eq(dec_oh),
-                              FilterExpression=Attr('masked').ne(True) &
-                              Attr('k0').eq(100) &
-                              Attr('k1').eq(900) &
-                              Attr('rf0').eq(3) &
-                              Attr('rf1').eq(1) &
-                              Attr('ef').eq(4))
-            if q['Count'] < 1:
-                raise RuntimeError("Point at oh={:f} was not computed".format(oh))
+            errs = list(map(operator.sub,
+                            bs.tot_sent,
+                            bs.tot_recvd))
 
-            p_udp_err_rates = []
-            p_uep_err_rates = []
-            p_uep_err_counts = None
-            p_uep_tot_pkts = None
-            for pt in q['Items']:
-                bs_o = uep_bucket.Object(pt['s3_ber_scanner']).get()
-                bs = pickle.loads(lzma.decompress(bs_o['Body'].read()))
+            print("UDP err rate = {:e}".format(bs.udp_err_rate))
+            print("UEP err rates = {!s}".format(bs.uep_err_rates))
+            print("UEP err counts = {!s}".format(errs))
+            print("UEP pkt counts = {!s}".format(bs.tot_sent))
 
-                print("[{!s}] iid_per = {:f},"
-                      " overhead = {:f}"
-                      " results:".format(pt['result_id'], dec_p, dec_oh))
-
-                p_udp_err_rates.append(bs.udp_err_rate)
-                print("UDP err rate = {:e}".format(bs.udp_err_rate))
-                p_uep_err_rates.append(bs.uep_err_rates)
-                print("UEP err rates = {!s}".format(bs.uep_err_rates))
-
-                errs = list(map(operator.sub,
-                                bs.tot_sent,
-                                bs.tot_recvd))
-                print("UEP err counts = {!s}".format(errs))
-                print("UEP pkt counts = {!s}".format(bs.tot_sent))
-                if p_uep_err_counts is None:
-                    p_uep_err_counts = errs
-                    p_uep_tot_pkts = bs.tot_sent
-                else:
-                    p_uep_err_counts[:] = map(operator.add,
-                                              p_uep_err_counts,
+            if p['overhead'] not in overheads[j]: # First point at this overhead
+                overheads[j].append(p['overhead'])
+                udp_real_err_rates[j].append(bs.udp_err_rate)
+                uep_err_rates[j].append(bs.uep_err_rates)
+                uep_err_counts[j].append(errs)
+                uep_tot_pkts[j].append(bs.tot_sent)
+            else:
+                i = overheads[j].index(p['overhead'])
+                sumw = sum(uep_tot_pkts[j][i])
+                w = sum(bs.tot_sent)
+                udp_real_err_rates[j][i] = update_average(udp_real_err_rates[j][i],
+                                                          sumw,
+                                                          bs.udp_err_rate,
+                                                          w)
+                uep_err_rates[j][i][:] = map(lambda m, s: update_average(m, sumw, s, w),
+                                             uep_err_rates[j][i],
+                                             bs.uep_err_rates)
+                uep_err_counts[j][i][:] = map(operator.add,
+                                              uep_err_counts[j][i],
                                               errs)
-                    p_uep_tot_pkts[:] = map(operator.add,
-                                            p_uep_tot_pkts,
+                uep_tot_pkts[j][i][:] = map(operator.add,
+                                            uep_tot_pkts[j][i],
                                             bs.tot_sent)
-
-            udp_real_err_rates[-1].append(np.mean(p_udp_err_rates))
-            uep_err_rates[-1].append(np.mean(np.array(p_uep_err_rates), 0))
-            uep_err_counts[-1].append(p_uep_err_counts)
-            uep_tot_pkts[-1].append(p_uep_tot_pkts)
-
-        print("Wanted UDP err.rate = {:e}"
-              " measured = avg. {:e}"
-              " +- {:e} (ci95%)".format(0,
-                                        np.mean(udp_real_err_rates[-1]),
-                                        1.96*np.std(udp_real_err_rates[-1])))
-
-    mib_err_rates = np.array(uep_err_rates)[:, :, 0]
-    lib_err_rates = np.array(uep_err_rates)[:, :, 1]
-
-    mib_err_rates_ci = []
-    lib_err_rates_ci = []
-    for j in range(0, len(udp_err_rates)):
-        mib_err_rates_ci.append([])
-        lib_err_rates_ci.append([])
-        for i in range(0, len(overheads)):
-            mib_err_rates_ci[-1].append(success_err(uep_err_counts[j][i][0],
-                                                    uep_tot_pkts[j][i][0]))
-            lib_err_rates_ci[-1].append(success_err(uep_err_counts[j][i][1],
-                                                    uep_tot_pkts[j][i][1]))
-    mib_err_rates_ci = np.array(mib_err_rates_ci)
-    lib_err_rates_ci = np.array(lib_err_rates_ci)
 
     plt.figure()
     plt.gca().set_yscale('log')
 
-    for i in range(0, len(mib_err_rates)):
-        plt.errorbar(overheads,
-                     mib_err_rates[i],
-                     yerr=mib_err_rates_ci[i].transpose(),
+    for (j, per) in enumerate(udp_err_rates):
+        s = sorted(zip(overheads[j],
+                       uep_err_rates[j],
+                       uep_err_counts[j],
+                       uep_tot_pkts[j]),
+                   key=operator.itemgetter(0))
+        s = np.array(s)
+        ohs = s[:,0]
+        mib_per = np.array(list(s[:,1]))[:,0]
+        lib_per = np.array(list(s[:,1]))[:,1]
+        mib_errc = np.array(list(s[:,2]))[:,0]
+        lib_errc = np.array(list(s[:,2]))[:,1]
+        mib_npkts = np.array(list(s[:,3]))[:,0]
+        lib_npkts = np.array(list(s[:,3]))[:,1]
+
+        mib_per_ci = []
+        for z,n in zip(mib_errc, mib_npkts):
+            mib_per_ci.append(success_err(z, n))
+        mib_per_ci = np.array(mib_per_ci)
+
+        lib_per_ci = []
+        for z,n in zip(lib_errc, lib_npkts):
+            lib_per_ci.append(success_err(z, n))
+        lib_per_ci = np.array(lib_per_ci)
+
+        plt.errorbar(ohs,
+                     mib_per,
+                     yerr=mib_per_ci.transpose(),
                      #fmt='-o',
                      linewidth=1.5,
                      elinewidth=1,
                      capthick=1,
                      capsize=3,
-                     label="MIB e = {:.0e}".format(udp_err_rates[i]))
-        plt.errorbar(overheads,
-                     lib_err_rates[i],
-                     yerr=lib_err_rates_ci[i].transpose(),
+                     label="MIB e = {:.0e}".format(per))
+        plt.errorbar(ohs,
+                     lib_per,
+                     yerr=lib_per_ci.transpose(),
                      #fmt='-o',
                      linewidth=1.5,
                      elinewidth=1,
                      capthick=1,
                      capsize=3,
-                     label="LIB e = {:.0e}".format(udp_err_rates[i]))
+                     label="LIB e = {:.0e}".format(per))
 
     plt.ylim(1e-8, 1)
     plt.legend()
