@@ -87,7 +87,7 @@ class ber_scanner:
         self.uep_err_rates = list(map(lambda a: 1 - a[0] / a[1],
                                       zip(self.tot_recvd, self.tot_sent)))
 
-        self.uep_err_rates_ci = list(map(lambda a: success_ci(a[1] - a[0], a[1]),
+        self.uep_err_rates_ci = list(map(lambda a: success_err(a[1] - a[0], a[1]),
                                          zip(self.tot_recvd, self.tot_sent)))
 
         print("Total UEP source pkts = {!s}".format(self.tot_sent))

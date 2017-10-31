@@ -103,6 +103,13 @@ target_link_libraries(filter_received
   ${Boost_LIBRARIES}
 )
 
+add_executable(nal_overhead nal_overhead.cpp)
+target_link_libraries(nal_overhead
+  ${Boost_LIBRARIES}
+  log
+  nal_reader
+)
+
 add_executable(mp_plots mp_plots.cpp)
 target_link_libraries(mp_plots
   decoder
@@ -130,6 +137,7 @@ set(python_files
   plot_ber_markov2_vs_ef
   plot_ber_markov2_vs_k
   plot_decodeable
+  plot_overhead
   plot_required
   plot_time
   uep_dec_time

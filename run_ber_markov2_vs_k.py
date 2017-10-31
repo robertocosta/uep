@@ -128,7 +128,7 @@ def run():
     for (j, K) in enumerate(ks):
         for (i, br) in enumerate(bad_runs):
             k0 = int(0.1 * K)
-            k1 = K - K0
+            k1 = K - k0
             n = int(K * (1 + fixed_oh))
 
             p_BG = 1/br

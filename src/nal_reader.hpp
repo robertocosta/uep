@@ -99,7 +99,8 @@ public:
   bool use_end_of_stream() const;
   void use_end_of_stream(bool use);
 
-
+  const std::vector<std::size_t> &total_overhead() const;
+  const std::vector<std::size_t> &total_read() const;
 private:
   log::default_logger basic_lg, perf_lg;
 
@@ -131,6 +132,14 @@ private:
   std::queue<fountain_packet> pkt_queue;
 
   bool use_eos; /**< Flag to enable the sending of the EOS code. */
+
+  std::vector<std::size_t> _tot_added_oh; /**< Keep track of the total
+					   *   amount of overhead
+					   *   added per pkt type.
+					   */
+  std::vector<std::size_t> _tot_size; /**< Keep track of the total
+				       *    amount of data read.
+				       */
 
   /** Return the name of the underlying file with the H264 bitstream. */
   std::string filename() const;

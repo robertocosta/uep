@@ -389,7 +389,9 @@ nal_reader::nal_reader(std::istream &in_trace, std::istream &in_bitstream,
   pkt_size(pktsize),
   file(in_bitstream),
   trace(in_trace),
-  use_eos(false) {
+  use_eos(false),
+  _tot_added_oh(2, 0),
+  _tot_size(2, 0) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader with given istreams";
 
   auto oldg = file.tellg();
@@ -412,7 +414,9 @@ nal_reader::nal_reader(const std::string &strname, std::size_t pktsize) :
   trace_backend(new ifstream(tracename())),
   file(*file_backend),
   trace(*trace_backend),
-  use_eos(false) {
+  use_eos(false),
+  _tot_added_oh(2,0),
+  _tot_size(2,0) {
   BOOST_LOG_SEV(basic_lg, log::trace) << "Creating reader for "
 				      << stream_name;
 
@@ -589,6 +593,9 @@ void nal_reader::pack_nals() {
   fp.buffer().resize(pkt_size, 0x00); // Pad with zeros the last segment
   std::copy(i, packed.cend(), fp.buffer().begin());
   pkt_queue.push(std::move(fp));
+
+  _tot_added_oh.at(prio) += pkt_size*npkts - packed.size();
+  _tot_size.at(prio) += packed.size();
   BOOST_LOG(perf_lg) << "nal_reader::pack_nals after_padding"
 		     << " packed_size=" << packed.size()
 		     << " priority=" << prio
@@ -610,6 +617,7 @@ void nal_reader::pack_nals() {
       BOOST_LOG_SEV(basic_lg, log::debug) << "NAL reader enqueued the EOS NAL"
 					  << " (" << pkt_queue.back().size()
 					  << " bytes)";
+      _tot_added_oh.at(0) += pkt_queue.back().size();
       BOOST_LOG(perf_lg) << "nal_reader::pack_nals enqueued_eos";
     }
   }
@@ -688,6 +696,14 @@ bool nal_reader::use_end_of_stream() const {
 
 void nal_reader::use_end_of_stream(bool use) {
   use_eos = use;
+}
+
+const std::vector<std::size_t> &nal_reader::total_overhead() const {
+  return _tot_added_oh;
+}
+
+const std::vector<std::size_t> &nal_reader::total_read() const {
+  return _tot_size;
 }
 
 }
