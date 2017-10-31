@@ -167,6 +167,7 @@ La finalità del progetto è testare l'algoritmo di trasmissione su un canale no
 \newpage
 \subsection{Modelli matematici}
 \subsubsection{Canale}
+\label{sec:markov}
 Il canale è rappresentato da una catena di Markov a 2 stati: buono (G) e cattivo (B).\\
 Lo stato del sistema all'indice temporale $n$ (slot $n$) è indicato con $X(n)$, o $X_n$.\\
 Sono stati effettuati test con due tipi di canale:
@@ -295,8 +296,8 @@ Facendo riferimento alla figura~\ref{fig:UDP}, la PER di livello
 applicazione è misurata come la frazione di pacchetti forniti all'UEP
 encoder che raggiungono l'uscita dell'UEP decoder.
 %
-L'overhead è definito, in riferimento ai parametri introdotti nella sezione (\ref{FCsection}),
- come $t =\frac{N-K}{K}$, cioè come l'aumento relativo del numero di pacchetti
+L'overhead è definito, in modo analogo a \cite{uep}, come $t =
+\frac{N-K}{K}$, cioè come l'aumento relativo del numero di pacchetti
 trasmessi dovuto alla codifica.
 %
 Per permettere l'esecuzione di un gran numero di test, il server e il
@@ -370,11 +371,10 @@ precedenti.
 %
 \section{Conclusioni}
 
-\section{Bibliografia}
+
 %\begin{figure}[H]
 %	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
 %	\caption{Componenti di $\hat{s}$}\label{fig:s2}
 %\end{figure}
 \printbibliography[heading=bibnumbered, title=Bibliografia]
-
 \end{document}
