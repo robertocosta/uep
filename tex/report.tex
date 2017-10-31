@@ -1,5 +1,14 @@
-\documentclass[italian, 11pt]{article}
+\documentclass[italian, a4paper, 12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+
+\usepackage[left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+\renewcommand{\baselinestretch}{1.5}
+
 \usepackage{float}
+
 %%% font & looks %%%
 \usepackage{mathpazo}
 %\usepackage{palatino}
@@ -12,10 +21,9 @@
 % and here - https://www.sharelatex.com/learn/Font_typefaces
 
 \usepackage{microtype}
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
+
 \usepackage[parfill]{parskip}
-\usepackage[a4paper, left=25mm, top=20mm, right=25mm, bottom=20mm]{geometry}
+
 \usepackage{bm}
 \usepackage[labelfont=bf,font={small,it}]{caption}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
@@ -30,12 +38,13 @@
 % math
 %\usepackage{amsmath}
 \usepackage{amssymb}
-%\usepackage{amsthm} 
+%\usepackage{amsthm}
 \usepackage{wasysym}
+%\usepackage{siunitx}
 
 % graphics
 \usepackage{multirow}
-\usepackage{placeins}
+\usepackage[section]{placeins}
 \usepackage{graphicx}
 \usepackage{epstopdf}
 \usepackage{pgfplots}
@@ -46,7 +55,7 @@
   \usepgfplotslibrary{patchplots}
   \usepackage{grffile}
   \usepackage{amsmath}
-  
+
 \usepackage{pdfpages}
 
 % extra
@@ -58,6 +67,7 @@
 \usetikzlibrary{decorations.pathreplacing,angles,quotes}
 \usepackage{chemformula}
 \usepackage{textcomp}
+\usepackage{subcaption}
 
 % better tables
 \usepackage{booktabs}
@@ -65,8 +75,8 @@
 %%% links %%%
 \usepackage{hyperref}
 \hypersetup{
-	linktocpage,
-	colorlinks,
+        linktocpage,
+        colorlinks,
     citecolor=black,
     filecolor=black,
     linkcolor=black,
@@ -76,6 +86,9 @@
 \usepackage[framed,numbered]{matlab-prettifier}
 \tikzset{
   font={\fontsize{9pt}{12}\selectfont}}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{report.bib}
 
 %%% references %%%
 \usepackage[noabbrev,capitalize,nameinlink]{cleveref}
@@ -97,7 +110,7 @@
 \newtheorem{p}{\\[5mm] \large Problem}
 \newenvironment{s}{%\small%
         \begin{trivlist} \item \textbf{Solution}. }{%
-            \end{trivlist}}%
+\end{trivlist}}%
 \begin{document}
 \begin{center}
 	%\horline\\
@@ -154,7 +167,6 @@ La finalità del progetto è testare l'algoritmo di trasmissione su un canale no
 \newpage
 \subsection{Modelli matematici}
 \subsubsection{Canale}
-\label{sec:markov}
 Il canale è rappresentato da una catena di Markov a 2 stati: buono (G) e cattivo (B).\\
 Lo stato del sistema all'indice temporale $n$ (slot $n$) è indicato con $X(n)$, o $X_n$.\\
 Sono stati effettuati test con due tipi di canale:
@@ -312,6 +324,8 @@ La probabilità di errore del canale è stata impostata ai valori $\left\{ 0,
 
 Trasmettendo un video H264 segmentato in circa 400000 pacchetti,
 ciascuno lungo 512 byte, attraverso il sistema UEP sono stati ottenuti
+
+
 i risultati mostrati in figura~\ref{plot:iid}.
 %
 \begin{figure}[H]
@@ -354,7 +368,6 @@ impostata al 10 \%, come per il caso iid, e anche per gli altri
 parametri ($RF_i$ e $EF$) sono stati usati gli stessi valori dei test
 precedenti.
 %
-
 \section{Conclusioni}
 
 \section{Bibliografia}
@@ -362,5 +375,6 @@ precedenti.
 %	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
 %	\caption{Componenti di $\hat{s}$}\label{fig:s2}
 %\end{figure}
+\printbibliography[heading=bibnumbered, title=Bibliografia]
 
 \end{document}
