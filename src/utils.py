@@ -64,3 +64,6 @@ def bernoulli_ci(z, n, gamma):
 def success_err(z, n):
     (l,u) = bernoulli_ci(z, n, 0.95)
     return (-(l - z/n), u - z/n)
+
+def update_average(m, sumw, s, w):
+    return m / (1 + w/sumw) + s / (w + sumw)

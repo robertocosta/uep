@@ -154,6 +154,7 @@ set(python_files
   plot_ber_markov2_vs_k
   plot_decodeable
   plot_fast_iid
+  plot_fast_markov
   plot_overhead
   plot_required
   plot_time
