@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+import datetime
+import lzma
 import multiprocessing
+import pickle
+import random
 import sys
 
+import boto3
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -18,15 +23,21 @@ def run_uep_map(params):
     run_uep(params, res)
     return res
 
-fixed_params = [{'avg_per': 0,
-                'overhead': 0.25,
+fixed_params = [{'avg_per': 1e-2,
+                 'overhead': 0.2,
+                 'k': 500},
+                {'avg_per': 1e-2,
+                 'overhead': 0.2,
                  'k': 1000},
+                {'avg_per': 1e-2,
+                 'overhead': 0.2,
+                 'k': 5000},
                 {'avg_per': 1e-1,
-                'overhead': 0.25,
+                 'overhead': 0.25,
                  'k': 1000},
                 {'avg_per': 3e-1,
                  'overhead': 0.25,
-                 'k': 1000}]
+                'k': 1000}]
 avg_bad_runs = np.linspace(1, 1500, 32).tolist()
 k0_fraction = 0.1
 
@@ -80,10 +91,23 @@ for (j, p) in enumerate(fixed_params):
                                          p['overhead'])))
 
 plt.ylim(1e-8, 1)
-plt.xlabel('Overhead')
+plt.xlabel('E[#_B]')
 plt.ylabel('UEP PER')
 plt.legend()
 plt.grid()
 
-plt.savefig('plot_fast_iid.pdf', format='pdf')
+s3 = boto3.resource('s3', region_name='us-east-1')
+newid = random.getrandbits(64)
+ts = int(datetime.datetime.now().timestamp())
+
+plt.savefig('plot_fast_markov.pdf', format='pdf')
+plotkey = "fast_plots/markov_{:d}_{:d}.pdf".format(ts, newid)
+s3.meta.client.upload_file('plot_fast_markov.pdf',
+                           'uep.zanol.eu',
+                           plotkey,
+                           ExtraArgs={'ACL': 'public-read'})
+ploturl = ("https://s3.amazonaws.com/"
+           "uep.zanol.eu/{!s}".format(plotkey))
+print("Uploaded plot at {!s}".format(ploturl))
+
 plt.show()
