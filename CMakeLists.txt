@@ -6,11 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-Wall)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Debug")
+endif()
+
+set(CMAKE_POSITION_INDEPENDENT_CODE True)
+
 if (${CMAKE_BUILD_TYPE} STREQUAL Release)
   add_compile_options(-O3)
 elseif(${CMAKE_BUILD_TYPE} STREQUAL Debug)
   add_compile_options(-O0 -ggdb)
-  set(CMAKE_POSITION_INDEPENDENT_CODE False)
   add_definitions(-DBOOST_ASIO_ENABLE_HANDLER_TRACKING)
   add_definitions(-DUEP_VERBOSE_LOGS)
 endif(${CMAKE_BUILD_TYPE} STREQUAL Release)
@@ -29,6 +34,14 @@ string(REPLACE "\n" "" GIT_COMMIT_SHA1 ${GIT_COMMIT_SHA1})
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+find_package(PythonLibs 3.5 REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+link_libraries(${PYTHON_LIBRARIES})
+
+find_package(SWIG REQUIRED)
+INCLUDE(${SWIG_USE_FILE})
+set(CMAKE_SWIG_OUTDIR ${CMAKE_BINARY_DIR}/python)
+
 find_package(Boost 1.58 REQUIRED COMPONENTS
   date_time
   filesystem
@@ -40,6 +53,7 @@ find_package(Boost 1.58 REQUIRED COMPONENTS
 )
 include_directories(${Boost_INCLUDE_DIRS})
 add_definitions(-DBOOST_ALL_DYN_LINK)
+link_libraries(${Boost_LIBRARIES})
 
 find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIRS})

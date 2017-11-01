@@ -79,7 +79,8 @@ else
                     python3-matplotlib \
                     python3-numpy \
                     python3-scipy \
-                    screen && \
+                    screen \
+                    swig && \
                 break
             done
             git clone --recursive "https://github.com/riccz/uep.git"
@@ -94,6 +95,10 @@ else
             screen -d -m -L screen.log python3 "${script}"
 EOF
     echo "Started ${script} at ${ipaddr}"
+    ssh -o ConnectTimeout=10 \
+        -o UserKnownHostsFile=/dev/null \
+        -o StrictHostKeyChecking=no \
+        -t admin@"$ipaddr" "screen -r"
 fi
 
 # Local Variables:

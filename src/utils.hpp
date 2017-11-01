@@ -145,6 +145,7 @@ public:
   explicit markov2_distribution(double p01, double p10) :
     tx_01(p01), tx_10(p10) {
     std::bernoulli_distribution initial(p01 / (p01 + p10));
+    rng.seed(std::random_device{}());
     state = initial(rng) ? 1 : 0;
   }
 
@@ -184,7 +185,7 @@ public:
 
 private:
   f_uint state;
-  std::random_device rng;
+  std::mt19937 rng;
   std::bernoulli_distribution tx_01;
   std::bernoulli_distribution tx_10;
 };
