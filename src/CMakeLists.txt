@@ -110,19 +110,35 @@ target_link_libraries(nal_overhead
   nal_reader
 )
 
-add_executable(mp_plots mp_plots.cpp)
-target_link_libraries(mp_plots
-  decoder
+# add_executable(mp_plots mp_plots.cpp)
+# target_link_libraries(mp_plots
+#   decoder
+#   block_encoder
+#   log
+# )
+
+# add_executable(uep_mp_plots uep_mp_plots.cpp)
+# target_link_libraries(uep_mp_plots
+#   uep_decoder
+#   block_encoder
+#   log
+# )
+
+set_property(SOURCE uep_fast_run.i PROPERTY CPLUSPLUS ON)
+swig_add_module(uep_fast_run python
+  uep_fast_run.i
+  uep_fast_run.cpp
+  )
+swig_link_libraries(uep_fast_run
   block_encoder
   log
+  uep_decoder
 )
 
-add_executable(uep_mp_plots uep_mp_plots.cpp)
-target_link_libraries(uep_mp_plots
-  uep_decoder
-  block_encoder
-  log
+set_target_properties(${SWIG_MODULE_uep_fast_run_REAL_NAME}
+  PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SWIG_OUTDIR}
 )
+
 
 set(python_libs
   utils
@@ -137,6 +153,8 @@ set(python_files
   plot_ber_markov2_vs_ef
   plot_ber_markov2_vs_k
   plot_decodeable
+  plot_fast_iid
+  plot_fast_markov
   plot_overhead
   plot_required
   plot_time

@@ -19,9 +19,11 @@ import botocore
 
 from boto3.dynamodb.conditions import Attr, Key
 from decimal import Decimal
+from operator import itemgetter
 from subprocess import check_call
 
 from ber import *
+from utils import *
 
 if __name__ == "__main__":
     config = botocore.client.Config(read_timeout=300)
@@ -30,131 +32,127 @@ if __name__ == "__main__":
     dyn = boto3.resource('dynamodb', region_name='us-east-1')
     sim_tab = dyn.Table('uep_sim_results')
 
-    fixed_err_p = 1e-1
-    ks = [1000]#, 5000, 10000]
-    bad_runs = np.linspace(1, 1500, 10)
+    wanted = [{'k': 1000,
+               'avg_per': Decimal('1e-1'),
+               'overhead': Decimal('0.3')},
+              {'k': 1000,
+               'avg_per': Decimal('1e-2'),
+               'overhead':Decimal('0.15')},
+              {'k': 1000,
+               'avg_per': Decimal('1e-2'),
+               'overhead': Decimal('0.2')}]
 
-    udp_real_err_rates = [] # Measured UDP err rates
-    uep_err_rates = [] # Measured UEP err rates
-    uep_err_counts = [] # Cumulative err count for each sub-block
-    uep_tot_pkts = []
+    points = [ [] for w in wanted ]
+    for (j, w) in enumerate(wanted):
+        wk = w['k']
+        wp = w['avg_per']
+        wo = w['overhead']
+        q = sim_tab.query(IndexName='k-avg_bad_run-index',
+                          KeyConditionExpression=Key('k').eq(wk),
+                          FilterExpression=Attr('k0').eq(int(0.1 * wk)) &
+                          Attr('k1').eq(wk - int(0.1 * wk)) &
+                          Attr('avg_per').eq(wp) &
+                          Attr('overhead').eq(wo) &
+                          Attr('rf0').eq(3) &
+                          Attr('rf1').eq(1) &
+                          Attr('ef').eq(4))# &
+                          #Attr('stream_name').eq('stefan_cif_long'))# &
+                          #Attr('masked').ne(True))
+        for p in q['Items']:
+            points[j].append(p)
 
-    for (j, k) in enumerate(ks):
-        udp_real_err_rates.append([])
-        uep_err_rates.append([])
-        uep_err_counts.append([])
-        uep_tot_pkts.append([])
+    points = [ sorted(ps, key=itemgetter('avg_bad_run')) for ps in points ]
 
-        for (i, br) in enumerate(bad_runs):
-            dec_br = Decimal(br).quantize(Decimal('1e-4'))
+    bad_runs = [ [] for p in points ]
+    udp_real_err_rates = [ [] for p in points ]
+    uep_err_rates = [ [] for p in points ]
+    uep_err_counts = [ [] for p in points ]
+    uep_tot_pkts = [ [] for p in points ]
 
-            q = sim_tab.query(IndexName='k-avg_bad_run-index',
-                              KeyConditionExpression=Key('k').eq(k) &
-                              Key('avg_bad_run').eq(dec_br),
-                              FilterExpression=Attr('masked').ne(True) &
-                              Attr('k0').eq(int(0.1 * k)) &
-                              Attr('k1').eq(k - int(0.1 * k)) &
-                              Attr('rf0').eq(3) &
-                              Attr('rf1').eq(1) &
-                              Attr('ef').eq(4))
-            if q['Count'] < 1:
-                raise RuntimeError("Point at br={:f} was not computed".format(br))
+    for (j, w) in enumerate(wanted):
+        for p in points[j]:
+            bs_o = uep_bucket.Object(p['s3_ber_scanner']).get()
+            bs = pickle.loads(lzma.decompress(bs_o['Body'].read()))
+            print("[{!s}] k = {!s}, bad_run = {!s}"
+                  " results:".format(p['result_id'],
+                                     p['k'],
+                                     p['avg_bad_run']))
 
-            p_udp_err_rates = []
-            p_uep_err_rates = []
-            p_uep_err_counts = None
-            p_uep_tot_pkts = None
-            for pt in q['Items']:
-                bs_o = uep_bucket.Object(pt['s3_ber_scanner']).get()
-                bs = pickle.loads(lzma.decompress(bs_o['Body'].read()))
+            errs = list(map(operator.sub,
+                            bs.tot_sent,
+                            bs.tot_recvd))
 
-                print("[{!s}] k = {:d},"
-                      " bad_run = {:f}"
-                      " results:".format(pt['result_id'], k, dec_br))
+            print("UDP err rate = {:e}".format(bs.udp_err_rate))
+            print("UEP err rates = {!s}".format(bs.uep_err_rates))
+            print("UEP err counts = {!s}".format(errs))
+            print("UEP pkt counts = {!s}".format(bs.tot_sent))
 
-                p_udp_err_rates.append(bs.udp_err_rate)
-                print("UDP err rate = {:e}".format(bs.udp_err_rate))
-                p_uep_err_rates.append(bs.uep_err_rates)
-                print("UEP err rates = {!s}".format(bs.uep_err_rates))
-
-                errs = list(map(operator.sub,
-                                bs.tot_sent,
-                                bs.tot_recvd))
-                print("UEP err counts = {!s}".format(errs))
-                print("UEP pkt counts = {!s}".format(bs.tot_sent))
-                if p_uep_err_counts is None:
-                    p_uep_err_counts = errs
-                    p_uep_tot_pkts = bs.tot_sent
-                else:
-                    p_uep_err_counts[:] = map(operator.add,
-                                              p_uep_err_counts,
+            if p['avg_bad_run'] not in bad_runs[j]: # First point at this overhead
+                bad_runs[j].append(p['avg_bad_run'])
+                udp_real_err_rates[j].append(bs.udp_err_rate)
+                uep_err_rates[j].append(bs.uep_err_rates)
+                uep_err_counts[j].append(errs)
+                uep_tot_pkts[j].append(bs.tot_sent)
+            else:
+                i = bad_runs[j].index(p['avg_bad_run'])
+                sumw = sum(uep_tot_pkts[j][i])
+                w = sum(bs.tot_sent)
+                udp_real_err_rates[j][i] = update_average(udp_real_err_rates[j][i],
+                                                          sumw,
+                                                          bs.udp_err_rate,
+                                                          w)
+                uep_err_rates[j][i][:] = map(lambda m, s: update_average(m, sumw, s, w),
+                                             uep_err_rates[j][i],
+                                             bs.uep_err_rates)
+                uep_err_counts[j][i][:] = map(operator.add,
+                                              uep_err_counts[j][i],
                                               errs)
-                    p_uep_tot_pkts[:] = map(operator.add,
-                                            p_uep_tot_pkts,
+                uep_tot_pkts[j][i][:] = map(operator.add,
+                                            uep_tot_pkts[j][i],
                                             bs.tot_sent)
-
-            udp_real_err_rates[-1].append(np.mean(p_udp_err_rates))
-            uep_err_rates[-1].append(np.mean(np.array(p_uep_err_rates), 0))
-            uep_err_counts[-1].append(p_uep_err_counts)
-            uep_tot_pkts[-1].append(p_uep_tot_pkts)
-
-        print("Wanted UDP err.rate = {:e}"
-              " measured = avg. {:e}"
-              " +- {:e} (ci95%)".format(0,
-                                        np.mean(udp_real_err_rates[-1]),
-                                        1.96/len(udp_real_err_rates[-1])*
-                                        np.std(udp_real_err_rates[-1])))
-
-    mib_err_rates = np.array(uep_err_rates)[:, :, 0]
-    lib_err_rates = np.array(uep_err_rates)[:, :, 1]
-
-    mib_err_rates_ci = []
-    lib_err_rates_ci = []
-    for j in range(0, len(ks)):
-        mib_err_rates_ci.append([])
-        lib_err_rates_ci.append([])
-        for i in range(0, len(bad_runs)):
-            mib_err_rates_ci[-1].append(success_err(uep_err_counts[j][i][0],
-                                                    uep_tot_pkts[j][i][0]))
-            lib_err_rates_ci[-1].append(success_err(uep_err_counts[j][i][1],
-                                                    uep_tot_pkts[j][i][1]))
-    mib_err_rates_ci = np.array(mib_err_rates_ci)
-    lib_err_rates_ci = np.array(lib_err_rates_ci)
-
-    split_mib = lambda x: x[0];
-    split_lib = lambda x: x[1];
-    split_nested_mib = lambda l: list(map(split_mib, l))
-    split_nested_lib = lambda l: list(map(split_lib, l))
-
-    mib_err_rates = list(map(split_nested_mib, uep_err_rates))
-    lib_err_rates = list(map(split_nested_lib, uep_err_rates))
-    mib_err_rates_ci = list(map(split_nested_mib, uep_err_rates_ci))
-    lib_err_rates_ci = list(map(split_nested_lib, uep_err_rates_ci))
 
     plt.figure()
     plt.gca().set_yscale('log')
 
-    for i in range(0, len(mib_err_rates)):
-        plt.errorbar(bad_runs,
-                     mib_err_rates[i],
-                     yerr=mib_err_rates_ci[i].transpose(),
-                     #fmt='-o',
-                     linewidth=1.5,
-                     elinewidth=1,
-                     capthick=1,
-                     capsize=3,
-                     label="MIB K = {:d}".format(ks[i]))
-        plt.errorbar(bad_runs,
-                     lib_err_rates[i],
-                     yerr=lib_err_rates_ci[i].transpose(),
-                     #fmt='-o',
-                     linewidth=1.5,
-                     elinewidth=1,
-                     capthick=1,
-                     capsize=3,
-                     label="LIB K = {:d}".format(ks[i]))
+    for (j, w) in enumerate(wanted):
+        s = sorted(zip(bad_runs[j],
+                       uep_err_rates[j],
+                       uep_err_counts[j],
+                       uep_tot_pkts[j]),
+                   key=operator.itemgetter(0))
+        s = np.array(s)
+        brs = s[:,0]
+        mib_per = np.array(list(s[:,1]))[:,0]
+        lib_per = np.array(list(s[:,1]))[:,1]
+        mib_errc = np.array(list(s[:,2]))[:,0]
+        lib_errc = np.array(list(s[:,2]))[:,1]
+        mib_npkts = np.array(list(s[:,3]))[:,0]
+        lib_npkts = np.array(list(s[:,3]))[:,1]
 
-    plt.ylim(1e-8, 1)
+        mib_per_ci = []
+        for z,n in zip(mib_errc, mib_npkts):
+            mib_per_ci.append(success_err(z, n))
+        mib_per_ci = np.array(mib_per_ci)
+
+        lib_per_ci = []
+        for z,n in zip(lib_errc, lib_npkts):
+            lib_per_ci.append(success_err(z, n))
+        lib_per_ci = np.array(lib_per_ci)
+
+        plt.plot(brs,
+                 mib_per,
+                 marker='o',
+                 linewidth=1.5,
+                 label="MIB K = {!s}".format(w['k']))
+        plt.plot(brs,
+                 lib_per,
+                 marker='o',
+                 linewidth=1.5,
+                 label="LIB K = {!s}".format(w['k']))
+
+    plt.ylim(1e-3, 1)
+    plt.xlabel('E[#_B]')
+    plt.ylabel('UEP PER')
     plt.legend()
     plt.grid()
 

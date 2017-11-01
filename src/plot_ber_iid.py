@@ -23,9 +23,7 @@ from operator import itemgetter
 from subprocess import check_call
 
 from ber import *
-
-def update_average(m, sumw, s, w):
-    return m / (1 + w/sumw) + s / (w + sumw)
+from utils import *
 
 if __name__ == "__main__":
     config = botocore.client.Config(read_timeout=300)
@@ -34,25 +32,33 @@ if __name__ == "__main__":
     dyn = boto3.resource('dynamodb', region_name='us-east-1')
     sim_tab = dyn.Table('uep_sim_results')
 
+    wanted_pers = [0, 1e-2, 1e-1, 3e-1]
     # Get all the iid points with given params, partition by iid_per
     udp_err_rates = []
     points = []
-    q = sim_tab.scan(IndexName='iid_per-overhead-index',
-                     FilterExpression=Attr('k0').eq(100) &
-                     Attr('k1').eq(900) &
-                     Attr('rf0').eq(3) &
-                     Attr('rf1').eq(1) &
-                     Attr('ef').eq(4))# &
-                     #Attr('stream_name').eq('stefan_cif_long'))# &
-                     #Attr('masked').ne(True))
-    for p in q['Items']:
-        per = p['iid_per']
-        if per not in udp_err_rates:
-            udp_err_rates.append(per)
-            points.append([])
+    for wp in wanted_pers:
+        dec_wp = Decimal(wp).quantize(Decimal('1e-8'))
+        q = sim_tab.query(IndexName='iid_per-overhead-index',
+                          KeyConditionExpression=Key('iid_per').eq(dec_wp),
+                          FilterExpression=Attr('k0').eq(100) &
+                          Attr('k1').eq(900) &
+                          Attr('rf0').eq(3) &
+                          Attr('rf1').eq(1) &
+                          Attr('ef').eq(4))# &
+                          #Attr('stream_name').eq('stefan_cif_long'))# &
+                          #Attr('masked').ne(True))
+        for p in q['Items']:
+            per = p['iid_per']
+            if per not in udp_err_rates:
+                udp_err_rates.append(per)
+                points.append([])
 
-        i = udp_err_rates.index(per)
-        points[i].append(p)
+            i = udp_err_rates.index(per)
+            points[i].append(p)
+
+    s = sorted(zip(udp_err_rates, points), key=itemgetter(0))
+    udp_err_rates = [ e[0] for e in s ]
+    points = [ e[1] for e in s]
 
     overheads = [ [] for p in points ]
     udp_real_err_rates = [ [] for p in points ] # Measured UDP err rates
@@ -130,26 +136,20 @@ if __name__ == "__main__":
             lib_per_ci.append(success_err(z, n))
         lib_per_ci = np.array(lib_per_ci)
 
-        plt.errorbar(ohs,
-                     mib_per,
-                     yerr=mib_per_ci.transpose(),
-                     #fmt='-o',
-                     linewidth=1.5,
-                     elinewidth=1,
-                     capthick=1,
-                     capsize=3,
-                     label="MIB e = {:.0e}".format(per))
-        plt.errorbar(ohs,
-                     lib_per,
-                     yerr=lib_per_ci.transpose(),
-                     #fmt='-o',
-                     linewidth=1.5,
-                     elinewidth=1,
-                     capthick=1,
-                     capsize=3,
-                     label="LIB e = {:.0e}".format(per))
+        plt.plot(ohs,
+                 mib_per,
+                 marker='o',
+                 linewidth=1.5,
+                 label="MIB e = {:.0e}".format(per))
+        plt.plot(ohs,
+                 lib_per,
+                 marker='o',
+                 linewidth=1.5,
+                 label="LIB e = {:.0e}".format(per))
 
     plt.ylim(1e-8, 1)
+    plt.xlabel('Overhead')
+    plt.ylabel('UEP PER')
     plt.legend()
     plt.grid()
 

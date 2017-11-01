@@ -204,17 +204,19 @@ void lt_decoder::enqueue_partially_decoded() {
 
   has_enqueued = true;
 
+#ifndef QUIET_PERF_LOG  
   BOOST_LOG(perf_lg) << "lt_decoder::enqueue_partially_decoded"
 		     << " blockno="
 		     << blockno()
 		     << " decoded_pkts="
-		     << the_block_decoder.decoded_count()
-		     << " avg_mp_time="
-		     << the_block_decoder.average_message_passing_time()
-		     << " avg_mp_setup_time="
-		     << the_block_decoder.average_mp_setup_time()
-		     << " avg_push_time="
-		     << average_push_time();
+		     << the_block_decoder.decoded_count();
+    //<< " avg_mp_time="
+    //<< the_block_decoder.average_message_passing_time()
+    //		     << " avg_mp_setup_time="
+    //		     << the_block_decoder.average_mp_setup_time()
+    //		     << " avg_push_time="
+    //		     << average_push_time();
+#endif
 
   if (the_block_decoder.has_decoded())
     BOOST_LOG_SEV(basic_lg, log::debug) <<

@@ -118,12 +118,10 @@ def run():
     ef = 4
     pktsize = 512
     send_rate = 1000000
-    stream_name = 'stefan_cif_long'
+    stream_name = 'stefan_cif'
 
-    iid_err_ps = [1e-4, 1e-2, 1e-1]
-    overheads = np.linspace(0, 0.2, 10)
-    overheads.resize(15)
-    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
+    iid_err_ps = [1e-1, 3e-1]
+    overheads = list(np.linspace(0.4, 0.75, 20)) * 10
     print("Run with overheads =\n {!s}\n"
           "and iid_err_ps =\n {!s}".format(overheads, iid_err_ps))
     for (j, p) in enumerate(iid_err_ps):
