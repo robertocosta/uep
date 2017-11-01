@@ -120,9 +120,7 @@ def run():
     send_rate = 1000000
     stream_name = 'stefan_cif_long'
 
-    overheads = np.linspace(0, 0.2, 10)
-    overheads.resize(15)
-    overheads[10:] = np.linspace(0.2, 0.4, 6)[1:]
+    overheads = np.linspace(0.2, 0.4, 6)[-3:]
     print("Run with overheads = {!s}".format(overheads))
     for (i, oh) in enumerate(overheads):
         n = int(1000 * (1 + oh))

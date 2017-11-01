@@ -114,13 +114,13 @@ def run():
     rf0 = 3
     rf1 = 1
     ef = 4
-    pktsize = 512
+    pktsize = 388
     send_rate = 1000000
     stream_name = 'stefan_cif_long'
-    fixed_err_p = 1e-1
-    fixed_oh = 0.3
+    fixed_err_p = 1e-2
+    fixed_oh = 0.15
     ks = [1000]#, 5000, 10000]
-    bad_runs = np.linspace(1, 1500, 10)
+    bad_runs = np.linspace(1, 1500, 10)[0:5]
 
     print("Run with bad_runs =\n {!s}\n"
           "and ks =\n {!s}".format(bad_runs, ks))
