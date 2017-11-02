@@ -24,7 +24,7 @@ def run_uep_map(params):
     return res
 
 iid_pers = [0, 1e-2, 1e-1, 3e-1]
-overheads = np.linspace(0, 0.8, 64).tolist()
+overheads = np.linspace(0, 0.8, 32).tolist()
 
 base_params = simulation_params()
 base_params.Ks[:] = [100, 900]
@@ -33,7 +33,7 @@ base_params.EF = 4
 base_params.c = 0.1
 base_params.delta = 0.5
 base_params.L = 4
-base_params.nblocks = 1000
+base_params.nblocks = 50000
 
 param_matrix = list()
 for per in iid_pers:
