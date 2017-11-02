@@ -21,6 +21,7 @@ from uep_fast_run import *
 def run_uep_map(params):
     res = simulation_results()
     run_uep(params, res)
+    print(".", end="")
     return res
 
 fixed_params = [{'avg_per': 1e-2,
@@ -108,6 +109,6 @@ s3.meta.client.upload_file('plot_fast_markov.pdf',
                            ExtraArgs={'ACL': 'public-read'})
 ploturl = ("https://s3.amazonaws.com/"
            "uep.zanol.eu/{!s}".format(plotkey))
-print("Uploaded plot at {!s}".format(ploturl))
+print("Uploaded Markov plot at {!s}".format(ploturl))
 
 plt.show()

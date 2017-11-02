@@ -192,4 +192,5 @@ void run_uep(const simulation_params &params, simulation_results &results) {
 
   results.avg_pers = sink.avg_error_rates();
   results.rec_counts = sink.received_counts();
+  results.avg_enc_time = enc.average_encoding_time();
 }
