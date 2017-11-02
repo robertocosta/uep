@@ -126,8 +126,16 @@ private:
 
 
 simulation_results run_uep(const simulation_params &params) {
+  std::size_t src_nblocks;
+  if (params.nblocks == 0) { // Use error limit
+    src_nblocks = params.nblocks_max;
+  }
+  else { // Fixed nblocks
+    src_nblocks = params.nblocks;
+  }
+
   random_packet_source src(params.Ks.begin(), params.Ks.end(),
-			   params.L, params.nblocks);
+			   params.L, src_nblocks);
   uep_encoder<> enc(params.Ks.begin(), params.Ks.end(),
 		    params.RFs.begin(), params.RFs.end(),
 		    params.EF,
@@ -144,6 +152,7 @@ simulation_results run_uep(const simulation_params &params) {
   simulation_results results;
 
   results.dropped_count = 0;
+  results.actual_nblocks = 0;
 
   std::size_t n = (params.overhead + 1) * enc.K();
   std::list<fountain_packet> coded_block;
@@ -181,6 +190,26 @@ simulation_results run_uep(const simulation_params &params) {
     while (dec.has_queued_packets()) {
       sink.push(dec.next_decoded());
     }
+
+    ++results.actual_nblocks;
+
+    // Stop if enough errs for all the subblocks (and not fixed nblocks)
+    bool enough_errs = params.nblocks == 0;
+    for (std::size_t i = 0; i < params.Ks.size() && enough_errs; ++i) {
+      if (results.actual_nblocks < params.nblocks_min) {
+	enough_errs = false;
+	break;
+      }
+      else if (results.actual_nblocks >= params.nblocks_max) {
+	enough_errs = true;
+	break;
+      }
+      else {
+	enough_errs = (params.Ks[i] * results.actual_nblocks
+		       - sink.received_count(i)) >= params.wanted_errs;
+      }
+    }
+    if (enough_errs) break;
   }
 
   // Finish last block
@@ -191,11 +220,15 @@ simulation_results run_uep(const simulation_params &params) {
     }
   }
 
-  results.avg_pers = sink.avg_error_rates();
   results.rec_counts = sink.received_counts();
   results.err_counts.resize(params.Ks.size());
   for (std::size_t i = 0; i < results.err_counts.size(); ++i) {
-    results.err_counts[i] = params.nblocks * params.Ks[i] - results.rec_counts[i];
+    results.err_counts[i] = results.actual_nblocks * params.Ks[i] - results.rec_counts[i];
+  }
+  results.avg_pers.resize(params.Ks.size());
+  for (std::size_t i = 0; i < results.avg_pers.size(); ++i) {
+    results.avg_pers[i] = (static_cast<double>(results.err_counts[i]) /
+			   (results.actual_nblocks * params.Ks[i]));
   }
   results.avg_enc_time = enc.average_encoding_time();
   return results;

@@ -11,7 +11,10 @@ struct simulation_params {
   double c;
   double delta;
   std::size_t L;
-  std::size_t nblocks;
+  std::size_t nblocks = 0; // Override the error limit
+  std::size_t wanted_errs;
+  std::size_t nblocks_min;
+  std::size_t nblocks_max;
   double overhead;
   double chan_pGB;
   double chan_pBG;
@@ -20,6 +23,7 @@ struct simulation_params {
 
 struct simulation_results {
   std::vector<double> avg_pers;
+  std::size_t actual_nblocks;
   std::vector<std::size_t> rec_counts;
   std::vector<std::size_t> err_counts;
   std::size_t dropped_count;
