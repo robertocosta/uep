@@ -125,7 +125,7 @@ private:
 
 
 
-void run_uep(const simulation_params &params, simulation_results &results) {
+simulation_results run_uep(const simulation_params &params) {
   random_packet_source src(params.Ks.begin(), params.Ks.end(),
 			   params.L, params.nblocks);
   uep_encoder<> enc(params.Ks.begin(), params.Ks.end(),
@@ -141,6 +141,7 @@ void run_uep(const simulation_params &params, simulation_results &results) {
 		  params.delta);
   nonempty_counter_sink sink(params.Ks.begin(), params.Ks.end(),
 			     params.nblocks);
+  simulation_results results;
 
   results.dropped_count = 0;
 
@@ -192,5 +193,10 @@ void run_uep(const simulation_params &params, simulation_results &results) {
 
   results.avg_pers = sink.avg_error_rates();
   results.rec_counts = sink.received_counts();
+  results.err_counts.resize(params.Ks.size());
+  for (std::size_t i = 0; i < results.err_counts.size(); ++i) {
+    results.err_counts[i] = params.nblocks * params.Ks[i] - results.rec_counts[i];
+  }
   results.avg_enc_time = enc.average_encoding_time();
+  return results;
 }

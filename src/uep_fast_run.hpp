@@ -21,11 +21,12 @@ struct simulation_params {
 struct simulation_results {
   std::vector<double> avg_pers;
   std::vector<std::size_t> rec_counts;
+  std::vector<std::size_t> err_counts;
   std::size_t dropped_count;
   double avg_enc_time;
   // Update also the serialization/deserialization in the SWIG file
 };
 
-void run_uep(const simulation_params &params, simulation_results &results);
+simulation_results run_uep(const simulation_params &params);
 
 #endif
