@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdint>
 
 #define BOOST_TEST_MODULE test_counters
@@ -265,7 +266,7 @@ BOOST_AUTO_TEST_CASE(avg) {
   average_counter ac;
 
   BOOST_CHECK_EQUAL(ac.count(), 0);
-  BOOST_CHECK_THROW(ac.value(), std::runtime_error);
+  BOOST_CHECK(std::isnan(ac.value()));
 
   ac.add_sample(1.0);
   BOOST_CHECK_EQUAL(ac.count(), 1);
