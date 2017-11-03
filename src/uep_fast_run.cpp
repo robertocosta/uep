@@ -153,6 +153,7 @@ simulation_results run_uep(const simulation_params &params) {
 
   results.dropped_count = 0;
   results.actual_nblocks = 0;
+  results.err_counts.resize(params.Ks.size());
 
   std::size_t n = (params.overhead + 1) * enc.K();
   std::list<fountain_packet> coded_block;
@@ -162,7 +163,9 @@ simulation_results run_uep(const simulation_params &params) {
       enc.push(src.next_packet());
     }
 
-    if (!enc.has_block()) break;
+    if (!enc.has_block()) {
+      break;
+    }
 
     // Encode n packets
     while (coded_block.size() < n) {
@@ -185,6 +188,7 @@ simulation_results run_uep(const simulation_params &params) {
     dec.push(std::make_move_iterator(coded_block.begin()),
 	     std::make_move_iterator(coded_block.end()));
     coded_block.clear();
+    dec.flush();
 
     // Count decoded
     while (dec.has_queued_packets()) {
@@ -193,38 +197,34 @@ simulation_results run_uep(const simulation_params &params) {
 
     ++results.actual_nblocks;
 
-    // Stop if enough errs for all the subblocks (and not fixed nblocks)
-    bool enough_errs = params.nblocks == 0;
-    for (std::size_t i = 0; i < params.Ks.size() && enough_errs; ++i) {
-      if (results.actual_nblocks < params.nblocks_min) {
-	enough_errs = false;
-	break;
+    if (params.nblocks == 0 &&
+	results.actual_nblocks >= params.nblocks_min) {
+      const auto &rec = sink.received_counts();
+      const auto &Ks = params.Ks;
+      for (std::size_t i = 0; i < Ks.size(); ++i) {
+	results.err_counts[i] = (Ks[i] * results.actual_nblocks -
+				 rec[i]);
       }
-      else if (results.actual_nblocks >= params.nblocks_max) {
-	enough_errs = true;
+      // All subblocks have at least wanted_errs
+      bool enough_errs = std::all_of(results.err_counts.begin(),
+				     results.err_counts.end(),
+				     [&params] (std::size_t e) {
+				       return e >= params.wanted_errs;
+				     });
+      if (enough_errs) {
 	break;
-      }
-      else {
-	enough_errs = (params.Ks[i] * results.actual_nblocks
-		       - sink.received_count(i)) >= params.wanted_errs;
       }
     }
-    if (enough_errs) break;
   }
 
-  // Finish last block
-  if (!dec.has_decoded()) {
-    dec.flush();
-    while (dec.has_queued_packets()) {
-      sink.push(dec.next_decoded());
+  if (params.nblocks > 0) {
+    for (std::size_t i = 0; i < results.err_counts.size(); ++i) {
+      results.err_counts[i] = (results.actual_nblocks * params.Ks[i] -
+			       sink.received_counts()[i]);
     }
   }
 
   results.rec_counts = sink.received_counts();
-  results.err_counts.resize(params.Ks.size());
-  for (std::size_t i = 0; i < results.err_counts.size(); ++i) {
-    results.err_counts[i] = results.actual_nblocks * params.Ks[i] - results.rec_counts[i];
-  }
   results.avg_pers.resize(params.Ks.size());
   for (std::size_t i = 0; i < results.avg_pers.size(); ++i) {
     results.avg_pers[i] = (static_cast<double>(results.err_counts[i]) /
