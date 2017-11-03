@@ -1,9 +1,25 @@
+import concurrent.futures as cf
+import datetime
+import lzma
 import math
+import multiprocessing
+import pickle
+import random
 import re
+import sys
 
+import boto3
+import matplotlib.pyplot as plt
 import numpy as np
 
 from scipy import stats
+
+if '../python' not in sys.path:
+    sys.path.append('../python')
+if './python' not in sys.path:
+    sys.path.append('./python')
+
+from uep_fast_run import *
 
 class line_scanner:
     def __init__(self, fname):
@@ -67,3 +83,63 @@ def success_err(z, n):
 
 def update_average(m, sumw, s, w):
     return m / (1 + w/sumw) + s / (w + sumw)
+
+# Callable to run a simulation
+class UEPRunner:
+    def __init__(self, print_lock):
+        self.print_lock = print_lock
+
+    def __call__(self, params):
+        res = run_uep(params)
+        with self.print_lock:
+            print(".", end="")
+        return res
+
+def save_plot(fname, key):
+    s3 = boto3.client('s3', region_name='us-east-1')
+    s3.upload_file(fname, 'uep.zanol.eu', key,
+                   ExtraArgs={'ACL': 'public-read'})
+    url = ("https://s3.amazonaws.com/"
+           "uep.zanol.eu/{!s}".format(key))
+    return url
+
+def save_data(key, **kwargs):
+    s3 = boto3.client('s3', region_name='us-east-1')
+    data = lzma.compress(pickle.dumps(kwargs))
+    s3.put_object(Body=data,
+                  Bucket='uep.zanol.eu',
+                  Key=key,
+                  ACL='public-read')
+    url = ("https://s3.amazonaws.com/"
+           "uep.zanol.eu/{!s}".format(key))
+    return url
+
+def load_data(key):
+    s3 = boto3.client('s3', region_name='us-east-1')
+    bindata = s3.get_object(Bucket='uep.zanol.eu',
+                            Key=key)
+    return pickle.loads(lzma.decompress(bindata['Body'].read()))
+
+def send_notification(msg):
+    sns = boto3.client('sns', region_name='us-east-1')
+
+    sns.publish(TopicArn='arn:aws:sns:us-east-1:402432167722:NotifyMe',
+                Message=msg)
+
+def run_uep_parallel(param_matrix):
+    print_lock = multiprocessing.Lock()
+    result_futures = list()
+    with cf.ProcessPoolExecutor() as executor:
+        print_mngr = multiprocessing.Manager()
+        print_lock = print_mngr.Lock()
+        print("Running", end=" ")
+        for ps in param_matrix:
+            result_futures.append(list())
+            for p in ps:
+                f = executor.submit(UEPRunner(print_lock), p)
+                result_futures[-1].append(f)
+    print("\nDone")
+    result_matrix = list()
+    for fs in result_futures:
+        result_matrix.append([f.result() for f in fs])
+    return result_matrix
