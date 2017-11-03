@@ -30,10 +30,10 @@ if __name__ == "__main__":
          'avg_bad_run': 100,
          'overhead': 0.25},
         {'avg_per': 1e-3,
-         'avg_bad_run': 1000,
+         'avg_bad_run': 500,
          'overhead': 0.25},
     ]
-    ks = np.logspace(math.log10(10), math.log10(10000), 32, dtype=int).tolist()
+    ks = np.linspace(10, 6000, 32, dtype=int).tolist()
     k0_fraction = 0.1
 
     base_params = simulation_params()
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     base_params.L = 4
     base_params.nblocks_min = 500
     base_params.wanted_errs = 30
-    base_params.nblocks_max = int(1e8)
+    base_params.nblocks_max = int(1e5)
 
     param_matrix = list()
     for p in fixed_params:
@@ -62,10 +62,8 @@ if __name__ == "__main__":
 
     plt.figure(1)
     plt.gca().set_yscale('log')
-    plt.gca().set_xscale('log')
 
     plt.figure(2)
-    plt.gca().set_xscale('log')
 
     for (j, p) in enumerate(fixed_params):
         mib_pers = [ r.avg_pers[0] for r in result_matrix[j] ]
