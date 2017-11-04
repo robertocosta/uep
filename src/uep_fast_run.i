@@ -78,6 +78,7 @@ namespace std {
       state['err_counts'] = [c for c in self.err_counts]
       state['dropped_count'] = self.dropped_count
       state['avg_enc_time'] = self.avg_enc_time
+      state['avg_dec_time'] = self.avg_dec_time
       return state
 
     def __setstate__(self, state):
@@ -88,5 +89,6 @@ namespace std {
       self.err_counts[:] = state['err_counts']
       self.dropped_count = state['dropped_count']
       self.avg_enc_time = state['avg_enc_time']
+      self.avg_dec_time = state.get('avg_dec_time', float('nan'))
 }
 }

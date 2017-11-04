@@ -231,5 +231,6 @@ simulation_results run_uep(const simulation_params &params) {
 			   (results.actual_nblocks * params.Ks[i]));
   }
   results.avg_enc_time = enc.average_encoding_time();
+  results.avg_dec_time = dec.average_push_time();
   return results;
 }

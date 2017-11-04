@@ -149,6 +149,7 @@ set(python_files
   plot_decodeable
   plot_fast_iid
   plot_fast_markov
+  plot_fast_time
   plot_overhead
   plot_required
   plot_time

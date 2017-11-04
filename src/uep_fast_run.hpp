@@ -28,6 +28,7 @@ struct simulation_results {
   std::vector<std::size_t> err_counts;
   std::size_t dropped_count;
   double avg_enc_time;
+  double avg_dec_time;
   // Update also the serialization/deserialization in the SWIG file
 };
 
