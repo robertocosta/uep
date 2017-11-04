@@ -96,26 +96,26 @@ class UEPRunner:
         return res
 
 def save_plot(fname, key):
-    s3 = boto3.client('s3', region_name='us-east-1')
+    s3 = boto3.client('s3')
     s3.upload_file(fname, 'uep.zanol.eu', key,
                    ExtraArgs={'ACL': 'public-read'})
-    url = ("https://s3.amazonaws.com/"
-           "uep.zanol.eu/{!s}".format(key))
+    url = ("http://uep.zanol.eu."
+           "s3.amazonaws.com/{!s}".format(key))
     return url
 
 def save_data(key, **kwargs):
-    s3 = boto3.client('s3', region_name='us-east-1')
+    s3 = boto3.client('s3')
     data = lzma.compress(pickle.dumps(kwargs))
     s3.put_object(Body=data,
                   Bucket='uep.zanol.eu',
                   Key=key,
                   ACL='public-read')
-    url = ("https://s3.amazonaws.com/"
-           "uep.zanol.eu/{!s}".format(key))
+    url = ("http://uep.zanol.eu.s3"
+           ".amazonaws.com/{!s}".format(key))
     return url
 
 def load_data(key):
-    s3 = boto3.client('s3', region_name='us-east-1')
+    s3 = boto3.client('s3')
     bindata = s3.get_object(Bucket='uep.zanol.eu',
                             Key=key)
     return pickle.loads(lzma.decompress(bindata['Body'].read()))
