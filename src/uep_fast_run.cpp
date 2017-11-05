@@ -1,5 +1,7 @@
 #include "uep_fast_run.hpp"
 
+#include <iostream>
+
 #include "uep_encoder.hpp"
 #include "uep_decoder.hpp"
 
@@ -164,6 +166,9 @@ simulation_results run_uep(const simulation_params &params) {
     }
 
     if (!enc.has_block()) {
+      std::cerr << "Source is out of packets. Sent "
+		<< results.actual_nblocks
+		<< " blocks." << std::endl;
       break;
     }
 
@@ -212,6 +217,9 @@ simulation_results run_uep(const simulation_params &params) {
 				       return e >= params.wanted_errs;
 				     });
       if (enough_errs) {
+	std::cerr << "Made enough errors. Sent "
+		  << results.actual_nblocks
+		  << " blocks." << std::endl;
 	break;
       }
     }

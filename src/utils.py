@@ -84,17 +84,6 @@ def success_err(z, n):
 def update_average(m, sumw, s, w):
     return m / (1 + w/sumw) + s / (w + sumw)
 
-# Callable to run a simulation
-class UEPRunner:
-    def __init__(self, print_lock):
-        self.print_lock = print_lock
-
-    def __call__(self, params):
-        res = run_uep(params)
-        with self.print_lock:
-            print(".", end="")
-        return res
-
 def save_plot(fname, key):
     s3 = boto3.client('s3')
     s3.upload_file(fname, 'uep.zanol.eu', key,
@@ -127,18 +116,15 @@ def send_notification(msg):
                 Message=msg)
 
 def run_uep_parallel(param_matrix):
-    print_lock = multiprocessing.Lock()
     result_futures = list()
     with cf.ProcessPoolExecutor() as executor:
-        print_mngr = multiprocessing.Manager()
-        print_lock = print_mngr.Lock()
-        print("Running", end=" ")
+        print("Running")
         for ps in param_matrix:
             result_futures.append(list())
             for p in ps:
-                f = executor.submit(UEPRunner(print_lock), p)
+                f = executor.submit(run_uep, p)
                 result_futures[-1].append(f)
-    print("\nDone")
+    print("Done")
     result_matrix = list()
     for fs in result_futures:
         result_matrix.append([f.result() for f in fs])
