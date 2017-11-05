@@ -31,9 +31,6 @@ if __name__ == "__main__":
     base_params.c = 0.1
     base_params.delta = 0.5
     base_params.L = 4
-    base_params.nblocks_min = 500
-    base_params.wanted_errs = 30
-    base_params.nblocks_max = int(1e5)
 
     param_matrix = list()
     for per in iid_pers:
@@ -43,6 +40,12 @@ if __name__ == "__main__":
             params.chan_pGB = per
             params.chan_pBG = 1 - per
             params.overhead = oh
+            if oh - per <= 0.2:
+                params.nblocks = 1000
+            elif oh - per <= 0.3:
+                params.nblocks = 10000
+            else:
+                params.nblocks = 10000
             param_matrix[-1].append(params)
 
     result_matrix = run_uep_parallel(param_matrix)
