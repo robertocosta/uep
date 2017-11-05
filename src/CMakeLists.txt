@@ -153,6 +153,7 @@ set(python_files
   plot_overhead
   plot_required
   plot_time
+  separate_iid
   separate_markov
   uep_dec_time
   uep_enc_time
