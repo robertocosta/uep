@@ -19,6 +19,7 @@
 *.log
 *.pyc
 *.yuv
+*so
 /*/CMakeFiles/
 /.lock-waf_*
 /.waf-*/
@@ -47,11 +48,14 @@
 /tex/*.pdf
 /tex/*.run.xml
 /tex/*.synctex.gz
-Makefile
-cmake_defines.hpp
-jsvm-prefix/
+/tex/report.dvi
+/tex/report.pdf
 2017*.png
 2017*.xz
-plot*.pdf
-*so
+Makefile
+cmake_defines.hpp
 iid_*.xz
+jsvm-prefix/
+plot*.pdf
+python/*.cxx
+python/*.py
