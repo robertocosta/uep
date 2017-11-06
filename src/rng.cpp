@@ -149,35 +149,32 @@ namespace uep {
 base_row_generator::row_type uep_row_generator::next_row() {
   row_type s_mapped;
   row_type s;
+  std::size_t degree = _deg_dist(rng);
+  s_mapped.reserve(degree);
+  s.reserve(degree);
 
-  do {
-    std::size_t degree = _deg_dist(rng);
-    s_mapped.reserve(degree);
-    s.reserve(degree);
+  // Generate `degree` unique indices in [0, Kout)
+  s.clear();
+  for (std::size_t i = 0; i < degree; ++i) {
+    std::size_t index;
+    do {
+      index = _p_dist(rng);
+    } while (find(s.cbegin(), s.cend(), index) != s.cend());
+    s.push_back(index);
+  }
 
-    // Generate `degree` unique indices in [0, Kout)
-    s.clear();
-    for (std::size_t i = 0; i < degree; ++i) {
-      std::size_t index;
-      do {
-	index = _p_dist(rng);
-      } while (find(s.cbegin(), s.cend(), index) != s.cend());
-      s.push_back(index);
+  // Remap in [0, Kin). Elide duplicates
+  s_mapped.clear();
+  for (std::size_t i = 0; i < degree; ++i) {
+    std::size_t index = _pos_map(s[i]);
+    auto j = std::find(s_mapped.cbegin(), s_mapped.cend(), index);
+    if (j == s_mapped.cend()) {
+      s_mapped.push_back(index);
     }
-
-    // Remap in [0, Kin). Elide duplicates
-    s_mapped.clear();
-    for (std::size_t i = 0; i < degree; ++i) {
-      std::size_t index = _pos_map(s[i]);
-      auto j = std::find(s_mapped.cbegin(), s_mapped.cend(), index);
-      if (j == s_mapped.cend()) {
-	s_mapped.push_back(index);
-      }
-      else {
-	s_mapped.erase(j);
-      }
+    else {
+      //s_mapped.erase(j);
     }
-  } while (s_mapped.empty()); // Redo if all edges were elided
+  }
 
   ++sel_count;
   return s_mapped;
