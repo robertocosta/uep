@@ -1,5 +1,7 @@
 #include "uep_fast_run.hpp"
 
+#include <iostream>
+
 #include "uep_encoder.hpp"
 #include "uep_decoder.hpp"
 
@@ -125,9 +127,17 @@ private:
 
 
 
-void run_uep(const simulation_params &params, simulation_results &results) {
+simulation_results run_uep(const simulation_params &params) {
+  std::size_t src_nblocks;
+  if (params.nblocks == 0) { // Use error limit
+    src_nblocks = params.nblocks_max;
+  }
+  else { // Fixed nblocks
+    src_nblocks = params.nblocks;
+  }
+
   random_packet_source src(params.Ks.begin(), params.Ks.end(),
-			   params.L, params.nblocks);
+			   params.L, src_nblocks);
   uep_encoder<> enc(params.Ks.begin(), params.Ks.end(),
 		    params.RFs.begin(), params.RFs.end(),
 		    params.EF,
@@ -141,8 +151,11 @@ void run_uep(const simulation_params &params, simulation_results &results) {
 		  params.delta);
   nonempty_counter_sink sink(params.Ks.begin(), params.Ks.end(),
 			     params.nblocks);
+  simulation_results results;
 
   results.dropped_count = 0;
+  results.actual_nblocks = 0;
+  results.err_counts.resize(params.Ks.size());
 
   std::size_t n = (params.overhead + 1) * enc.K();
   std::list<fountain_packet> coded_block;
@@ -152,7 +165,12 @@ void run_uep(const simulation_params &params, simulation_results &results) {
       enc.push(src.next_packet());
     }
 
-    if (!enc.has_block()) break;
+    if (!enc.has_block()) {
+      std::cerr << "Source is out of packets. Sent "
+		<< results.actual_nblocks
+		<< " blocks." << std::endl;
+      break;
+    }
 
     // Encode n packets
     while (coded_block.size() < n) {
@@ -175,22 +193,52 @@ void run_uep(const simulation_params &params, simulation_results &results) {
     dec.push(std::make_move_iterator(coded_block.begin()),
 	     std::make_move_iterator(coded_block.end()));
     coded_block.clear();
+    dec.flush();
 
     // Count decoded
     while (dec.has_queued_packets()) {
       sink.push(dec.next_decoded());
     }
-  }
 
-  // Finish last block
-  if (!dec.has_decoded()) {
-    dec.flush();
-    while (dec.has_queued_packets()) {
-      sink.push(dec.next_decoded());
+    ++results.actual_nblocks;
+
+    if (params.nblocks == 0 &&
+	results.actual_nblocks >= params.nblocks_min) {
+      const auto &rec = sink.received_counts();
+      const auto &Ks = params.Ks;
+      for (std::size_t i = 0; i < Ks.size(); ++i) {
+	results.err_counts[i] = (Ks[i] * results.actual_nblocks -
+				 rec[i]);
+      }
+      // All subblocks have at least wanted_errs
+      bool enough_errs = std::all_of(results.err_counts.begin(),
+				     results.err_counts.end(),
+				     [&params] (std::size_t e) {
+				       return e >= params.wanted_errs;
+				     });
+      if (enough_errs) {
+	std::cerr << "Made enough errors. Sent "
+		  << results.actual_nblocks
+		  << " blocks." << std::endl;
+	break;
+      }
     }
   }
 
-  results.avg_pers = sink.avg_error_rates();
+  if (params.nblocks > 0) {
+    for (std::size_t i = 0; i < results.err_counts.size(); ++i) {
+      results.err_counts[i] = (results.actual_nblocks * params.Ks[i] -
+			       sink.received_counts()[i]);
+    }
+  }
+
   results.rec_counts = sink.received_counts();
+  results.avg_pers.resize(params.Ks.size());
+  for (std::size_t i = 0; i < results.avg_pers.size(); ++i) {
+    results.avg_pers[i] = (static_cast<double>(results.err_counts[i]) /
+			   (results.actual_nblocks * params.Ks[i]));
+  }
   results.avg_enc_time = enc.average_encoding_time();
+  results.avg_dec_time = dec.average_push_time();
+  return results;
 }

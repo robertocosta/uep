@@ -153,6 +153,9 @@ private:
 					       *   padding packets
 					       *   decoded.
 					       */
+  stat::average_counter _avg_dec_time; /**< Keep the average of the
+					*   push time.
+					*/
 
   /** Check if there are new decoded blocks and deduplicate them. */
   void deduplicate_queued();
@@ -204,6 +207,7 @@ void uep_decoder::push(Iter first, Iter last) {
   deduplicate_queued();
 
   duration<double> push_tdiff = high_resolution_clock::now() - tic;
+  _avg_dec_time.add_sample(push_tdiff.count());
   BOOST_LOG(perf_lg) << "uep_decoder::push push_time="
 		     << push_tdiff.count();
 }

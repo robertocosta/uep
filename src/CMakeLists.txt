@@ -139,12 +139,6 @@ set_target_properties(${SWIG_MODULE_uep_fast_run_REAL_NAME}
   PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SWIG_OUTDIR}
 )
 
-
-set(python_libs
-  utils
-  ber
-)
-
 set(python_files
   avg_nal_segsizes
   ber
@@ -155,23 +149,25 @@ set(python_files
   plot_decodeable
   plot_fast_iid
   plot_fast_markov
+  plot_fast_time
   plot_overhead
   plot_required
   plot_time
+  separate_iid
+  separate_markov
   uep_dec_time
   uep_enc_time
+  utils
 )
 
-foreach(pyf IN LISTS python_libs)
+foreach(pyf IN LISTS python_files)
   add_custom_target(${pyf}.py ALL
     ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py
     COMMENT "Copying ${pyf}.py to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${pyf}.py"
   )
-endforeach(pyf)
 
-foreach(pyf IN LISTS python_files)
   add_custom_target(${pyf} ALL
     ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_SOURCE_DIR}/${pyf}.py

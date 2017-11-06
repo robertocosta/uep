@@ -325,7 +325,10 @@ public:
   }
 
   double value() const {
-    if (n == 0) throw std::runtime_error("No samples");
+    if (n == 0) {
+      return std::numeric_limits<double>::quiet_NaN();
+      //throw std::runtime_error("No samples");
+    }
     return avg;
   }
 

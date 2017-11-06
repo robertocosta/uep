@@ -2,9 +2,23 @@
 
 set -eu -o pipefail
 
-script="${1-}"
-ec2type="${2-c4.large}"
-size="${3-8}"
+if [ "$#" -eq 3 ]; then
+    ec2type="${1}"
+    size="${2}"
+    script="${3}"
+elif [ "$#" -eq 2 ]; then
+    ec2type="${1}"
+    size=8
+    script="${2}"
+elif [ "$#" -eq 1 ]; then
+    ec2type="c4.large"
+    size=8
+    script="${1}"
+else
+    ec2type="c4.large"
+    size=8
+    script=""
+fi
 
 instance_id=$(aws ec2 run-instances \
                   --region us-east-1 \

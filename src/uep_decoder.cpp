@@ -161,7 +161,7 @@ std::size_t uep_decoder::total_padding_count() const {
 }
 
 double uep_decoder::average_push_time() const {
-  return std_dec->average_push_time();
+  return _avg_dec_time.value();
 }
 
 uep_decoder::operator bool() const {
