@@ -15,6 +15,7 @@ struct simulation_params {
   double overhead;
   double chan_pGB;
   double chan_pBG;
+  std::size_t nCycles;
   // Update also the serialization/deserialization in the SWIG file
 };
 
@@ -22,6 +23,7 @@ struct simulation_results {
   std::vector<double> avg_pers;
   std::vector<std::size_t> rec_counts;
   std::size_t dropped_count;
+  double avg_enc_time;
   // Update also the serialization/deserialization in the SWIG file
 };
 

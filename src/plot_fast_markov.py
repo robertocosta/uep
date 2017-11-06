@@ -21,24 +21,19 @@ from uep_fast_run import *
 def run_uep_map(params):
     res = simulation_results()
     run_uep(params, res)
+    print(".", end="")
     return res
 
-fixed_params = [{'avg_per': 1e-2,
-                 'overhead': 0.2,
-                 'k': 500},
-                {'avg_per': 1e-2,
-                 'overhead': 0.2,
-                 'k': 1000},
-                {'avg_per': 1e-2,
-                 'overhead': 0.2,
-                 'k': 5000},
-                {'avg_per': 1e-1,
-                 'overhead': 0.25,
-                 'k': 1000},
-                {'avg_per': 3e-1,
-                 'overhead': 0.25,
-                'k': 1000}]
-avg_bad_runs = np.linspace(1, 1500, 32).tolist()
+fixed_params = [#{'avg_good_run': 99,
+                # 'avg_bad_run': 1,
+                # 'overhead': 0.3},
+                #{'avg_good_run': 95,
+                # 'avg_bad_run': 5,
+                # 'overhead': 0.3},
+                {'avg_good_run': 90,
+                 'avg_bad_run': 10,
+                 'overhead': 0.3}]
+ks = np.linspace(6000, 10000, 41, dtype=int).tolist()
 k0_fraction = 0.1
 
 base_params = simulation_params()
@@ -47,17 +42,25 @@ base_params.EF = 4
 base_params.c = 0.1
 base_params.delta = 0.5
 base_params.L = 4
-base_params.nblocks = 50
+#base_params.nblocks = 200
+#base_params.nCycles = 15000
+base_params.nCycles = 100 # avg # of errors
 
 param_matrix = list()
 for p in fixed_params:
     param_matrix.append(list())
-    for br in avg_bad_runs:
+    for k in ks:
         params = simulation_params(base_params)
-        k0 = int(k0_fraction * p['k'])
-        params.Ks[:] = [k0, p['k'] - k0]
-        params.chan_pGB = 1/br * p['avg_per'] / (1 - p['avg_per'])
-        params.chan_pBG = 1/br
+        k0 = int(k0_fraction * k)
+        params.Ks[:] = [k0, k - k0]
+        params.chan_pGB = 1/p['avg_good_run']
+        params.chan_pBG = 1/p['avg_bad_run']
+		#params.nblocks = 200;
+		#nPckts = (p['avg_good_run']+p['avg_bad_run'])*nCycles
+		piB = params.chan_pGB / (params.chan_pGB + params.chan_pBG)
+		piG = 1 - piB
+		nCycles = piG / params.chan_pGB + (base_params.nCycles-1) / piB
+        params.nblocks = int(((p['avg_good_run']+p['avg_bad_run'])*nCycles)/k)
         params.overhead = p['overhead']
         param_matrix[-1].append(params)
 
@@ -66,32 +69,52 @@ with multiprocessing.Pool() as pool:
     for ps in param_matrix:
         r = pool.map(run_uep_map, ps)
         result_matrix.append(r)
+        print()
 
-plt.figure()
+datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+plt.figure(1)
 plt.gca().set_yscale('log')
+plt.figure(2)
+nblocks_vs_k = [ r.nblocks for r in param_matrix[0] ]
+plt.plot(ks, nblocks_vs_k,
+         marker='o',
+         linewidth=0.5,
+         label=("Cycle length = 100"))
+#plt.ylim(0, 1)
+plt.xlabel('K')
+plt.ylabel('nblocks')
+plt.legend()
+plt.grid()
+plt.savefig(datestr+'_nblocks-vs-k.png', format='png')
 
 for (j, p) in enumerate(fixed_params):
     mib_pers = [ r.avg_pers[0] for r in result_matrix[j] ]
     lib_pers = [ r.avg_pers[1] for r in result_matrix[j] ]
-    plt.plot(avg_bad_runs, mib_pers,
+    plt.figure(1)
+    plt.plot(ks, mib_pers,
              marker='o',
-             linewidth=1.5,
-             label=("MIB K = {:d},"
-                    " e = {:.0e},"
-                    " t = {:.2f}".format(p['k'],
-                                         p['avg_per'],
+             linewidth=0.5,
+             label=("MIB E[#B] = {:.2f},"
+                    " E[#G] = {:.2f},"
+                    " nCycles = {:d},"
+                    " t = {:.2f}".format(p['avg_bad_run'],
+                                         p['avg_good_run'],
+                                         param_matrix[j][0].nCycles,
                                          p['overhead'])))
-    plt.plot(avg_bad_runs, lib_pers,
+    plt.plot(ks, lib_pers,
              marker='o',
-             linewidth=1.5,
-             label=("LIB K = {:d},"
-                    " e = {:.0e},"
-                    " t = {:.2f}".format(p['k'],
-                                         p['avg_per'],
+             linewidth=0.5,
+             label=("LIB E[#B] = {:.2f},"
+                    " E[#G] = {:.2f},"
+                    " nCycles = {:d},"
+                    " t = {:.2f}".format(p['avg_bad_run'],
+                                         p['avg_good_run'],
+                                         param_matrix[j][0].nCycles,
                                          p['overhead'])))
-
-plt.ylim(1e-8, 1)
-plt.xlabel('E[#_B]')
+    
+plt.ylim(1e-20, 1)
+plt.xlabel('K')
 plt.ylabel('UEP PER')
 plt.legend()
 plt.grid()
@@ -99,15 +122,29 @@ plt.grid()
 s3 = boto3.resource('s3', region_name='us-east-1')
 newid = random.getrandbits(64)
 ts = int(datetime.datetime.now().timestamp())
+data = lzma.compress(pickle.dumps({'result_matrix': result_matrix,
+                                   'param_matrix': param_matrix}))
+filename = datestr+'_per-vs-k_overhead-'+str(fixed_params[0]['overhead'])+'_cycle-'+str(fixed_params[0]['avg_bad_run']+fixed_params[0]['avg_good_run'])+'.xz'
+out_file = open(filename, 'wb')
+out_file.write(data)
+# dictionary = pickle.loads(lzma.decompress(open("file.xz","rb").read()))
+# res_mat = dictionary['result_matrix']
+# res_mat[indice_curva(fixed_params), k]
 
-plt.savefig('plot_fast_markov.pdf', format='pdf')
-plotkey = "fast_plots/markov_{:d}_{:d}.pdf".format(ts, newid)
-s3.meta.client.upload_file('plot_fast_markov.pdf',
-                           'uep.zanol.eu',
-                           plotkey,
-                           ExtraArgs={'ACL': 'public-read'})
-ploturl = ("https://s3.amazonaws.com/"
-           "uep.zanol.eu/{!s}".format(plotkey))
-print("Uploaded plot at {!s}".format(ploturl))
+# par_mat = dictionary['param_matrix']
+# par_mat[indice_curva(fixed_params), k]
+# par_mat[indice_curva(fixed_params)][:]
+
+#plt.savefig('plot_fast_markov_'+datestr+'.png', format='png')
+plt.savefig(filename+'.png', format='png')
+
+#plotkey = "fast_plots/markov_{:d}_{:d}.pdf".format(ts, newid)
+#s3.meta.client.upload_file('plot_fast_markov.pdf',
+#                           'uep.zanol.eu',
+#                           plotkey,
+#                           ExtraArgs={'ACL': 'public-read'})
+#ploturl = ("https://s3.amazonaws.com/"
+#           "uep.zanol.eu/{!s}".format(plotkey))
+#print("Uploaded Markov plot at {!s}".format(ploturl))
 
 plt.show()

@@ -45,6 +45,7 @@ namespace std {
       state['overhead'] = self.overhead
       state['chan_pGB'] = self.chan_pGB
       state['chan_pBG'] = self.chan_pBG
+      state['nCycles'] = self.nCycles
       return state
 
     def __setstate__(self, state):
@@ -59,6 +60,7 @@ namespace std {
       self.overhead = state['overhead']
       self.chan_pGB = state['chan_pGB']
       self.chan_pBG = state['chan_pBG']
+      self.nCycles = state.get('nCycles', 1)
 }
 }
 
@@ -69,12 +71,13 @@ namespace std {
       state['avg_pers'] = [p for p in self.avg_pers]
       state['rec_counts'] = [c for c in self.rec_counts]
       state['dropped_count'] = self.dropped_count
+      state['avg_enc_time'] = self.avg_enc_time
       return state
 
     def __setstate__(self, state):
       self.__init__()
       self.avg_pers[:] = state['avg_pers']
       self.rec_counts[:] = state['rec_counts']
-      self.dropped_count = state['dropped_count']
+      self.avg_enc_time = state['avg_enc_time']
 }
 }

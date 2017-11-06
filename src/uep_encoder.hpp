@@ -125,6 +125,11 @@ public:
   /** Is true when there is not a full block available. */
   bool operator!() const;
 
+  /** Return the average time to extract a new packet up to now. */
+  double average_encoding_time() const {
+    return _enc_time_avg.value();
+  }
+
 private:
   log::default_logger basic_lg, perf_lg;
 
@@ -148,6 +153,9 @@ private:
   stat::sum_counter<std::size_t> padding_cnt; /**< Number of padding
 					       *   packets.
 					       */
+  stat::average_counter _enc_time_avg; /**< Record the average
+					*   encoding time.
+					*/
 
   /** Check whether the queues have enough packets to build a block. */
   void check_has_block();
@@ -236,7 +244,12 @@ void uep_encoder<Gen>::push(const packet &p) {
 
 template <class Gen>
 fountain_packet uep_encoder<Gen>::next_coded() {
-  return std_enc->next_coded();
+  using namespace std::chrono;
+  auto t = high_resolution_clock::now();
+  fountain_packet coded_p = std_enc->next_coded();
+  duration<double> tdiff = high_resolution_clock::now() - t;
+  _enc_time_avg.add_sample(tdiff.count());
+  return coded_p;
 }
 
 template<typename Gen>
