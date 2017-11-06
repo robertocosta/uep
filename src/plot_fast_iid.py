@@ -31,9 +31,9 @@ if __name__ == "__main__":
     base_params.c = 0.1
     base_params.delta = 0.5
     base_params.L = 4
-    base_params.nblocks_min = 500
+    base_params.nblocks_min = 100
     base_params.wanted_errs = 30
-    base_params.nblocks_max = int(1e5)
+    base_params.nblocks_max = 10000
 
     param_matrix = list()
     for per in iid_pers:
