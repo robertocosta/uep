@@ -45,6 +45,7 @@ namespace std {
       state['overhead'] = self.overhead
       state['chan_pGB'] = self.chan_pGB
       state['chan_pBG'] = self.chan_pBG
+      state['nCycles'] = self.nCycles
       return state
 
     def __setstate__(self, state):
@@ -59,6 +60,7 @@ namespace std {
       self.overhead = state['overhead']
       self.chan_pGB = state['chan_pGB']
       self.chan_pBG = state['chan_pBG']
+      self.nCycles = state.get('nCycles', 1)
 }
 }
 
