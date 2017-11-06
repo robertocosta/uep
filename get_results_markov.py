@@ -54,11 +54,11 @@ for filename in filenames:
                 if k in ks:
                     ind_k = ks.index(k)
                     old_weight = results[ind_i]['data'][ind_k]['weight']
+                    mean_mib = results[ind_i]['data'][ind_k]['mib_per']
+					mean_lib = results[ind_i]['data'][ind_k]['lib_per']
                     results[ind_i]['data'][ind_k]['weight'] = old_weight + weight
-                    old_val = results[ind_i]['data'][ind_k]['mib_per']
-                    results[ind_i]['data'][ind_k]['mib_per'] = (old_val*old_weight + mib_per*weight)/(old_weight + weight)
-                    old_val = results[ind_i]['data'][ind_k]['lib_per']
-                    results[ind_i]['data'][ind_k]['lib_per'] = (old_val*old_weight + lib_per*weight)/(old_weight + weight)
+                    results[ind_i]['data'][ind_k]['mib_per'] = update_average(mean_mib, old_weight, mib_per, weight)
+                    results[ind_i]['data'][ind_k]['lib_per'] = update_average(mean_lib, old_weight, lib_per, weight)
                 else:
                     results[ind_i]['data'].append({'k': k, 'mib_per': mib_per, 'lib_per': lib_per, 'weight': weight})
                     results[ind_i]['data'] = sorted(results[ind_i]['data'], key=getKey)
