@@ -18,6 +18,7 @@ struct simulation_params {
   double overhead;
   double chan_pGB;
   double chan_pBG;
+  std::size_t nCycles;
   // Update also the serialization/deserialization in the SWIG file
 };
 
