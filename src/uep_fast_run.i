@@ -60,9 +60,9 @@ namespace std {
       self.delta = state['delta']
       self.L = state['L']
       self.nblocks = state['nblocks']
-      self.wanted_errs = state['wanted_errs']
-      self.nblocks_min = state['nblocks_min']
-      self.nblocks_max = state['nblocks_max']
+      self.wanted_errs = state.get('wanted_errs',0)
+      self.nblocks_min = state.get('nblocks_min',0)
+      self.nblocks_max = state.get('nblocks_max',0)
       self.overhead = state['overhead']
       self.chan_pGB = state['chan_pGB']
       self.chan_pBG = state['chan_pBG']
@@ -86,9 +86,9 @@ namespace std {
     def __setstate__(self, state):
       self.__init__()
       self.avg_pers[:] = state['avg_pers']
-      self.actual_nblocks = state['actual_nblocks']
+      self.actual_nblocks = state.get('actual_nblocks',0)
       self.rec_counts[:] = state['rec_counts']
-      self.err_counts[:] = state['err_counts']
+      self.err_counts[:] = state.get('err_counts',[0 for i in range(0,len(self.rec_counts))])
       self.dropped_count = state['dropped_count']
       self.avg_enc_time = state['avg_enc_time']
       self.avg_dec_time = state.get('avg_dec_time', float('nan'))

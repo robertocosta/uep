@@ -82,7 +82,8 @@ def success_err(z, n):
     return (-(l - z/n), u - z/n)
 
 def update_average(m, sumw, s, w):
-    return m / (1 + w/sumw) + s / (w + sumw)
+    #return m / (1 + w/sumw) + s / (w + sumw)
+	return (m*sumw+s*w)/(sumw+w)
 
 def save_plot(fname, key):
     s3 = boto3.client('s3')

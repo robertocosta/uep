@@ -6246,6 +6246,162 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_simulation_params_wanted_errs_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  std::size_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_params_wanted_errs_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_wanted_errs_set" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "simulation_params_wanted_errs_set" "', argument " "2"" of type '" "std::size_t""'");
+  } 
+  arg2 = static_cast< std::size_t >(val2);
+  if (arg1) (arg1)->wanted_errs = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_params_wanted_errs_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  std::size_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_params_wanted_errs_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_wanted_errs_get" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  result = (std::size_t) ((arg1)->wanted_errs);
+  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_params_nblocks_min_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  std::size_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_params_nblocks_min_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_nblocks_min_set" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "simulation_params_nblocks_min_set" "', argument " "2"" of type '" "std::size_t""'");
+  } 
+  arg2 = static_cast< std::size_t >(val2);
+  if (arg1) (arg1)->nblocks_min = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_params_nblocks_min_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  std::size_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_params_nblocks_min_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_nblocks_min_get" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  result = (std::size_t) ((arg1)->nblocks_min);
+  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_params_nblocks_max_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  std::size_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_params_nblocks_max_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_nblocks_max_set" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "simulation_params_nblocks_max_set" "', argument " "2"" of type '" "std::size_t""'");
+  } 
+  arg2 = static_cast< std::size_t >(val2);
+  if (arg1) (arg1)->nblocks_max = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_params_nblocks_max_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_params *arg1 = (simulation_params *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  std::size_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_params_nblocks_max_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_params, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_params_nblocks_max_get" "', argument " "1"" of type '" "simulation_params *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_params * >(argp1);
+  result = (std::size_t) ((arg1)->nblocks_max);
+  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_simulation_params_overhead_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   simulation_params *arg1 = (simulation_params *) 0 ;
@@ -6605,6 +6761,58 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_simulation_results_actual_nblocks_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  std::size_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_results_actual_nblocks_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_actual_nblocks_set" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "simulation_results_actual_nblocks_set" "', argument " "2"" of type '" "std::size_t""'");
+  } 
+  arg2 = static_cast< std::size_t >(val2);
+  if (arg1) (arg1)->actual_nblocks = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_results_actual_nblocks_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  std::size_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_results_actual_nblocks_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_actual_nblocks_get" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  result = (std::size_t) ((arg1)->actual_nblocks);
+  resultobj = SWIG_From_size_t(static_cast< size_t >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_simulation_results_rec_counts_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   simulation_results *arg1 = (simulation_results *) 0 ;
@@ -6650,6 +6858,58 @@ SWIGINTERN PyObject *_wrap_simulation_results_rec_counts_get(PyObject *SWIGUNUSE
   }
   arg1 = reinterpret_cast< simulation_results * >(argp1);
   result = (std::vector< std::size_t,std::allocator< std::size_t > > *)& ((arg1)->rec_counts);
+  resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_std__vectorT_unsigned_long_std__allocatorT_unsigned_long_t_t, 0 |  0 );
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_results_err_counts_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  std::vector< std::size_t,std::allocator< std::size_t > > *arg2 = (std::vector< std::size_t,std::allocator< std::size_t > > *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_results_err_counts_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_err_counts_set" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_std__vectorT_unsigned_long_std__allocatorT_unsigned_long_t_t, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "simulation_results_err_counts_set" "', argument " "2"" of type '" "std::vector< std::size_t,std::allocator< std::size_t > > *""'"); 
+  }
+  arg2 = reinterpret_cast< std::vector< std::size_t,std::allocator< std::size_t > > * >(argp2);
+  if (arg1) (arg1)->err_counts = *arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_results_err_counts_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  std::vector< std::size_t,std::allocator< std::size_t > > *result = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_results_err_counts_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_err_counts_get" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  result = (std::vector< std::size_t,std::allocator< std::size_t > > *)& ((arg1)->err_counts);
   resultobj = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_std__vectorT_unsigned_long_std__allocatorT_unsigned_long_t_t, 0 |  0 );
   return resultobj;
 fail:
@@ -6761,6 +7021,58 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_simulation_results_avg_dec_time_set(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  double arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  double val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:simulation_results_avg_dec_time_set",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_avg_dec_time_set" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  ecode2 = SWIG_AsVal_double(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "simulation_results_avg_dec_time_set" "', argument " "2"" of type '" "double""'");
+  } 
+  arg2 = static_cast< double >(val2);
+  if (arg1) (arg1)->avg_dec_time = arg2;
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_simulation_results_avg_dec_time_get(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  simulation_results *arg1 = (simulation_results *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyObject * obj0 = 0 ;
+  double result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"O:simulation_results_avg_dec_time_get",&obj0)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_simulation_results, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "simulation_results_avg_dec_time_get" "', argument " "1"" of type '" "simulation_results *""'"); 
+  }
+  arg1 = reinterpret_cast< simulation_results * >(argp1);
+  result = (double) ((arg1)->avg_dec_time);
+  resultobj = SWIG_From_double(static_cast< double >(result));
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_new_simulation_results__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   simulation_results *result = 0 ;
@@ -6863,15 +7175,12 @@ SWIGINTERN PyObject *simulation_results_swigregister(PyObject *SWIGUNUSEDPARM(se
 SWIGINTERN PyObject *_wrap_run_uep(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   simulation_params *arg1 = 0 ;
-  simulation_results *arg2 = 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
   PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
+  simulation_results result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OO:run_uep",&obj0,&obj1)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"O:run_uep",&obj0)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1, SWIGTYPE_p_simulation_params,  0  | 0);
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "run_uep" "', argument " "1"" of type '" "simulation_params const &""'"); 
@@ -6880,16 +7189,8 @@ SWIGINTERN PyObject *_wrap_run_uep(PyObject *SWIGUNUSEDPARM(self), PyObject *arg
     SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "run_uep" "', argument " "1"" of type '" "simulation_params const &""'"); 
   }
   arg1 = reinterpret_cast< simulation_params * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2, SWIGTYPE_p_simulation_results,  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "run_uep" "', argument " "2"" of type '" "simulation_results &""'"); 
-  }
-  if (!argp2) {
-    SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in method '" "run_uep" "', argument " "2"" of type '" "simulation_results &""'"); 
-  }
-  arg2 = reinterpret_cast< simulation_results * >(argp2);
-  run_uep((simulation_params const &)*arg1,*arg2);
-  resultobj = SWIG_Py_Void();
+  result = run_uep((simulation_params const &)*arg1);
+  resultobj = SWIG_NewPointerObj((new simulation_results(static_cast< const simulation_results& >(result))), SWIGTYPE_p_simulation_results, SWIG_POINTER_OWN |  0 );
   return resultobj;
 fail:
   return NULL;
@@ -10766,6 +11067,12 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"simulation_params_L_get", _wrap_simulation_params_L_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_params_nblocks_set", _wrap_simulation_params_nblocks_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_params_nblocks_get", _wrap_simulation_params_nblocks_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_wanted_errs_set", _wrap_simulation_params_wanted_errs_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_wanted_errs_get", _wrap_simulation_params_wanted_errs_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_nblocks_min_set", _wrap_simulation_params_nblocks_min_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_nblocks_min_get", _wrap_simulation_params_nblocks_min_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_nblocks_max_set", _wrap_simulation_params_nblocks_max_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_params_nblocks_max_get", _wrap_simulation_params_nblocks_max_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_params_overhead_set", _wrap_simulation_params_overhead_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_params_overhead_get", _wrap_simulation_params_overhead_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_params_chan_pGB_set", _wrap_simulation_params_chan_pGB_set, METH_VARARGS, NULL},
@@ -10779,12 +11086,18 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"simulation_params_swigregister", simulation_params_swigregister, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_avg_pers_set", _wrap_simulation_results_avg_pers_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_avg_pers_get", _wrap_simulation_results_avg_pers_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_actual_nblocks_set", _wrap_simulation_results_actual_nblocks_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_actual_nblocks_get", _wrap_simulation_results_actual_nblocks_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_rec_counts_set", _wrap_simulation_results_rec_counts_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_rec_counts_get", _wrap_simulation_results_rec_counts_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_err_counts_set", _wrap_simulation_results_err_counts_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_err_counts_get", _wrap_simulation_results_err_counts_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_dropped_count_set", _wrap_simulation_results_dropped_count_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_dropped_count_get", _wrap_simulation_results_dropped_count_get, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_avg_enc_time_set", _wrap_simulation_results_avg_enc_time_set, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_avg_enc_time_get", _wrap_simulation_results_avg_enc_time_get, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_avg_dec_time_set", _wrap_simulation_results_avg_dec_time_set, METH_VARARGS, NULL},
+	 { (char *)"simulation_results_avg_dec_time_get", _wrap_simulation_results_avg_dec_time_get, METH_VARARGS, NULL},
 	 { (char *)"new_simulation_results", _wrap_new_simulation_results, METH_VARARGS, NULL},
 	 { (char *)"delete_simulation_results", _wrap_delete_simulation_results, METH_VARARGS, NULL},
 	 { (char *)"simulation_results_swigregister", simulation_results_swigregister, METH_VARARGS, NULL},

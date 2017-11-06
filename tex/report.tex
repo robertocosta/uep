@@ -213,6 +213,8 @@ I parametri impostati per il canale simulato sono stati il numero medio di slot 
 p = q\frac{\pi_B}{\pi_G}\end{cases}
   \label{eq:mcparams}
 \end{equation}
+Il numero medio di iterazioni necessarie a sbagliare N pacchetti è, in media, 
+$$E[\theta_{0N}] = \frac{\pi_G}{p} + \frac{N-1}{\pi_B}$$
 \item Canale senza memoria, con packet error rate fisso $P_e$
 \end{itemize}
 Di seguito la rappresentazione Markoviana.
@@ -412,7 +414,7 @@ mostrati in figura~\ref{fig:markovvsk}.
 %
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{plot_ber_markov2_vs_k}
+        \makebox[\textwidth][c]{\includegraphics[width=10cm]{../avg/2017-11-06_18-07-35.png}}
   \caption{Packet error rate a livello applicazione ottenuta al
     variare del numero medio di slot cattivi consecutivi.}
   \label{fig:markovvsk}

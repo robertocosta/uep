@@ -196,6 +196,18 @@ class simulation_params(_object):
     __swig_getmethods__["nblocks"] = _uep_fast_run.simulation_params_nblocks_get
     if _newclass:
         nblocks = _swig_property(_uep_fast_run.simulation_params_nblocks_get, _uep_fast_run.simulation_params_nblocks_set)
+    __swig_setmethods__["wanted_errs"] = _uep_fast_run.simulation_params_wanted_errs_set
+    __swig_getmethods__["wanted_errs"] = _uep_fast_run.simulation_params_wanted_errs_get
+    if _newclass:
+        wanted_errs = _swig_property(_uep_fast_run.simulation_params_wanted_errs_get, _uep_fast_run.simulation_params_wanted_errs_set)
+    __swig_setmethods__["nblocks_min"] = _uep_fast_run.simulation_params_nblocks_min_set
+    __swig_getmethods__["nblocks_min"] = _uep_fast_run.simulation_params_nblocks_min_get
+    if _newclass:
+        nblocks_min = _swig_property(_uep_fast_run.simulation_params_nblocks_min_get, _uep_fast_run.simulation_params_nblocks_min_set)
+    __swig_setmethods__["nblocks_max"] = _uep_fast_run.simulation_params_nblocks_max_set
+    __swig_getmethods__["nblocks_max"] = _uep_fast_run.simulation_params_nblocks_max_get
+    if _newclass:
+        nblocks_max = _swig_property(_uep_fast_run.simulation_params_nblocks_max_get, _uep_fast_run.simulation_params_nblocks_max_set)
     __swig_setmethods__["overhead"] = _uep_fast_run.simulation_params_overhead_set
     __swig_getmethods__["overhead"] = _uep_fast_run.simulation_params_overhead_get
     if _newclass:
@@ -222,6 +234,9 @@ class simulation_params(_object):
       state['delta'] = self.delta
       state['L'] = self.L
       state['nblocks'] = self.nblocks
+      state['wanted_errs'] = self.wanted_errs
+      state['nblocks_min'] = self.nblocks_min
+      state['nblocks_max'] = self.nblocks_max
       state['overhead'] = self.overhead
       state['chan_pGB'] = self.chan_pGB
       state['chan_pBG'] = self.chan_pBG
@@ -237,6 +252,9 @@ class simulation_params(_object):
       self.delta = state['delta']
       self.L = state['L']
       self.nblocks = state['nblocks']
+      self.wanted_errs = state.get('wanted_errs',0)
+      self.nblocks_min = state.get('nblocks_min',0)
+      self.nblocks_max = state.get('nblocks_max',0)
       self.overhead = state['overhead']
       self.chan_pGB = state['chan_pGB']
       self.chan_pBG = state['chan_pBG']
@@ -264,10 +282,18 @@ class simulation_results(_object):
     __swig_getmethods__["avg_pers"] = _uep_fast_run.simulation_results_avg_pers_get
     if _newclass:
         avg_pers = _swig_property(_uep_fast_run.simulation_results_avg_pers_get, _uep_fast_run.simulation_results_avg_pers_set)
+    __swig_setmethods__["actual_nblocks"] = _uep_fast_run.simulation_results_actual_nblocks_set
+    __swig_getmethods__["actual_nblocks"] = _uep_fast_run.simulation_results_actual_nblocks_get
+    if _newclass:
+        actual_nblocks = _swig_property(_uep_fast_run.simulation_results_actual_nblocks_get, _uep_fast_run.simulation_results_actual_nblocks_set)
     __swig_setmethods__["rec_counts"] = _uep_fast_run.simulation_results_rec_counts_set
     __swig_getmethods__["rec_counts"] = _uep_fast_run.simulation_results_rec_counts_get
     if _newclass:
         rec_counts = _swig_property(_uep_fast_run.simulation_results_rec_counts_get, _uep_fast_run.simulation_results_rec_counts_set)
+    __swig_setmethods__["err_counts"] = _uep_fast_run.simulation_results_err_counts_set
+    __swig_getmethods__["err_counts"] = _uep_fast_run.simulation_results_err_counts_get
+    if _newclass:
+        err_counts = _swig_property(_uep_fast_run.simulation_results_err_counts_get, _uep_fast_run.simulation_results_err_counts_set)
     __swig_setmethods__["dropped_count"] = _uep_fast_run.simulation_results_dropped_count_set
     __swig_getmethods__["dropped_count"] = _uep_fast_run.simulation_results_dropped_count_get
     if _newclass:
@@ -276,20 +302,31 @@ class simulation_results(_object):
     __swig_getmethods__["avg_enc_time"] = _uep_fast_run.simulation_results_avg_enc_time_get
     if _newclass:
         avg_enc_time = _swig_property(_uep_fast_run.simulation_results_avg_enc_time_get, _uep_fast_run.simulation_results_avg_enc_time_set)
+    __swig_setmethods__["avg_dec_time"] = _uep_fast_run.simulation_results_avg_dec_time_set
+    __swig_getmethods__["avg_dec_time"] = _uep_fast_run.simulation_results_avg_dec_time_get
+    if _newclass:
+        avg_dec_time = _swig_property(_uep_fast_run.simulation_results_avg_dec_time_get, _uep_fast_run.simulation_results_avg_dec_time_set)
 
     def __getstate__(self):
       state = dict()
       state['avg_pers'] = [p for p in self.avg_pers]
+      state['actual_nblocks'] = self.actual_nblocks
       state['rec_counts'] = [c for c in self.rec_counts]
+      state['err_counts'] = [c for c in self.err_counts]
       state['dropped_count'] = self.dropped_count
       state['avg_enc_time'] = self.avg_enc_time
+      state['avg_dec_time'] = self.avg_dec_time
       return state
 
     def __setstate__(self, state):
       self.__init__()
       self.avg_pers[:] = state['avg_pers']
+      self.actual_nblocks = state.get('actual_nblocks',0)
       self.rec_counts[:] = state['rec_counts']
+      self.err_counts[:] = state.get('err_counts',[0 for i in range(0,len(self.rec_counts))])
+      self.dropped_count = state['dropped_count']
       self.avg_enc_time = state['avg_enc_time']
+      self.avg_dec_time = state.get('avg_dec_time', float('nan'))
 
 
     def __init__(self, *args):
@@ -304,8 +341,8 @@ simulation_results_swigregister = _uep_fast_run.simulation_results_swigregister
 simulation_results_swigregister(simulation_results)
 
 
-def run_uep(params, results):
-    return _uep_fast_run.run_uep(params, results)
+def run_uep(params):
+    return _uep_fast_run.run_uep(params)
 run_uep = _uep_fast_run.run_uep
 class DoubleVector(_object):
     __swig_setmethods__ = {}

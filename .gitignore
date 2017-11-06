@@ -55,3 +55,5 @@ jsvm-prefix/
 plot*.pdf
 *so
 iid_*.xz
+figure_*.png
+/avg/*.png
