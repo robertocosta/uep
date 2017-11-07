@@ -290,41 +290,6 @@ ottenibile in queste due condizioni.
 Sono stati inoltre misurati i tempi necessari alla codifica e
 decodifica dei pacchetti in funzione dell'overhead desiderato.
 
-Infine è stato misurato il PSNR ...
-
-\subsection{Scelta della dimensione dei paccchetti}
-Il paper \cite{uep} considera simboli di 1 byte durante la codifica,
-ma questa scelta non è praticabile nel caso di questa tesina. Il
-motivo è dato dall'overhead introdotto aggiungendo degli header a ogni
-pacchetto, infatti una dimensione di pacchetto $L=1$ comporterebbe un
-overhead del 1500 \% dovuto solo agli header.
-
-Questo overhead decresce all'aumentare della dimensione dei pacchetti
-$L$, tuttavia bisogna cohnsiderare l'overhead introdotto dalla
-segmentazione del video H264.
-%
-Il video H264 è composto da pacchetti (detti NALU) di dimensioni
-variabili che devono essere aggregati o segmentati in pacchetti di
-dimensione fissa $L$. Il fatto di considerare due diverse classi di
-priorità per le NALU richiede di inserire un certo numero di byte di
-padding, ogni volta che termina una sequenza consecutiva di NALU con
-la stessa priorità, per ottenere un numero intero di pacchetti di
-lunghezza $L$.
-
-Tenendo conto di entrambi questi contributi all'overhead si ottiene il
-grafico mostrato in figura~\ref{fig:pktsize} ed è possibile
-individuare il valore $L = 388$ che minimizza l'overhead dovuto al
-padding e agli header.
-% Best packet size = 388
-% Min overhead = 0.069367
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{plot_overhead}
-  \caption{Overhead introdotto dalla segmentazione al variare della
-    dimensione $L$ dei pacchetti.}
-  \label{fig:pktsize}
-\end{figure}
-
 \subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
 applicazione ottenuta variando l'overhead e considerando diversi
@@ -482,8 +447,83 @@ ottenere una PER a livello applicazione simile a quanto è possibile
 ottenere nel caso IID con $e=10^{-3}$ per $K=1000$, usando lo stesso
 overhead (25\%).
 
-\subsection{Tempi di codifica e decodifica}
+\subsection{Scelta della dimensione dei pacchetti}
+\label{sec:pktsize}
+Il paper \cite{uep} considera simboli di 1 byte durante la codifica,
+ma questa scelta non è praticabile nel caso di questa tesina. Il
+motivo è dato dall'overhead introdotto aggiungendo degli header a ogni
+pacchetto, infatti una dimensione di pacchetto $L=1$ comporterebbe un
+overhead del 1500 \% dovuto solo agli header.
 
+Questo overhead decresce all'aumentare della dimensione dei pacchetti
+$L$, tuttavia bisogna cohnsiderare l'overhead introdotto dalla
+segmentazione del video H264.
+%
+Il video H264 è composto da pacchetti (detti NALU) di dimensioni
+variabili che devono essere aggregati o segmentati in pacchetti di
+dimensione fissa $L$. Il fatto di considerare due diverse classi di
+priorità per le NALU richiede di inserire un certo numero di byte di
+padding, ogni volta che termina una sequenza consecutiva di NALU con
+la stessa priorità, per ottenere un numero intero di pacchetti di
+lunghezza $L$.
+
+Tenendo conto di entrambi questi contributi all'overhead si ottiene il
+grafico mostrato in figura~\ref{fig:pktsize} ed è possibile
+individuare il valore $L = 388$ che minimizza l'overhead dovuto al
+padding e agli header.
+% Best packet size = 388
+% Min overhead = 0.069367
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_overhead}
+  \caption{Overhead introdotto dalla segmentazione al variare della
+    dimensione $L$ dei pacchetti.}
+  \label{fig:pktsize}
+\end{figure}
+
+\subsection{Tempi di codifica e decodifica}
+Per verificare quanto tempo è necessario alla codifica e alla
+decodifica di un blocco di pacchetti al variare dei parametri è stata
+simulata la trasmissione di 100 blocchi al variare dell'overhead,
+utilizzando gli stessi parametri di \cite{uep}: $K = K_0 = 20000$,
+$RF_0 = 1$, $EF \in \{1,2,8\}$, $c=0.1$, $\delta=0.5$.
+%
+La dimensione dei pacchetti è stata impostata al valore ottimale
+$L=388$ per il video H264 trovata nel paragrafo~\ref{sec:pktsize}.
+
+Nelle figure~\ref{fig:enctime} e~\ref{fig:dectime} sono mostrati,
+rispettivamnte, i tempi medi di codifica e di decodifica ottenuti.
+%
+\begin{figure}[htb]
+  \centering
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_enc_time}
+    \caption{Codifica}
+    \label{fig:enctime}
+  \end{subfigure}%
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_dec_time}
+    \caption{Decodifica}
+    \label{fig:dectime}
+  \end{subfigure}
+  \caption{Tempi medi di codifica e decodifica per un blocco di
+    $K=20000$ pacchetti.}
+\end{figure}
+%
+Si può vedere che l'andamento è coerente con \cite{uep} anche se, nel
+caso di questa tesina, i valori sono molto più alti. Questo è dovuto
+al fatto che è stato considerato l'intero sistema di
+figura~\ref{fig:UDP}, con l'eccezione della generazione dei pacchetti
+e dell'invio tramite UDP.
+%
+Si può notare, in particolare, che il tempo di decodifica tende a
+saturare una volta raggiunto un livello di overhead che permette la
+decodifica di tutto il blocco.
+%
+Inoltre sia i tempi di codifica che di decodifica aumentano
+sub-linearmente in funzione di EF, come in \cite{uep}.
 
 \section{Conclusioni}
 
