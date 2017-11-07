@@ -125,30 +125,31 @@
         %\horline
 \end{center}
 \FloatBarrier
-\section*{Sommario}
+% Total max 15 pages
+\section*{Sommario} % Max 10 lines
 La tesina si prefigge di implementare un protocollo per trasmettere flussi video attraverso una rete non completamente affidabile, utilizzando un codice di correzione degli errori a fontana, il quale regola la ridondanza aggiunta ai dati in base alla loro importanza e in base alle necessità di ritrasmissione dei ricevitori.
-Verrà analizzata la correttezza della trasmissione (in termini di Bit Error Rate e di PSNR) al variare della Bit Error Rate del canale. Verranno inoltre analizzate la complessità computazionale di codifica e decodifica e il tempo ad esse associato, al variare della ridondanza aggiunta.\\
+Verrà analizzata la correttezza della trasmissione (in termini di Bit Error Rate) al variare della Bit Error Rate del canale. Verranno inoltre analizzate la complessità computazionale di codifica e decodifica e il tempo ad esse associato, al variare della ridondanza aggiunta.\\
 Il progetto è stato realizzato in C++; Python è stato usato per riportare graficamente i risultati ottenuti.
 \newpage
-\section{Introduzione}
-Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire il video a qualità arbitraria.\\
-Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplemenari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
+\section{Introduzione} % Max 1 page
+Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC \cite{svc, h264}. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire un video a qualità inferiore.\\
+Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplementari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
 Per trasmettere un flusso di dati attraverso un canale variabile e non completamente affidabile, garantendo la qualità del servizio, è utile aggiungere ridondanza all'informazione inviata. Il rapporto tra il messaggio con ridondanza aggiunta e il messaggio originale è chiamato rate del codice di correzione degli errori.
-I codici a fontana presentano due caratteristiche notevoli, rispetto ad altri codici di correzione degli errori:
+I codici a fontana \cite{fcsurvey, rossifc} presentano due caratteristiche notevoli, rispetto ad altri codici di correzione degli errori:
 \begin{itemize}
 \item Bassa complessità computazionale per la codifica e per la decodifica
 \item Assenza di un code rate fisso.
 \end{itemize}
 I codici a fontana possono proteggere allo stesso modo tutti i dati da trasmettere, caso in cui la ridondanza aggiunta dipende solo dalle condizioni del canale (EEP, equal error protection), oppure possono proteggere maggiormente i dati più sensibili (UEP, unequal error protection), caso in cui la ridondanza aggiunta dipende anche dall'importanza del dato.\\
-Un tipo di applicazione che si presta particolarmente all'utilizzo di UEP è lo streaming di un video codificato attraverso SVC, infatti tale protocollo rende possibile la decodifica di un flusso video da flussi parziali, chiamati \textit{layer}, con risoluzione spaziale o temporale minore, o con fedeltà ridotta. I layer sono ordinati dal più importante (layer 0, a bassa qualità) al meno importante (layer \textit{n}, che permette di raggiungere alta qualità).\\
-La presenza di informazioni più rilevanti di altre (come i parametri per la decodifica, il primo pacchetto di ogni GOP o i layer inferiori) giustifica l'uso di UEP: i flussi con priorità minore aggiungono qualità al video decodificato, ma non sono indispensabili per la decodifica, quindi possono essere protetti con meno ridondanza.\\
-Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel proteggere meglio i dati più sensibili, risiede anche nella possibilità di sfruttare un canale che ha un comportamento variabile nel tempo e ignoto a priori: la quantità di ridondanza aggiunta può crescere al peggiorare delle condizioni del canale, a differenza di un codice a rate fisso che comporta uno spreco di banda se il canale è in buone condizioni, o insufficiente protezione se il canale non è in buone condizioni.\\
-Il canale considerato nelle simulazioni presenta errori i.i.d. con probabilità $e \in [10^{-8},10^{-1}]$.
+Un tipo di applicazione che si presta particolarmente all'utilizzo di UEP \cite{uep} è lo streaming di un video codificato attraverso SVC, infatti tale protocollo rende possibile la decodifica di un flusso video da flussi parziali, chiamati \textit{layer}, con risoluzione spaziale o temporale minore, o con fedeltà ridotta. I layer sono ordinati dal più importante (layer 0, a bassa qualità) al meno importante (layer \textit{n}, che permette di raggiungere alta qualità).\\
+La presenza di informazioni più rilevanti di altre (come i parametri per la decodifica e i layer inferiori, in particolare i frame intra-coded) giustifica l'uso di UEP: i flussi con priorità minore aggiungono qualità al video decodificato, ma non sono indispensabili per la decodifica, quindi possono essere protetti con meno ridondanza.\\
+Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel proteggere meglio i dati più sensibili, risiede anche nella possibilità di sfruttare un canale che ha un comportamento variabile nel tempo e ignoto a priori: la quantità di ridondanza aggiunta può crescere al peggiorare delle condizioni del canale, a differenza di un codice a rate fisso che comporta uno spreco di banda se il canale è in buone condizioni, o insufficiente protezione se il canale non è in buone condizioni.
+
 \section{Approccio tecnico}
-\subsection{Obbiettivi}
+\subsection{Obbiettivi} % Max 5 lines
 La finalità del progetto è testare l'algoritmo di trasmissione su un canale non privo di errori per dimostrare che.
 
-\subsection{Diagramma}
+\subsection{Diagramma} % Max 20 lines
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
 %\includegraphics[width=180mm]{UDP.pdf}
 %\includepdf[pages={1}]{UDP.pdf}
@@ -243,7 +244,7 @@ x_1 \\x_2 \\\vdots \\x_K
 \end{pmatrix} = G \cdot \bm{x}
 \end{equation}
 dove $G$ è la matrice di codifica, $g_{ij}\in\{0,1\}$, $x_i\in\mathcal{X}$, $y_i\in\mathcal{Y}$.\\
-La $i-$esima riga della matrice $G$ è casuale e il suo grado (la distanza di hamming dall'origine) segue una distribuzione di probailità nota: la Robust Soliton Distribution.\\
+La $i-$esima riga della matrice $G$ è casuale e il suo grado (la distanza di hamming dall'origine) segue una distribuzione di probabilità nota: la Robust Soliton Distribution.\\
 La codifica dell'$i-$esimo pacchetto avviene attraverso l'operazione di \textit{OR esclusivo} tra i pacchetti di informazione indicati dalla $i-$esima riga di $G$.\\
 Se $G$ è invertibile, è possibile recuperare il vettore $\bm{x}$ da $\bm{y}$ attraverso la risoluzione di un sistema lineare.\\
 I codici a fontana non prevedono la risoluzione di un sistema lineare per la decodifica, bensì un algoritmo di \textit{message passing}: con riferimento alla figura (\ref{fig:FC})
@@ -281,7 +282,9 @@ Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti orig
     \label{fig:UEP}
 \end{figure}
 \newpage
-\section{Risultati}
+\subsection{Complicazioni trovate} % Max 5 lines
+
+\section{Risultati} % Min 7 pages
 L'algoritmo per la protezione non uniforme esposto nel
 paragrafo~\ref{UEPsection} è stato testato nei due casi di canale senza
 memoria e di canale Markoviano per determinare la packet error rate
@@ -313,7 +316,7 @@ sorgente di pacchetti generati casualmente invece di segmentare
 realmente un video H264.
 
 Sono stati usati gli stessi valori per i parametri specificati da
-\cite{uep} per permettere un confronto con i risulati ottenuti in
+\cite{uep} per permettere un confronto con i risultati ottenuti in
 questa tesina e di verificare la correttezza dell'implementazione.
 %
 I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
@@ -334,7 +337,7 @@ $\left\{ 0, 10^{-2}, 10^{-1}, 2 \cdot 10^{-1} \right\}$.
 In figura~\ref{fig:iid} sono mostrati i risultati della simulazione di
 una trasmissione di 10000 blocchi, dove le curve sono mostrate fino al
 livello di PER di $10^{-3}$ come in \cite{uep} per migliorare la
-leggibilità. Infatti sotto quel livello il numero di simulazioni inzia
+leggibilità. Infatti sotto quel livello il numero di simulazioni inizia
 a causare delle oscillazioni che rendono poco affidabile il risultato.
 %
 \begin{figure}[H]
@@ -362,12 +365,12 @@ rispetto al caso senza errori.
 \subsection{Packet error rate su un canale Markoviano}
 Nel caso del canale Markoviano, descritto nel
 paragrafo~\ref{sec:markov}, sono state eseguite simulazioni per
-valutatare la packet error rate variando la lunghezza media $E[\#_B]$
+valutare la packet error rate variando la lunghezza media $E[\#_B]$
 di una sequenza di slot cattivi consecutivi e considerando diversi
 valori per la dimensione del blocco $K$.
 %
 Come per il paragrafo precedente, qui sono stati usati un canale
-simulato e una sorgente di pacchetti causuali per permettere
+simulato e una sorgente di pacchetti casuali per permettere
 l'esecuzione di test con un gran numero di pacchetti.
 %
 La frazione di pacchetti importanti presente in ogni blocco è stata
@@ -382,7 +385,7 @@ $\EnB$ sono state ricavate le probabilità di transizione secondo
 \eqref{eq:mcparams}.
 
 Variando le dimensioni di blocco $K \in [10, 6000]$ e considerando tre
-diversi canali Markoviani, corrsipondenti a $E[\#_B] \in \{10, 100,
+diversi canali Markoviani, corrispondenti a $E[\#_B] \in \{10, 100,
 500\}$ sono stati ottenuti i risultati mostrati in
 figura~\ref{fig:markov}.
 %
@@ -403,7 +406,7 @@ Questo è dovuto alle scarse prestazioni in termini di probabilità di
 decodifica dei codici LT quando sono usati per codificare blocchi
 troppo piccoli.
 %
-Infatti è possibile vedere in figura~\ref{fig:noerrk} la probabiltà di
+Infatti è possibile vedere in figura~\ref{fig:noerrk} la probabilità di
 decodifica al variare della dimensione del blocco su un canale senza
 errori, usando gli stessi parametri dei tre casi Markoviani.
 %
@@ -424,7 +427,7 @@ Nel caso $\EnB = 500$ entrambe le packet error rate del MIB e del LIB
 rimangono intorno a $10^{-3}$ su tutto l'intervallo di $K$
 considerato. Nel caso $\EnB = 100$ è possibile vedere che il MIB e il
 LIB subiscono delle packet error rate diverse e tendono a
-decrescrere. Infine, anche nel caso $\EnB = 10$ è visibile la diversa
+decrescere. Infine, anche nel caso $\EnB = 10$ è visibile la diversa
 PER per il MIB e il LIB, ma adesso entrambi hanno un salto in
 corrispondenza di $K \approx 2300$ e poi decrescono più lentamente del
 caso $\EnB = 100$.
@@ -456,7 +459,7 @@ pacchetto, infatti una dimensione di pacchetto $L=1$ comporterebbe un
 overhead del 1500 \% dovuto solo agli header.
 
 Questo overhead decresce all'aumentare della dimensione dei pacchetti
-$L$, tuttavia bisogna cohnsiderare l'overhead introdotto dalla
+$L$, tuttavia bisogna considerare l'overhead introdotto dalla
 segmentazione del video H264.
 %
 Il video H264 è composto da pacchetti (detti NALU) di dimensioni
@@ -492,7 +495,7 @@ La dimensione dei pacchetti è stata impostata al valore ottimale
 $L=388$ per il video H264 trovata nel paragrafo~\ref{sec:pktsize}.
 
 Nelle figure~\ref{fig:enctime} e~\ref{fig:dectime} sono mostrati,
-rispettivamnte, i tempi medi di codifica e di decodifica ottenuti.
+rispettivamente, i tempi medi di codifica e di decodifica ottenuti.
 %
 \begin{figure}[htb]
   \centering
@@ -525,12 +528,15 @@ decodifica di tutto il blocco.
 Inoltre sia i tempi di codifica che di decodifica aumentano
 sub-linearmente in funzione di EF, come in \cite{uep}.
 
-\section{Conclusioni}
+\newpage
+\section{Conclusioni} % Max 0.5 pages
 
 
 %\begin{figure}[H]
 %	\makebox[\textwidth][c]{\includegraphics[width=16cm]{G10labE_f3.eps}}
 %	\caption{Componenti di $\hat{s}$}\label{fig:s2}
 %\end{figure}
+
+% Between 3-15 refs
 \printbibliography[heading=bibnumbered, title=Bibliografia]
 \end{document}
