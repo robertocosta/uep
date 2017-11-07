@@ -18,10 +18,10 @@ from uep_fast_run import *
 from utils import *
 
 if __name__ == "__main__":
-    efs = [1,2,8]
+    efs = [1,2,4,8]
     overheads = np.linspace(0, 0.2, 32).tolist()
     k = 20000
-    nblocks = 100
+    nblocks = 500
 
     base_params = simulation_params()
     base_params.Ks[:] = [k]
