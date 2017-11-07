@@ -311,7 +311,7 @@ decoder sono stati eseguiti sullo stesso computer, senza inviare
 pacchetti UDP e simulando un canale senza memoria che scarta i
 pacchetti con una data probabilità $e$.
 %
-Per gli stessi motivi è stata utilizzata in questo paragrafo una
+Per lo stesso motivo è stata utilizzata in questo paragrafo una
 sorgente di pacchetti generati casualmente invece di segmentare
 realmente un video H264.
 
@@ -322,7 +322,7 @@ questa tesina e di verificare la correttezza dell'implementazione.
 I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
 pacchetti importanti e $K_1 = 900$ pacchetti non importanti; il blocco
 virtuale è stato costruito ripetendo $RF_0 = 3$ volte il primo
-sotto-blocco, $RF_1 = 1$ il secondo ed espandendo la sequenza di
+sotto-blocco, $RF_1 = 1$ volte il secondo ed espandendo la sequenza di
 pacchetti così ottenuta di un fattore $EF = 4$. La lunghezza del
 blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
 \cdot K_1 \right) = 4800$ pacchetti.
@@ -332,13 +332,10 @@ corrisponde un numero di pacchetti inviati $N \in [1000, 1800]$ per
 ogni blocco di $K=K_0+K_1$ pacchetti.
 %
 La probabilità di errore del canale è stata impostata ai valori
-$\left\{ 0, 10^{-2}, 10^{-1}, 2 \cdot 10^{-1} \right\}$.
+$e \in \left\{ 0, 10^{-2}, 10^{-1}, 2 \cdot 10^{-1} \right\}$.
 
 In figura~\ref{fig:iid} sono mostrati i risultati della simulazione di
-una trasmissione di 10000 blocchi, dove le curve sono mostrate fino al
-livello di PER di $10^{-3}$ come in \cite{uep} per migliorare la
-leggibilità. Infatti sotto quel livello il numero di simulazioni inizia
-a causare delle oscillazioni che rendono poco affidabile il risultato.
+una trasmissione di 10000 blocchi.
 %
 \begin{figure}[H]
     \centering
@@ -349,7 +346,11 @@ a causare delle oscillazioni che rendono poco affidabile il risultato.
 \end{figure}
 %
 Come è possibile osservare, le curve corrispondenti al canale senza
-errori ($e=0$) sono coerenti con \cite{uep}: la probabilità di errore
+errori ($e=0$) sono coerenti con \cite{uep} fino a una PER di
+$10^{-3}$, infatti in corrispondenza di un overhead del 25\% la PER
+della parte più importante scende sotto $10^-3$ come nel paper
+
+: la probabilità di errore
 scende sotto $10^{-3}$ con un over
 
 . Negli altri tre casi, invece, la PER segue lo
