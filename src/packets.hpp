@@ -9,12 +9,13 @@
 #include <vector>
 
 #include "base_types.hpp"
+#include "message_passing.hpp"
 #include "utils.hpp"
 
 namespace uep {
 
 /** Specialization of symbol_traits for buffers. */
-namespace utils {
+namespace mp {
 template<>
 class symbol_traits<buffer_type> {
 public:

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <unordered_set>
 
+#include "message_passing.hpp"
 #include "utils.hpp"
 
 namespace uep {
