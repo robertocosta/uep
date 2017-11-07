@@ -56,4 +56,6 @@ plot*.pdf
 *so
 iid_*.xz
 figure_*.png
+./avg/*.png
+/src/avg/*.png
 /avg/*.png

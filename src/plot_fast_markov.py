@@ -23,14 +23,14 @@ from utils import *
 
 fixed_params = [{'avg_good_run': 99,
                  'avg_bad_run': 1,
-                 'overhead': 0.3},
-                {'avg_good_run': 95,
-                 'avg_bad_run': 5,
-                 'overhead': 0.3},
-                {'avg_good_run': 90,
-                 'avg_bad_run': 10,
-                 'overhead': 0.3}]
-ks = np.linspace(1000, 2500, 31, dtype=int).tolist()
+                 'overhead': 0.3}]#,
+                #{'avg_good_run': 95,
+                # 'avg_bad_run': 5,
+                # 'overhead': 0.3}]
+                #{'avg_good_run': 90,
+                # 'avg_bad_run': 10,
+                # 'overhead': 0.3}]
+ks = np.linspace(500, 1000, 11, dtype=int).tolist()
 k0_fraction = 0.1
 
 base_params = simulation_params()
@@ -106,7 +106,7 @@ for (j, p) in enumerate(fixed_params):
                                          param_matrix[j][0].nCycles,
                                          p['overhead'])))
     
-plt.ylim(1e-20, 1)
+plt.ylim(1e-7, 1)
 plt.xlabel('K')
 plt.ylabel('UEP PER')
 plt.legend()

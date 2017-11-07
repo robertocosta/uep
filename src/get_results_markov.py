@@ -18,14 +18,14 @@ import glob
 filenames = glob.glob('*.xz')
 
 results = []
-
+plot_type = 'plot' # or 'scatter'
 def getKey(item):
     return item['k']
 
 for filename in filenames:
     print(filename+':')
     #dictionary = pickle.loads(lzma.decompress(open(filename,'rb').read()))
-    data = load_data(1)
+    data = load_data_local(filename)
     par_mat = data['param_matrix']
     res_mat = data['result_matrix']
     n_parameters = len(par_mat)
@@ -80,14 +80,16 @@ for i in range(0,len(results)):
     x = [data[j]['k'] for j in range(0,len(data))]
     y1 = [data[j]['mib_per'] for j in range(0,len(data))]
     y2 = [data[j]['lib_per'] for j in range(0,len(data))]
-    #plt.plot(x, y1,marker='o',linewidth=0.5,label=('MIB:'+results[i]['param_set']))
-    #plt.plot(x, y2,marker='o',linewidth=0.5,label=('LIB:'+results[i]['param_set']))
-    plt.scatter(x, y1, s = np.ones((len(y1),1))*(20-2*i)	,label=('MIB:'+results[i]['param_set']))
-    plt.scatter(x, y2, s = np.ones((len(y1),1))*(14-2*i),	label=('LIB:'+results[i]['param_set']))
+    if (plot_type == 'plot'):
+        plt.plot(x, y1,marker='o',linewidth=0.5,label=('MIB:'+results[i]['param_set']))
+        plt.plot(x, y2,marker='o',linewidth=0.5,label=('LIB:'+results[i]['param_set']))
+    else:
+        plt.scatter(x, y1, s = np.ones((len(y1),1))*(20-2*i)	,label=('MIB:'+results[i]['param_set']))
+        plt.scatter(x, y2, s = np.ones((len(y1),1))*(14-2*i),	label=('LIB:'+results[i]['param_set']))
 
 
 plt.ylim(1e-7, 1)
-plt.xlim(0, 6000)
+plt.xlim(0, 10000)
 plt.xlabel('K')
 plt.ylabel('UEP PER')
 plt.legend()
@@ -97,5 +99,5 @@ print_fig = my_plot
 print_fig.set_size_inches(10,8)
 print_fig.set_dpi(200)
 os.makedirs('avg', 777, True)
-print_fig.savefig('avg/'+datestr+'.png', format='png')
+print_fig.savefig('avg/local_markov_'+plot_type+'_'	+datestr+'.png', format='png')
 
