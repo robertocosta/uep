@@ -28,7 +28,7 @@ if __name__ == "__main__":
     base_params.RFs[:] = [1]
     base_params.c = 0.1
     base_params.delta = 0.5
-    base_params.L = 4
+    base_params.L = 388
     base_params.nblocks = nblocks
     base_params.chan_pGB = 0
     base_params.chan_pBG = 1
