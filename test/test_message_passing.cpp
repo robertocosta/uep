@@ -8,6 +8,7 @@
 #include <boost/optional.hpp>
 
 #include "lazy_xor.hpp"
+#include "log.hpp"
 #include "message_passing.hpp"
 #include "packets.hpp"
 
@@ -527,4 +528,52 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mp_copy_before_run, Sym, cp_symbol_types, mp_se
   BOOST_CHECK(!S::mp->has_decoded());
 
   delete other;
+}
+
+BOOST_AUTO_TEST_CASE(mp_insert_parallel_edges) {
+  mp_context<char> mp(4);
+  auto edges0 = {0, 1, 1, 2, 2, 2, 3};
+  mp.add_output(0x11, edges0.begin(), edges0.end());
+  auto edges1 = {3, 2, 0, 2};
+  mp.add_output(0x22, edges1.begin(), edges1.end());
+
+  BOOST_CHECK_EQUAL(mp.input_size(), 4);
+  BOOST_CHECK_EQUAL(mp.output_size(), 2);
+
+  std::vector<std::size_t> edges2(256, 3);
+  mp.add_output(0x33, edges2.begin(), edges2.end());
+
+  BOOST_CHECK_EQUAL(mp.output_size(), 3);
+}
+
+BOOST_AUTO_TEST_CASE(parallel_edges_dont_decode) {
+  mp_context<char> mp(2);
+  auto edges = {1,1};
+  mp.add_output(0x11, edges.begin(), edges.end());
+  mp.run();
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(parallel_edges_xor_twice) {
+  mp_context<char> mp(2);
+  auto edges = {1,1,0};
+  mp.add_output(0x20, edges.begin(), edges.end());
+  edges = {1};
+  mp.add_output(0x13, edges.begin(), edges.end());
+  mp.run();
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 2);
+  BOOST_CHECK_EQUAL(*(mp.decoded_symbols_begin()), 0x20);
+  BOOST_CHECK_EQUAL(*(++mp.decoded_symbols_begin()), 0x13);
+}
+
+BOOST_AUTO_TEST_CASE(triple_edges_xor_once) {
+  mp_context<char> mp(2);
+  auto edges = {1,1,1,0};
+  mp.add_output(0x20, edges.begin(), edges.end());
+  edges = {1};
+  mp.add_output(0x13, edges.begin(), edges.end());
+  mp.run();
+  BOOST_CHECK_EQUAL(mp.decoded_count(), 2);
+  BOOST_CHECK_EQUAL(*(mp.decoded_symbols_begin()), 0x33);
+  BOOST_CHECK_EQUAL(*(++mp.decoded_symbols_begin()), 0x13);
 }

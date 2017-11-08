@@ -48,6 +48,7 @@ namespace std {
       state['overhead'] = self.overhead
       state['chan_pGB'] = self.chan_pGB
       state['chan_pBG'] = self.chan_pBG
+      state['iid_per'] = self.iid_per
       state['nCycles'] = self.nCycles
       return state
 
@@ -66,6 +67,7 @@ namespace std {
       self.overhead = state['overhead']
       self.chan_pGB = state['chan_pGB']
       self.chan_pBG = state['chan_pBG']
+      self.iid_per = state.get('iid_per', -1)
       self.nCycles = state.get('nCycles', 1)
 }
 }

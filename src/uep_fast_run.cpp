@@ -125,7 +125,35 @@ private:
   mutable std::vector<double> _avg_per;
 };
 
+class packet_dropper {
+public:
+  explicit packet_dropper(double iid_per) :
+    mk_chan(0,0),
+    iid_gen(std::random_device()()),
+    iid_chan(iid_per),
+    use_iid(true) {
+  }
 
+  explicit packet_dropper(double pGB, double pBG) :
+    mk_chan(pGB,pBG),
+    use_iid(false) {
+  }
+
+  bool operator()() {
+    if (use_iid) {
+      return iid_chan(iid_gen);
+    }
+    else {
+      return mk_chan() == 1;
+    }
+  }
+
+private:
+  markov2_distribution mk_chan;
+  std::mt19937 iid_gen;
+  std::bernoulli_distribution iid_chan;
+  bool use_iid;
+};
 
 simulation_results run_uep(const simulation_params &params) {
   std::size_t src_nblocks;
@@ -143,7 +171,16 @@ simulation_results run_uep(const simulation_params &params) {
 		    params.EF,
 		    params.c,
 		    params.delta);
-  markov2_distribution chan(params.chan_pGB, params.chan_pBG);
+
+  std::unique_ptr<packet_dropper> dropper;
+  if (params.iid_per >= 0) {
+    dropper = std::make_unique<packet_dropper>(params.iid_per);
+  }
+  else {
+    dropper = std::make_unique<packet_dropper>(params.chan_pGB,
+					       params.chan_pBG);
+  }
+
   uep_decoder dec(params.Ks.begin(), params.Ks.end(),
 		  params.RFs.begin(), params.RFs.end(),
 		  params.EF,
@@ -180,7 +217,7 @@ simulation_results run_uep(const simulation_params &params) {
 
     // Drop some packets
     for (auto i = coded_block.begin(); i != coded_block.end();) {
-      if (chan() == 1) { // Drop
+      if ((*dropper)()) { // Drop
 	i = coded_block.erase(i);
 	++results.dropped_count;
       }

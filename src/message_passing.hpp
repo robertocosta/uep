@@ -11,8 +11,7 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
-#include "log.hpp"
-#include "utils.hpp"
+#include "skip_false_iterator.hpp"
 
 namespace uep { namespace mp {
 
@@ -68,18 +67,16 @@ namespace uep { namespace mp {
  *
  *  The context controls a bipartite graph, which is initialized with
  *  a fixed number of empty input symbols and is incrementally built
- *  from each output symbol, together with its edges.
+ *  from each output symbol, together with its edges. Parallel edges
+ *  are allowed and are handled like all the others.
  *
  *  The algorithm can be run many times without losing the previously
  *  decoded packets.
  *
- *  The generic symbol type `Symbol` must be DefaultConstructible,
- *  MoveAssignable and Swappable. It must also be convertible to bool
- *  and operator^= must be defined for this type.  If the mp_context
- *  is to be copied then the symbols must also be CopyConstructible
- *  and CopyAssignable.
+ *  The generic symbol type `Symbol` is manipulated through the traits
+ *  class `SymbolTraits`.
  */
-template <class Symbol, class SymbolTraits = utils::symbol_traits<Symbol>>
+template <class Symbol, class SymbolTraits = symbol_traits<Symbol>>
 class mp_context {
 private:
   /** Struct used to carry additional information with the symbols. */
@@ -172,8 +169,6 @@ public:
   decoded_iterator decoded_symbols_end() const;
 
 private:
-  log::default_logger basic_lg, perf_lg;
-
   /** Pointers to the input nodes. These manage the lifetime of the
    *  nodes.
    */
@@ -189,8 +184,8 @@ private:
 		       *   degree one.
 		       */
   node *degone_last; /**< End of the linked list of nodes with
-		     *   degree one.
-		     */
+		      *   degree one.
+		      */
   std::size_t decoded_count_; /**< Number of currenlty decoded
 			       *   packets.
 			       */
@@ -234,9 +229,9 @@ struct mp_context<Symbol,SymbolTraits>::node {
   node *prev; /**< Pointer to the previous node in a linked list. Is
 	       *   used by the degone list.
 	       */
-  std::unordered_set<std::size_t> edges; /**< Indices of the nodes
-					  *   connected to this.
-					  */
+  std::unordered_multiset<std::size_t> edges; /**< Indices of the nodes
+					       *   connected to this.
+					       */
 };
 
 template <class Symbol, class SymbolTraits>
@@ -246,12 +241,10 @@ struct mp_context<Symbol,SymbolTraits>::node2sym {
   }
 };
 
-//	 mp_context<Symbol,SymbolTraits> template definitions
+//// mp_context<Symbol,SymbolTraits> template definitions ////
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(std::size_t in_size) :
-  basic_lg(boost::log::keywords::channel = log::basic),
-  perf_lg(boost::log::keywords::channel = log::performance),
   ripple_first(nullptr),
   degone_first(nullptr),
   degone_last(nullptr),
@@ -260,21 +253,15 @@ mp_context<Symbol,SymbolTraits>::mp_context(std::size_t in_size) :
   // Build in_size empty input nodes
   inputs.resize(in_size);
   std::size_t pos = 0;
-  for (auto i = inputs.begin(); i != inputs.end(); ++i) {
-    auto np = std::make_unique<node>();
+  for (std::unique_ptr<node> &np : inputs) {
+    np = std::make_unique<node>();
     np->symbol = symbol_traits::create_empty();
     np->position = pos++;
-    *i = std::move(np);
   }
 }
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(mp_context &&other) :
-  // Moving the loggers does not work, copy them
-  //basic_lg(std::move(other.basic_lg)),
-  //perf_lg(std::move(other.perf_lg)),
-  basic_lg(other.basic_lg),
-  perf_lg(other.perf_lg),
   inputs(std::move(other.inputs)),
   outputs(std::move(other.outputs)),
   ripple_first(std::move(other.ripple_first)),
@@ -286,8 +273,6 @@ mp_context<Symbol,SymbolTraits>::mp_context(mp_context &&other) :
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(const mp_context &other) :
-  basic_lg(other.basic_lg),
-  perf_lg(other.perf_lg),
   inputs(other.inputs.size()), // copied after
   outputs(other.outputs.size()), // copied after
   ripple_first(nullptr), // Is always null outside of run()
@@ -311,11 +296,6 @@ mp_context<Symbol,SymbolTraits>::mp_context(const mp_context &other) :
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(mp_context &&other) {
-  // Moving the loggers does not work, copy them
-  //basic_lg = std::move(other.basic_lg);
-  //perf_lg = std::move(other.perf_lg);
-  basic_lg = other.basic_lg;
-  perf_lg = other.perf_lg;
   inputs = std::move(other.inputs);
   outputs = std::move(other.outputs);
   ripple_first = std::move(other.ripple_first);
@@ -328,8 +308,6 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(mp_c
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(const mp_context &other) {
-  basic_lg = other.basic_lg;
-  perf_lg = other.perf_lg;
   inputs.resize(other.inputs.size()); // copied after
   outputs.resize(other.outputs.size()); // copied after
   ripple_first = nullptr; // Is always null outside of run()
@@ -355,7 +333,7 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(cons
 template <class Symbol, class SymbolTraits>
 template <class EdgeIter>
 void mp_context<Symbol,SymbolTraits>::add_output(const symbol_type &s,
-				    EdgeIter edges_begin, EdgeIter edges_end) {
+						 EdgeIter edges_begin, EdgeIter edges_end) {
   symbol_type s_copy(s);
   add_output(std::move(s_copy), edges_begin, edges_end);
 }
@@ -363,30 +341,27 @@ void mp_context<Symbol,SymbolTraits>::add_output(const symbol_type &s,
 template <class Symbol, class SymbolTraits>
 template <class EdgeIter>
 void mp_context<Symbol,SymbolTraits>::add_output(symbol_type &&s,
-				    EdgeIter edges_begin, EdgeIter edges_end) {
+						 EdgeIter edges_begin, EdgeIter edges_end) {
   // Move the new symbol in an output node
-  auto nup = std::make_unique<node>();
-  nup->symbol = std::move(s);
-  nup->position = outputs.size();
-  node *np = nup.get();
-  outputs.push_back(std::move(nup));
+  outputs.push_back(std::make_unique<node>());
+  std::unique_ptr<node> &np = outputs.back();
+  np->symbol = std::move(s);
+  np->position = outputs.size() - 1;
   // Add the edges
   for (EdgeIter i = edges_begin; i != edges_end; ++i) {
-    node *inp = inputs.at(*i).get();
+    std::unique_ptr<node> &inp = inputs.at(*i);
     if (!symbol_traits::is_empty(inp->symbol)) {
-       // input is already decoded, ignore edge
-       symbol_traits::inplace_xor(np->symbol, inp->symbol);
-     }
-     else {
-       auto ins_ret = np->edges.insert(*i);
-       if (!ins_ret.second)
-	 throw std::logic_error("Setting a parallel edge on the output");
-       inp->edges.insert(np->position);
-     }
+      // input is already decoded, ignore edge and XOR the new output
+      symbol_traits::inplace_xor(np->symbol, inp->symbol);
+    }
+    else {
+      np->edges.insert(*i); // Allow parallel edges
+      inp->edges.insert(np->position);
+    }
   }
   // Check if degree one
   if (np->edges.size() == 1) {
-    insert_degone(np);
+    insert_degone(np.get());
   }
 }
 
@@ -402,9 +377,9 @@ void mp_context<Symbol,SymbolTraits>::decode_degree_one() {
     }
     // Remove the edge
     np->edges.clear();
-    inp->edges.erase(np->position);
+    inp->edges.erase(np->position); // Ok with parallel edges too
   }
-  // All this outputs have now degree 0
+  // All this outputs have now degree 0. Clear the list
   degone_first = nullptr;
   degone_last = nullptr;
 }
@@ -419,7 +394,8 @@ void mp_context<Symbol,SymbolTraits>::process_ripple() {
       // Update the output symbol
       symbol_traits::inplace_xor(outp->symbol, inp->symbol);
       // Remove the edge (in <- out)
-      outp->edges.erase(inp->position);
+      auto e = outp->edges.find(inp->position);
+      outp->edges.erase(e); // Delete only one edge
       // Update degree one list
       if (outp->edges.size() == 1) {
 	insert_degone(outp);
@@ -449,20 +425,13 @@ void mp_context<Symbol,SymbolTraits>::run() {
   for (;;) {
     decode_degree_one();
     if (has_decoded() || ripple_first == nullptr) {
-      ripple_first = nullptr;
+      ripple_first = nullptr; // Guarantee empty ripple at return
       break;
     }
     process_ripple();
   }
 
   last_run_time = high_resolution_clock::now() - t;
-
-  BOOST_LOG(perf_lg) << "mp_context::run run_duration="
-		     << last_run_time.count()
-		     << " decoded_count="
-		     << decoded_count_
-		     << " output_size="
-		     << outputs.size();
 }
 
 template <class Symbol, class SymbolTraits>
@@ -560,22 +529,20 @@ void mp_context<Symbol,SymbolTraits>::insert_ripple(node *np) {
 
 template <class Symbol, class SymbolTraits>
 void mp_context<Symbol,SymbolTraits>::reset() {
-  decoded_count_ = 0;
+  ripple_first = nullptr;
   degone_first = nullptr;
   degone_last = nullptr;
-  ripple_first = nullptr;
-  for (auto i = inputs.begin(); i != inputs.end(); ++i) {
-    (*i)->symbol = symbol_type();
-    (*i)->edges.clear();
+  decoded_count_ = 0;
+  last_run_time = std::chrono::duration<double>::zero();
+  for (std::unique_ptr<node> &n : inputs) {
+    n->symbol = symbol_traits::create_empty();
+    n->edges.clear();
   }
   outputs.clear();
-  last_run_time = std::chrono::duration<double>::zero();
 }
 
 template <class Symbol, class SymbolTraits>
 double mp_context<Symbol,SymbolTraits>::run_duration() const {
-  if (last_run_time == decltype(last_run_time)::zero())
-    throw std::runtime_error("No run duration measured");
   return last_run_time.count();
 }
 

@@ -12,22 +12,9 @@
 #include <boost/iterator/filter_iterator.hpp>
 
 #include "base_types.hpp"
+#include "skip_false_iterator.hpp"
 
 namespace uep { namespace utils {
-
-/** Predicate that just converts the input to bool. */
-template <class T>
-struct to_bool {
-  bool operator()(const T &x) const {
-    return static_cast<bool>(x);
-  }
-};
-
-/** Iterator adaptor that skips over the values that convert to false. */
-template <class BaseIter>
-using skip_false_iterator = boost::filter_iterator<
-  to_bool<typename std::iterator_traits<BaseIter>::value_type>,
-  BaseIter>;
 
 /** Integer hashing function. */
 template <class T>
