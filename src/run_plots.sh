@@ -1,0 +1,3 @@
+python3 plot_fast_results_aws.py
+
+python3 plot_fast_results_local.py

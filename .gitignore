@@ -56,5 +56,11 @@ cmake_defines.hpp
 iid_*.xz
 jsvm-prefix/
 plot*.pdf
+*so
+iid_*.xz
+figure_*.png
+./avg/*.png
+/src/avg/*.png
+/avg/*.png
 python/*.cxx
 python/*.py
