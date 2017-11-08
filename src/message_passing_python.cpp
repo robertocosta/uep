@@ -1,4 +1,4 @@
-#include "message_passing_python.hpp"
+#include "message_passing.hpp"
 
 #include <Python.h>
 #include <structmember.h>
