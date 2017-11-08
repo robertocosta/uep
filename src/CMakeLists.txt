@@ -110,6 +110,9 @@ target_link_libraries(nal_overhead
   nal_reader
 )
 
+add_library(mppy SHARED message_passing_python.cpp)
+set_target_properties(mppy PROPERTIES PREFIX "")
+
 # add_executable(mp_plots mp_plots.cpp)
 # target_link_libraries(mp_plots
 #   decoder
