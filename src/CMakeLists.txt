@@ -158,6 +158,7 @@ set(python_files
   plot_time
   separate_iid
   separate_markov
+  separate_times
   uep_dec_time
   uep_enc_time
   utils

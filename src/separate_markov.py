@@ -5,11 +5,17 @@ import numpy as np
 
 from utils import *
 
+# Last using fixed nblocks
+#last_markov_key = "fast_data/markov_1509935225_8012946579946993038.pickle.xz"
+
+# Last using fixed n.errs
 last_markov_key = "fast_data/markov_1509867828_16491124733610827659.pickle.xz"
 
 data = load_data(last_markov_key)
 param_matrix = data['param_matrix']
 result_matrix = data['result_matrix']
+
+plt.figure()
 
 for (j, rs) in enumerate(result_matrix):
     ks = [ sum(p.Ks) for p in param_matrix[j] ]
@@ -38,36 +44,32 @@ for (j, rs) in enumerate(result_matrix):
     avg_bad_run = 1/chan_pBG
     avg_per = chan_pGB / (chan_pGB + chan_pBG)
 
-    plt.figure()
-    plt.errorbar(ks, mib_pers, yerr=np.array(mib_yerrs).transpose(),
-                 fmt='.-',
-                 elinewidth=1,
-                 capthick=1,
-                 capsize=3,
-                 linewidth=1.5,
-                 label=("MIB E[#B] = {:.2f},"
-                        " e = {:.0e},"
-                        " t = {:.2f}".format(avg_bad_run,
-                                             avg_per,
-                                             oh)))
-    plt.errorbar(ks, lib_pers, yerr=np.array(lib_yerrs).transpose(),
-                 fmt='.--',
-                 elinewidth=1,
-                 capthick=1,
-                 capsize=3,
-                 linewidth=1.5,
-                 label=("LIB E[#B] = {:.2f},"
-                        " e = {:.0e},"
-                        " t = {:.2f}".format(avg_bad_run,
-                                             avg_per,
-                                             oh)))
-    plt.gca().set_yscale('log')
-    plt.ylim(1e-8, 1)
-    plt.xlabel('K')
-    plt.ylabel('UEP PER')
-    plt.legend()
-    plt.grid()
+    for i, p in enumerate(mib_pers):
+        if p < 1e-8:
+            mib_pers[i] = 1e-8
 
-    plt.savefig("plot_markov_{:d}.pdf".format(int(avg_bad_run)), format='pdf')
+    for i, p in enumerate(lib_pers):
+        if p < 1e-8:
+            lib_pers[i] = 1e-8
+
+    plt.plot(ks, mib_pers,
+             marker='.',
+             linestyle='-',
+             linewidth=1.5,
+             label="MIB E[#B] = {:.2f}".format(avg_bad_run))
+    plt.plot(ks, lib_pers,
+             marker='.',
+             linestyle='--',
+             linewidth=1.5,
+             label="LIB E[#B] = {:.2f}".format(avg_bad_run))
+
+plt.gca().set_yscale('log')
+plt.ylim(1e-8, 1)
+plt.xlabel('K')
+plt.ylabel('UEP PER')
+plt.legend()
+plt.grid()
+
+plt.savefig("plot_markov.pdf", format='pdf')
 
 plt.show()

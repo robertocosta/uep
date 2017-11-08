@@ -21,6 +21,7 @@ if './python' not in sys.path:
 from uep_fast_run import *
 from utils import *
 
+<<<<<<< Updated upstream
 fixed_params = [{'avg_good_run': 99,
                  'avg_bad_run': 1,
                  'overhead': 0.3}]#,
@@ -84,6 +85,101 @@ plt.savefig(datestr+'_nblocks-vs-k.png', format='png')
 for (j, p) in enumerate(fixed_params):
     mib_pers = [ r.avg_pers[0] for r in result_matrix[j] ]
     lib_pers = [ r.avg_pers[1] for r in result_matrix[j] ]
+=======
+if __name__ == "__main__":
+    fixed_params = [
+        {'avg_per': 0,
+         'avg_bad_run': 1,
+         'overhead': 0.25}
+    ]
+    ks = np.linspace(10, 6000, 32, dtype=int).tolist()
+    k0_fraction = 0.1
+
+    base_params = simulation_params()
+    base_params.RFs[:] = [3, 1]
+    base_params.EF = 4
+    base_params.c = 0.1
+    base_params.delta = 0.5
+    base_params.L = 4
+    base_params.nblocks_min = 100
+    base_params.wanted_errs = 30
+    base_params.nblocks_max = 1000
+
+    param_matrix = list()
+    for p in fixed_params:
+        param_matrix.append(list())
+        for k in ks:
+            params = simulation_params(base_params)
+            k0 = int(k0_fraction * k)
+            params.Ks[:] = [k0, k - k0]
+            params.chan_pGB = 1/p['avg_bad_run'] * p['avg_per'] / (1 - p['avg_per'])
+            params.chan_pBG = 1/p['avg_bad_run']
+            params.overhead = p['overhead']
+            param_matrix[-1].append(params)
+
+    result_matrix = run_uep_parallel(param_matrix)
+
+    plt.figure(1)
+    plt.gca().set_yscale('log')
+
+    plt.figure(2)
+
+    for (j, p) in enumerate(fixed_params):
+        mib_pers = [ r.avg_pers[0] for r in result_matrix[j] ]
+        mib_errcs = [ r.err_counts[0] for r in result_matrix[j] ]
+        lib_pers = [ r.avg_pers[1] for r in result_matrix[j] ]
+        lib_errcs = [ r.err_counts[1] for r in result_matrix[j] ]
+
+        plt.figure(1)
+        plt.plot(ks, mib_pers,
+                 marker='o',
+                 linewidth=1.5,
+                 label=("MIB E[#B] = {:.2f},"
+                        " e = {:.0e},"
+                        " t = {:.2f}".format(p['avg_bad_run'],
+                                             p['avg_per'],
+                                             p['overhead'])))
+        plt.plot(ks, lib_pers,
+                 marker='o',
+                 linewidth=1.5,
+                 label=("LIB E[#B] = {:.2f},"
+                        " e = {:.0e},"
+                        " t = {:.2f}".format(p['avg_bad_run'],
+                                             p['avg_per'],
+                                             p['overhead'])))
+
+        plt.figure(2)
+        plt.plot(ks, mib_errcs,
+                 marker='o',
+                 linewidth=1.5,
+                 label=("MIB E[#B] = {:.2f},"
+                        " e = {:.0e},"
+                        " t = {:.2f}".format(p['avg_bad_run'],
+                                             p['avg_per'],
+                                             p['overhead'])))
+        plt.plot(ks, lib_errcs,
+                 marker='o',
+                 linewidth=1.5,
+                 label=("LIB E[#B] = {:.2f},"
+                        " e = {:.0e},"
+                        " t = {:.2f}".format(p['avg_bad_run'],
+                                             p['avg_per'],
+                                             p['overhead'])))
+
+    plt.figure(1)
+    plt.ylim(1e-8, 1)
+    plt.xlabel('K')
+    plt.ylabel('UEP PER')
+    plt.legend()
+    plt.grid()
+
+    plt.figure(2)
+    plt.xlabel('K')
+    plt.ylabel('UEP error count')
+    plt.legend()
+    plt.grid()
+
+>>>>>>> Stashed changes
     plt.figure(1)
     plt.plot(ks, mib_pers,
              marker='o',
