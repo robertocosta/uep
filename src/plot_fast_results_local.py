@@ -14,7 +14,7 @@ filenames = glob.glob('*.xz')
 
 results = []
 plot_type = 'plot' # or 'scatter'
-x_range_markov = [0, 6000]
+x_range_markov = [0, 15000]
 y_range_markov = [1e-7, 1]
 clipped = False
 clipped_forward = True
@@ -33,9 +33,10 @@ for filename in filenames:
     for i in range(0,n_parameters):
         i_param = par_mat[i]
         i_res = res_mat[i]
-        par_str = '[UEP=[['+str(i_param[0].RFs[0])+','+str(i_param[0].RFs[1])+'],'
-        par_str += str(i_param[0].EF)+'];L='+str(i_param[0].L)
-        par_str += ';p='+'{:.2f}'.format(i_param[0].chan_pGB)+';q='+'{:.2f}'.format(i_param[0].chan_pBG)
+        par_str = '['
+        #par_str = 'UEP=[['+str(i_param[0].RFs[0])+','+str(i_param[0].RFs[1])+'],'
+        #par_str += str(i_param[0].EF)+'];L='+str(i_param[0].L) + ';'
+        par_str += 'p='+'{:.2e}'.format(i_param[0].chan_pGB)+';q='+'{:.2e}'.format(i_param[0].chan_pBG)
         par_str += ';oh='+'{:.2f}'.format(i_param[0].overhead)+']'
         weight = i_param[0].nCycles
         n_k = len(i_res) # len(i_param) = len(i_res) = n_k
@@ -77,6 +78,7 @@ plt.ylabel('UEP PER')
 markov_weights = plt.figure(2)
 plt.xlabel('K')
 plt.ylabel('n')
+y_max = 1
 for i in range(0,len(results)):
     print('parameter_set:' + results[i]['param_set'])
     data = results[i]['data']
@@ -84,16 +86,18 @@ for i in range(0,len(results)):
     #if (i==0): print(weights)
     x = [data[j]['k'] for j in range(0,len(data))]
     nblocks = [weights[j]/x[j] for j in range(0,len(x))]
+    y_max = max([y_max, max(weights), max(nblocks)])
     plot_params = { 'plt': plt, 'x' : x, 'y1' : nblocks, 'y2' : weights,
-        'legend' : ['nblocks ('+str(results[i]['param_set'])+')','nCycles ('+str(results[i]['param_set'])+')'],
-        'plot_type' : plot_type, 'x_range' : x_range_markov, 'y_range':[1,max([max(weights),max(nblocks)])]}
+        'legend' : ['nblocks ('+results[i]['param_set']+')','nCycles ('+results[i]['param_set']+')'],
+        'plot_type' : plot_type, 'x_range' : x_range_markov, 'y_range':[1,y_max]}
+    #print(plot_params)
     plt.figure(2)
     draw2(plot_params)
     y1 = [data[j]['mib_per'] for j in range(0,len(data))]
     y2 = [data[j]['lib_per'] for j in range(0,len(data))]
     plt.figure(1)
     plot_params = { 'plt': plt, 'x' : x, 'y1' : y1, 'y2' : y2,
-        'legend' : ['MIB='+results[i]['param_set'],'LIB='+results[i]['param_set']],
+        'legend' : ['MIB '+results[i]['param_set'],'LIB '+results[i]['param_set']],
         'plot_type' : plot_type, 'x_range' : x_range_markov, 'y_range':y_range_markov,
         'clipped' : clipped, 'clipped_forward' : clipped_forward}
     draw2(plot_params)

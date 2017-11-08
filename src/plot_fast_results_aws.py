@@ -16,6 +16,7 @@ clipped_forward = True
 urls = getUrls('fast_data/iid_',datetime.datetime(2017, 11, 5, 0, 0, tzinfo=tzutc()))
 urls.remove('fast_data/iid_1510000281_14066231505785153409.pickle.xz')
 urls.remove('fast_data/iid_1509990241_13281873338417605515.pickle.xz')
+urls.remove('fast_data/iid_1510073199_10599483524714011910.pickle.xz')
 
 iid_res = []
 
@@ -73,6 +74,7 @@ plt.ylabel('UEP PER')
 iid_weights = plt.figure(2)
 plt.xlabel('Overhead')
 plt.ylabel('n')
+weights_max = 1
 for i in range(0,len(iid_res)):
     print('parameter_set:' + iid_res[i]['param_set'])
     data = iid_res[i]['data']
@@ -81,9 +83,10 @@ for i in range(0,len(iid_res)):
     plt.figure(2)
     weights = [iid_res[i]['data'][j]['weight'] for j in range(0,len(iid_res[i]['data']))]
     nBlocks = [iid_res[i]['data'][j]['nblocks'] for j in range(0,len(iid_res[i]['data']))]
+    weights_max = max([weights_max, max(weights),max(nBlocks)])
     plot_params = { 'plt': plt, 'x' : x, 'y1' : nBlocks, 'y2' : weights,
         'legend' : ['nblocks ('+str(iid_res[i]['param_set'])+')','nCycles ('+str(iid_res[i]['param_set'])+')'],
-        'plot_type' : plot_type, 'x_range' : x_range_iid, 'y_range':[1,max([max(weights),max(nBlocks)])]}
+        'plot_type' : plot_type, 'x_range' : x_range_iid, 'y_range':[1,weights_max]}
     draw2(plot_params)
     
     y1 = [data[j]['mib_per'] for j in range(0,len(data))]
@@ -164,15 +167,17 @@ plt.ylabel('UEP PER')
 markov_weights = plt.figure(4)
 plt.xlabel('K')
 plt.ylabel('n')
+weights_max = 1
 for i in range(0,len(markov_res)):
     print('parameter_set:' + markov_res[i]['param_set'])
     data = markov_res[i]['data']
     x = [data[j]['k'] for j in range(0,len(data))]
     weights = [markov_res[i]['data'][j]['weight'] for j in range(0,len(markov_res[i]['data']))]
     nCycles = [weights[j]*x[j] for j in range(0,len(x))]
+    weights_max = max([weights_max, max(weights),max(nCycles)])
     plot_params = { 'plt': plt, 'x' : x, 'y1' : weights, 'y2' : nCycles,
         'legend' : ['nblocks ('+str(markov_res[i]['param_set'])+')','nCycles ('+str(markov_res[i]['param_set'])+')'],
-        'plot_type' : plot_type, 'x_range' : x_range_markov, 'y_range':[1,max([max(weights),max(nCycles)])]}
+        'plot_type' : plot_type, 'x_range' : x_range_markov, 'y_range':[1,weights_max]}
     plt.figure(4)
     draw2(plot_params)
     y1 = [data[j]['mib_per'] for j in range(0,len(data))]

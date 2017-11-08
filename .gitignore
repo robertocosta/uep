@@ -61,6 +61,7 @@ iid_*.xz
 figure_*.png
 ./avg/*.png
 /src/avg/*.png
+/src/avg/old/*
 /avg/*.png
 python/*.cxx
 python/*.py

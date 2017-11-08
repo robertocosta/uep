@@ -21,16 +21,17 @@ if './python' not in sys.path:
 from uep_fast_run import *
 from utils import *
 
-fixed_params = [{'avg_good_run': 99,
-                 'avg_bad_run': 1,
-                 'overhead': 0.3}]#,
-                #{'avg_good_run': 95,
-                # 'avg_bad_run': 5,
-                # 'overhead': 0.3}]
-                #{'avg_good_run': 90,
-                # 'avg_bad_run': 10,
-                # 'overhead': 0.3}]
-ks = np.linspace(500, 1000, 11, dtype=int).tolist()
+fixed_params = [{'avg_good_run': 90,
+                 'avg_bad_run': 10,
+                 'overhead': 0.25},
+                {'avg_good_run': 990,
+                 'avg_bad_run': 10,
+                 'overhead': 0.25},
+                 {'avg_good_run': 9990,
+                 'avg_bad_run': 10,
+                 'overhead': 0.25}]
+#ks = np.linspace(1100, 1300, 3, dtype=int).tolist()
+ks = [100] + np.linspace(500, 1500, 3, dtype=int).tolist()
 k0_fraction = 0.1
 
 base_params = simulation_params()
@@ -41,7 +42,7 @@ base_params.delta = 0.5
 base_params.L = 4
 #base_params.nblocks = 200
 #base_params.nCycles = 15000
-base_params.nCycles = 10 # avg # of errors
+error_n = 10000 # avg # of errors
 
 param_matrix = list()
 for p in fixed_params:
@@ -56,8 +57,10 @@ for p in fixed_params:
 		#nPckts = (p['avg_good_run']+p['avg_bad_run'])*nCycles
         piB = params.chan_pGB / (params.chan_pGB + params.chan_pBG)
         piG = 1 - piB
-        nCycles = piG / params.chan_pGB + (base_params.nCycles-1) / piB
-        params.nblocks = int(((p['avg_good_run']+p['avg_bad_run'])*nCycles)/k)
+        nCycles = piG / params.chan_pGB + (error_n-1) / piB
+        params.nCycles = int(nCycles)+1
+        #params.nblocks = int(((p['avg_good_run']+p['avg_bad_run'])*nCycles)/k)
+        params.nblocks = int(nCycles/k)+1
         print('nblocks = '+str(params.nblocks))
         params.overhead = p['overhead']
         param_matrix[-1].append(params)
@@ -88,22 +91,22 @@ for (j, p) in enumerate(fixed_params):
     plt.plot(ks, mib_pers,
              marker='o',
              linewidth=0.5,
-             label=("MIB E[#B] = {:.2f},"
-                    " E[#G] = {:.2f},"
-                    " nCycles = {:d},"
+             label=("MIB E[#B] = {:.1f},"
+                    " E[#G] = {:.1f},"
+                    " E[#error] = {:d},"
                     " t = {:.2f}".format(p['avg_bad_run'],
                                          p['avg_good_run'],
-                                         param_matrix[j][0].nCycles,
+                                         error_n,
                                          p['overhead'])))
     plt.plot(ks, lib_pers,
              marker='o',
              linewidth=0.5,
              label=("LIB E[#B] = {:.2f},"
                     " E[#G] = {:.2f},"
-                    " nCycles = {:d},"
+                    " E[#error] = {:d},"
                     " t = {:.2f}".format(p['avg_bad_run'],
                                          p['avg_good_run'],
-                                         param_matrix[j][0].nCycles,
+                                         error_n,
                                          p['overhead'])))
     
 plt.ylim(1e-7, 1)
@@ -117,7 +120,7 @@ newid = random.getrandbits(64)
 ts = int(datetime.datetime.now().timestamp())
 data = lzma.compress(pickle.dumps({'result_matrix': result_matrix,
                                    'param_matrix': param_matrix}))
-filename = datestr+'_per-vs-k_overhead-'+str(fixed_params[0]['overhead'])+'_cycle-'+str(fixed_params[0]['avg_bad_run']+fixed_params[0]['avg_good_run'])+'.xz'
+filename = datestr+'_per-vs-k_oh-'+'{:.2f}'.format(p['overhead'])+'.xz'
 out_file = open(filename, 'wb')
 out_file.write(data)
 # dictionary = pickle.loads(lzma.decompress(open("file.xz","rb").read()))
@@ -140,4 +143,4 @@ plt.savefig(filename+'.png', format='png')
 #           "uep.zanol.eu/{!s}".format(plotkey))
 #print("Uploaded Markov plot at {!s}".format(ploturl))
 
-plt.show()
+#plt.show()
