@@ -35,6 +35,9 @@ if __name__ == "__main__":
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
 
+        if min(nblocks) < 10000: continue
+        if Ks == (500,500): continue
+
         plt.figure('per')
         plt.plot(overheads, avg_pers[:,0],
                  marker='.',
@@ -65,6 +68,21 @@ if __name__ == "__main__":
                  "EF={:d},"
                  "c={:.3f},"
                  "delta={:.3f}".format(*params))
+
+        the_oh_is = [i for i,oh in enumerate(overheads)
+                     if math.isclose(oh, 0.24)]
+        the_oh_i = the_oh_is[0]
+        print("At overhead {:.2f}:\n"
+              "Ks={!s},"
+              "RFs={!s},"
+              "EF={:d},"
+              "c={:.3f},"
+              "delta={:.3f}"
+              " -> MIB={:e},"
+              "LIB={:e}".format(overheads[the_oh_i],
+                                *params,
+                                avg_pers[the_oh_i, 0],
+                                avg_pers[the_oh_i, 1]))
 
     plt.figure('per')
     plt.gca().set_yscale('log')
