@@ -20,6 +20,8 @@ if __name__ == "__main__":
                                               d['c'] == params[3] and
                                               d['delta'] == params[4])]
         Ks = params[0]
+        RFs = params[1]
+        EF = params[2]
 
         overheads = sorted(set(o for d in data_same_pars for o in d['overheads']))
         avg_pers = np.zeros((len(overheads), len(Ks)))
