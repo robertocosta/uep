@@ -2,7 +2,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import random
-
+#export PYTHONPATH='/mnt/d/git/uep/lib'
 from mppy import *
 from uep_random import *
 
