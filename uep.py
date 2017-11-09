@@ -5,6 +5,7 @@ import math
 import os
 import pickle
 import random
+#export PYTHONPATH='/mnt/d/git/uep/lib'
 
 import boto3
 import botocore
