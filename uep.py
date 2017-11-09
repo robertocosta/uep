@@ -1,10 +1,13 @@
 import concurrent.futures as cf
 import copy
+import lzma
 import math
 import os
+import pickle
 import random
 
 import boto3
+import botocore
 
 from mppy import *
 from uep_random import *
@@ -110,6 +113,43 @@ def save_data(key, **kwargs):
     url = ("http://uep.zanol.eu.s3"
            ".amazonaws.com/{!s}".format(key))
     return url
+
+def load_data(key):
+    config = botocore.client.Config(read_timeout=300)
+    s3 = boto3.client('s3', config=config)
+    bindata = s3.get_object(Bucket='uep.zanol.eu',
+                            Key=key)
+    data = lzma.decompress(bindata['Body'].read())
+    return pickle.loads(data)
+
+def load_data_prefix(prefix, filter_func=None):
+    s3 = boto3.client('s3')
+    resp = s3.list_objects_v2(Bucket='uep.zanol.eu',
+                              Prefix=prefix)
+    items = list()
+    for obj in resp['Contents']:
+        if filter_func is None or filter_func(obj):
+            items.append(load_data(obj['Key']))
+    return items
+
+class AverageCounter:
+    def __init__(self):
+        self.__sum_w = 0
+        self.__avg = 0
+
+    def add(self, x, w):
+        new_sumw = self.__sum_w + w
+        self.__avg = (self.__sum_w * self.__avg +
+                      x * w) / new_sumw
+        self.__sum_w = new_sumw
+
+    @property
+    def avg(self):
+        return self.__avg
+
+    @property
+    def total_weigth(self):
+        return self.__sum_w
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
