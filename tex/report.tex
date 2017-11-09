@@ -133,7 +133,6 @@ Il progetto è stato realizzato in C++; Python è stato usato per riportare graf
 \newpage
 \section{Introduzione} % Max 1 page
 Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC \cite{svc, h264}. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire un video a qualità inferiore.\\
-Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplementari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
 Per trasmettere un flusso di dati attraverso un canale variabile e non completamente affidabile, garantendo la qualità del servizio, è utile aggiungere ridondanza all'informazione inviata. Il rapporto tra il messaggio con ridondanza aggiunta e il messaggio originale è chiamato rate del codice di correzione degli errori.
 I codici a fontana \cite{fcsurvey, rossifc} presentano due caratteristiche notevoli, rispetto ad altri codici di correzione degli errori:
 \begin{itemize}
@@ -141,14 +140,10 @@ I codici a fontana \cite{fcsurvey, rossifc} presentano due caratteristiche notev
 \item Assenza di un code rate fisso.
 \end{itemize}
 I codici a fontana possono proteggere allo stesso modo tutti i dati da trasmettere, caso in cui la ridondanza aggiunta dipende solo dalle condizioni del canale (EEP, equal error protection), oppure possono proteggere maggiormente i dati più sensibili (UEP, unequal error protection), caso in cui la ridondanza aggiunta dipende anche dall'importanza del dato.\\
-Un tipo di applicazione che si presta particolarmente all'utilizzo di UEP \cite{uep} è lo streaming di un video codificato attraverso SVC, infatti tale protocollo rende possibile la decodifica di un flusso video da flussi parziali, chiamati \textit{layer}, con risoluzione spaziale o temporale minore, o con fedeltà ridotta. I layer sono ordinati dal più importante (layer 0, a bassa qualità) al meno importante (layer \textit{n}, che permette di raggiungere alta qualità).\\
-La presenza di informazioni più rilevanti di altre (come i parametri per la decodifica e i layer inferiori, in particolare i frame intra-coded) giustifica l'uso di UEP: i flussi con priorità minore aggiungono qualità al video decodificato, ma non sono indispensabili per la decodifica, quindi possono essere protetti con meno ridondanza.\\
 Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel proteggere meglio i dati più sensibili, risiede anche nella possibilità di sfruttare un canale che ha un comportamento variabile nel tempo e ignoto a priori: la quantità di ridondanza aggiunta può crescere al peggiorare delle condizioni del canale, a differenza di un codice a rate fisso che comporta uno spreco di banda se il canale è in buone condizioni, o insufficiente protezione se il canale non è in buone condizioni.
-
 \section{Approccio tecnico}
 \subsection{Obbiettivi} % Max 5 lines
-La finalità del progetto è testare l'algoritmo di trasmissione su un canale non privo di errori per dimostrare che.
-
+La finalità del progetto è estendere il paper \cite{uep} testando un algoritmo di trasmissione basato su UEP su un canale non privo di errori, per dimostrare che il protocollo di protezione non uniforme è utile ed efficiente in condizioni non error-free. 
 \subsection{Diagramma} % Max 20 lines
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
 %\includegraphics[width=180mm]{UDP.pdf}
@@ -177,8 +172,8 @@ Sono stati effettuati test con due tipi di canale:
 \begin{itemize}
 \item Canale Markoviano, caratterizzato dalla seguente matrice di probabilità di transizione:\\
 $$P=\begin{pmatrix}
-P[X(n)=G, X(n+1)=G] & P[X(n)=G, X(n+1)=B]\\
-P[X(n)=B, X(n+1)=G] & P[X(n)=B, X(n+1)=B]\\
+P[X_n=G, X_{n+1}=G] & P[X_n=G, X_{n+1}=B]\\
+P[X_n=B, X_{n+1}=G] & P[X_n=B, X_{n+1}=B]\\
 \end{pmatrix} = \begin{pmatrix}
 P_{GG} & P_{GB} \\
 P_{BG} & P_{BB}
@@ -218,6 +213,7 @@ p = q\frac{\pi_B}{\pi_G}\end{cases}
 \end{equation}
 Il numero medio di iterazioni necessarie a sbagliare N pacchetti è, in media, 
 $$E[\theta_{0N}] = \frac{\pi_G}{p} + \frac{N-1}{\pi_B}$$
+Un altro tipo di canale markoviano testato è 
 \item Canale senza memoria, con packet error rate fisso $P_e$
 \end{itemize}
 Di seguito la rappresentazione Markoviana.
@@ -254,7 +250,7 @@ I codici a fontana non prevedono la risoluzione di un sistema lineare per la dec
         \item SE esiste un simbolo codificato $e_n$ con un solo arco entrante (come $e_4$)\begin{itemize}
                 \item	Decodifica il simbolo di informazione corrispondente $i_k=e_n$ ($i_5$ in questo caso)
                 \item	Rimpiazza tutti i simboli codificati $e_{n'}$ aventi un arco entrante da $i_k$ con $e_{n'}^{\text{new}} = e_{n'} \textit{ XOR } i_k$
-                \item   Rimuovi gli archi da $i_k$
+                \item   Rimuove gli archi da $i_k$
                 \item   SE ci sono altri simboli di informazione da decodificare \begin{itemize}
                         \item Torna all'inizio
                 \end{itemize}
@@ -272,6 +268,10 @@ I codici a fontana non prevedono la risoluzione di un sistema lineare per la dec
     \label{fig:FC}
 \end{figure}
 \newpage
+\subsubsection{H.264}
+Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplementari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
+Un tipo di applicazione che si presta particolarmente all'utilizzo di UEP \cite{uep} è lo streaming di un video codificato attraverso SVC, infatti tale protocollo rende possibile la decodifica di un flusso video da flussi parziali, chiamati \textit{layer}, con risoluzione spaziale o temporale minore, o con fedeltà ridotta. I layer sono ordinati dal più importante (layer 0, a bassa qualità) al meno importante (layer \textit{n}, che permette di raggiungere alta qualità).\\
+La presenza di informazioni più rilevanti di altre (come i parametri per la decodifica e i layer inferiori, in particolare i frame intra-coded) giustifica l'uso di UEP: i flussi con priorità minore aggiungono qualità al video decodificato, ma non sono indispensabili per la decodifica, quindi possono essere protetti con meno ridondanza.
 \subsubsection{UEP}\label{UEPsection}
 La protezione non uniforme di un messaggio prevede la divisione dello stesso in $p$ parti di diversa importanza.\\
 Ogni parte viene ripetuta un numero $RF_i$ di volte, con $i\in\{1,\cdots,p\}$, in base alla sua importanza.\\
