@@ -4,6 +4,8 @@ import math
 import os
 import random
 
+import boto3
+
 from mppy import *
 from uep_random import *
 
@@ -98,6 +100,17 @@ def run_parallel(sim):
                                           split_nb[j] / sim.nblocks)
     return results
 
+def save_data(key, **kwargs):
+    s3 = boto3.client('s3')
+    data = lzma.compress(pickle.dumps(kwargs))
+    s3.put_object(Body=data,
+                  Bucket='uep.zanol.eu',
+                  Key=key,
+                  ACL='public-read')
+    url = ("http://uep.zanol.eu.s3"
+           ".amazonaws.com/{!s}".format(key))
+    return url
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import numpy as np
@@ -108,12 +121,12 @@ if __name__ == "__main__":
     c = 0.1
     delta = 0.5
 
-    nblocks = 100
+    nblocks = 10000
 
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                         nblocks=nblocks)
 
-    overheads = np.linspace(0, 0.2, 16)
+    overheads = np.linspace(0.25, 0.28, 6)
 
     avg_pers = np.zeros((len(overheads), 2))
     for j, oh in enumerate(overheads):
