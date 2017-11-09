@@ -28,7 +28,13 @@ if __name__ == "__main__":
         avg_pers[j,:] = results['error_rates']
 
     newid = random.getrandbits(64)
-    save_data("uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+    save_data("uep_iid/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
               timestamp=datetime.datetime.now().timestamp(),
               overheads=overheads,
+              Ks=Ks,
+              RFs=RFs,
+              EF=EF,
+              c=c,
+              delta=delta,
+              nblocks=nblocks,
               avg_pers=avg_pers)
