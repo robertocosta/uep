@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.2)
 include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
-project (uep CXX C) # C required for lib checks
+project (uep)
 enable_testing()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
@@ -36,7 +36,6 @@ find_package(Threads REQUIRED)
 
 find_package(PythonLibs 3.4 REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
-link_libraries(${PYTHON_LIBRARIES})
 
 find_package(SWIG REQUIRED)
 INCLUDE(${SWIG_USE_FILE})
@@ -53,7 +52,7 @@ find_package(Boost 1.58 REQUIRED COMPONENTS
 )
 include_directories(${Boost_INCLUDE_DIRS})
 add_definitions(-DBOOST_ALL_DYN_LINK)
-link_libraries(${Boost_LIBRARIES})
+#link_libraries(${Boost_LIBRARIES})
 
 find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
@@ -61,8 +60,8 @@ include_directories(${PROTOBUF_INCLUDE_DIRS})
 configure_file(cmake_defines.hpp.in cmake_defines.hpp @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-include_directories(${CMAKE_SOURCE_DIR}/jsvm/JSVM/H264Extension/include)
-link_directories(${CMAKE_SOURCE_DIR}/jsvm/lib)
+#include_directories(${CMAKE_SOURCE_DIR}/jsvm/JSVM/H264Extension/include)
+#link_directories(${CMAKE_SOURCE_DIR}/jsvm/lib)
 
 ExternalProject_Add(jsvm
   SOURCE_DIR "${CMAKE_SOURCE_DIR}/jsvm/JSVM/H264Extension/build/linux"
@@ -73,14 +72,14 @@ ExternalProject_Add(jsvm
 )
 
 # Needed by jsvm headers
-add_definitions(
-  -DDOWN_CONVERT_STATIC
-  -DMSYS_LINUX
-  -DMSYS_UNIX_LARGEFILE
-  -DSHARP_AVC_REWRITE_OUTPUT
-  -D_FILE_OFFSET_BITS=64
-  -D_LARGEFILE64_SOURCE
-)
+# add_definitions(
+#   -DDOWN_CONVERT_STATIC
+#   -DMSYS_LINUX
+#   -DMSYS_UNIX_LARGEFILE
+#   -DSHARP_AVC_REWRITE_OUTPUT
+#   -D_FILE_OFFSET_BITS=64
+#   -D_LARGEFILE64_SOURCE
+# )
 
 include_directories(${CMAKE_BINARY_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/src)

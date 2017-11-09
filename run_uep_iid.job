@@ -1,0 +1,5 @@
+#!/bin/bash
+#$ -cwd -m ea
+
+export MPLBACKEND=PDF
+python3 run_uep_iid.py

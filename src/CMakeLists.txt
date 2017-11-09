@@ -112,6 +112,9 @@ target_link_libraries(nal_overhead
 
 add_library(mppy SHARED message_passing_python.cpp)
 set_target_properties(mppy PROPERTIES PREFIX "")
+target_link_libraries(mppy
+  ${PYTHON_LIBRARIES}
+)
 
 # add_executable(mp_plots mp_plots.cpp)
 # target_link_libraries(mp_plots
@@ -133,6 +136,7 @@ swig_add_module(uep_fast_run python
   uep_fast_run.cpp
   )
 swig_link_libraries(uep_fast_run
+  ${PYTHON_LIBRARIES}
   block_encoder
   log
   uep_decoder
@@ -158,6 +162,7 @@ set(python_files
   plot_time
   separate_iid
   separate_markov
+  separate_times
   uep_dec_time
   uep_enc_time
   utils

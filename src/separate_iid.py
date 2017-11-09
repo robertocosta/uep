@@ -43,13 +43,13 @@ for (j, rs) in enumerate(result_matrix):
     assert(math.isclose(chan_pGB, 1-chan_pBG))
     iid_per = chan_pGB
 
-    for i in range(0, len(mib_pers)):
-        if mib_pers[i] < 2e-3:
-            mib_pers[i:] = [1e-8] * (len(mib_pers) - i)
+    # for i in range(0, len(mib_pers)):
+    #     if mib_pers[i] < 2e-3:
+    #         mib_pers[i:] = [1e-8] * (len(mib_pers) - i)
 
-    for i in range(0, len(lib_pers)):
-        if lib_pers[i] < 1e-3:
-            lib_pers[i:] = [1e-8] * (len(lib_pers) - i)
+    # for i in range(0, len(lib_pers)):
+    #     if lib_pers[i] < 1e-3:
+    #         lib_pers[i:] = [1e-8] * (len(lib_pers) - i)
 
     plt.plot(ohs, mib_pers,
              marker='.',

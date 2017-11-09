@@ -1,3 +1,5 @@
+link_libraries(${Boost_LIBRARIES})
+
 set(tests
   test_block_decoder
   test_block_encoder

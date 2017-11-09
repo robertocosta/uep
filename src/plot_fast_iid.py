@@ -21,8 +21,8 @@ from uep_fast_run import *
 from utils import *
 
 if __name__ == "__main__":
-    iid_pers = [0, 1e-2, 1e-1, 2e-1]
-    overheads = np.linspace(0, 0.8, 32).tolist()
+    iid_pers = [0]#, 1e-2, 1e-1, 2e-1]
+    overheads = np.linspace(0.2, 0.3, 32).tolist()
 
     base_params = simulation_params()
     base_params.Ks[:] = [100, 900]
@@ -40,8 +40,7 @@ if __name__ == "__main__":
         param_matrix.append(list())
         for oh in overheads:
             params = simulation_params(base_params)
-            params.chan_pGB = per
-            params.chan_pBG = 1 - per
+            params.iid_per = per
             params.overhead = oh
             param_matrix[-1].append(params)
 
