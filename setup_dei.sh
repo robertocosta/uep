@@ -17,6 +17,7 @@ scp \
     "${build_dir}/lib/mppy.so" \
     run_uep_iid.job \
     run_uep_iid.py \
+    src/channel.py \
     uep.py \
     uep_random.py \
     ${dei_user}@login.dei.unipd.it:~/uep_run/
