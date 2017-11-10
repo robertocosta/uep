@@ -140,26 +140,36 @@ I codici a fontana \cite{fcsurvey, rossifc} presentano due caratteristiche notev
 \item Assenza di un code rate fisso.
 \end{itemize}
 I codici a fontana possono proteggere allo stesso modo tutti i dati da trasmettere, caso in cui la ridondanza aggiunta dipende solo dalle condizioni del canale (EEP, equal error protection), oppure possono proteggere maggiormente i dati più sensibili (UEP, unequal error protection), caso in cui la ridondanza aggiunta dipende anche dall'importanza del dato.\\
-Il vantaggio di aggiungere una quantità variabile di ridondanza, oltre che nel proteggere meglio i dati più sensibili, risiede anche nella possibilità di sfruttare un canale che ha un comportamento variabile nel tempo e ignoto a priori: la quantità di ridondanza aggiunta può crescere al peggiorare delle condizioni del canale, a differenza di un codice a rate fisso che comporta uno spreco di banda se il canale è in buone condizioni, o insufficiente protezione se il canale non è in buone condizioni.
+Il vantaggio dato dalla possibilità di aggiungere una quantità arbitraria di ridondanza, oltre che nel proteggere meglio i dati più sensibili, risiede anche nella possibilità di sfruttare un canale che ha un comportamento variabile nel tempo e ignoto a priori: la quantità di ridondanza aggiunta può crescere al peggiorare delle condizioni del canale, a differenza di un codice a rate fisso che comporta uno spreco di banda se il canale è in buone condizioni, o insufficiente protezione se il canale non è in buone condizioni.
 \section{Approccio tecnico}
 \subsection{Obbiettivi} % Max 5 lines
-La finalità del progetto è estendere il paper \cite{uep} testando un algoritmo di trasmissione con protezione non uniforme su un canale non privo di errori, per dimostrare che il protocollo di protezione non uniforme è utile ed efficiente anche in condizioni non error-free.
-\subsection{Diagramma} % Max 20 lines
+La finalità del progetto è estendere il paper \cite{uep}, in cui è proposto un algoritmo per l'UEP basato sui codici a fontana, testando l'algoritmo di trasmissione con protezione non uniforme nel caso di un canale che introduce errori.
+%
+Considerando sia il caso di errori indipendenti che il caso di errori correlati, questo progetto vuole dimostrare che il protocollo di protezione non uniforme è utile ed efficiente anche in condizioni non error-free.
+\subsection{Scenario} % Max 20 lines
+Lo scenario considerato rappresentato in figura~\ref{fig:UDP}. Un
+server trasmette un video H264 a un client segmentandolo in pacchetti
+di lunghezza costante e divisi in due classi di priorità. I pacchetti
+sono aggregati in blocchi con una struttura fissata (cioè contengono
+sempre lo stesso numero di pacchetti per ogni classe di priorità). I
+blocchi sono poi codificati utilizzando l'algoritmo proposto in
+\cite{uep}, a un livello di overhead fissato e inviati dentro
+pacchetti UDP al client.
 %\includegraphics[trim=0cm 8cm 0cm 7cm, width=1.00\textwidth]{TCP.pdf}
 %\includegraphics[width=180mm]{UDP.pdf}
 %\includepdf[pages={1}]{UDP.pdf}
 %\begin{figure}[htbp]
 \begin{figure}[H]
     \centering
-        \includegraphics[clip, trim=0cm 1cm 0cm 1cm, width=1.00\textwidth]{TCP.pdf}
-    \caption{TCP connection and tansmission setup}
-    \label{fig:TCP}
-\end{figure}
-\begin{figure}[H]
-    \centering
         \includegraphics[clip, trim=0cm 1cm 0cm 1cm, width=1.00\textwidth]{UDP.pdf}
     \caption{Video stream encoding / decoding and transmission}
     \label{fig:UDP}
+\end{figure}
+\begin{figure}[H]
+    \centering
+        \includegraphics[clip, trim=0cm 1cm 0cm 1cm, width=1.00\textwidth]{TCP.pdf}
+    \caption{TCP connection and tansmission setup}
+    \label{fig:TCP}
 \end{figure}
 %\includepdf{TCP.pdf}
 \newpage
@@ -211,7 +221,7 @@ I parametri impostati per il canale simulato sono stati il numero medio di slot 
 p = q\frac{\pi_B}{\pi_G}\end{cases}
   \label{eq:mcparams}
 \end{equation}
-Il numero medio di iterazioni necessarie a sbagliare N pacchetti è, in media, 
+Il numero medio di iterazioni necessarie a sbagliare N pacchetti è, in media,
 $$E[\theta_{0N}] = \frac{\pi_G}{p} + \frac{N-1}{\pi_B}$$
 Un altro tipo di canale markoviano testato è stato mantenendo fissa la quanità $\EnB$ e facendo variare la probabilità d'errore $\pi_B$.
 \item Canale senza memoria, con packet error rate fisso $P_e$
@@ -453,7 +463,7 @@ ottenere una PER a livello applicazione simile a quanto è possibile
 ottenere nel caso IID con $e=10^{-3}$ per $K=1000$, usando lo stesso
 overhead (25\%).
 
-Visto l'alto valore della PER per canali con alto numero di errori correlati, 
+Visto l'alto valore della PER per canali con alto numero di errori correlati,
 sono stati simulati altri 2 canali con $\pi_B \in\{10^{-3}, 10^{-2}, 10^{-1}\}$
 mantenendo fisso $\EnB=10$.\\
 \begin{figure}[H]
