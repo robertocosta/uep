@@ -11,6 +11,7 @@ import random
 import boto3
 import botocore
 
+from channel import *
 from mppy import *
 from uep_random import *
 
@@ -18,6 +19,9 @@ class UEPSimulation:
     def __init__(self, **kwargs):
         self.nblocks = kwargs.get('nblocks', 1)
         self.overhead = kwargs.get('overhead', 0)
+        self.iid_per = kwargs.get('iid_per', 0)
+        self.markov_pGB = kwargs.get('markov_pGB', 0)
+        self.markov_pBG = kwargs.get('markov_pBG', 1)
 
         self.__rowgen = RowGenerator(Ks=kwargs['Ks'],
                                      RFs=kwargs.get('RFs',
@@ -53,14 +57,28 @@ class UEPSimulation:
     def run(self):
         results = dict()
         results['error_counts'] = [0 for k in self.Ks]
+        results['drop_count'] = 0
 
         n = math.ceil(self.K * (1 + self.overhead))
         mpctx = mp_context(self.__rowgen.K)
+
+        channel = None # Default: error-free
+        if self.iid_per > 0: # Use IID channel
+           channel = iid_ch(self.iid_per)
+        elif (self.markov_pGB != 0 and
+              self.markov_pBG != 1): # Use Markov channel
+            channel = markov_ch(self.markov_pGB,
+                                self.markov_pBG)
+            raise RuntimeError("Not implemented")
+
         for nb in range(self.nblocks):
             mpctx.reset()
 
             for l in range(n):
-                mpctx.add_output(self.__rowgen())
+                if (channel is None or channel()):
+                    mpctx.add_output(self.__rowgen())
+                else:
+                    results['drop_count'] += 1
 
             mpctx.run()
             dec = mpctx.input_symbols()
@@ -74,6 +92,8 @@ class UEPSimulation:
         z_ek = zip(results['error_counts'], self.Ks)
         results['error_rates'] = [e / (self.nblocks * k)
                                   for e,k in z_ek]
+        results['drop_rate'] = (results['drop_count'] /
+                                (self.nblocks * n))
         return results
 
 def run_parallel(sim):
@@ -97,12 +117,16 @@ def run_parallel(sim):
     results = dict()
     results['error_counts'] = [0 for k in sim.Ks]
     results['error_rates'] = [0 for k in sim.Ks]
+    results['drop_count'] = 0
+    results['drop_rate'] = 0
     for i, fs in enumerate(result_futures):
         r = f.result()
+        w = split_nb[i] / sim.nblocks
         for j, k in enumerate(sim.Ks):
             results['error_counts'][j] += r['error_counts'][j]
-            results['error_rates'][j] += (r['error_rates'][j] *
-                                          split_nb[j] / sim.nblocks)
+            results['error_rates'][j] += w * r['error_rates'][j]
+        results['drop_count'] += r['drop_count']
+        results['drop_rate'] += w * r['drop_rate']
     return results
 
 def save_data(key, **kwargs):
