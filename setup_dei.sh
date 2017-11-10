@@ -3,14 +3,18 @@
 set -eu -o pipefail
 
 dei_user=${1}
+build_dir="build_dei"
+cmake_dir="$PWD"
 
-pushd build
-make -j$(( $(nproc) + 1))
+mkdir -p "$build_dir"
+pushd "$build_dir"
+cmake -DCMAKE_BUILD_TYPE=Release "$cmake_dir"
+make -j$(( $(nproc) + 1)) mppy
 popd
 
 ssh ${dei_user}@login.dei.unipd.it 'mkdir -p ~/uep_run'
 scp \
-    build/lib/mppy.so \
+    "${build_dir}/lib/mppy.so" \
     run_uep_iid.job \
     run_uep_iid.py \
     uep.py \
