@@ -1,9 +1,11 @@
+import datetime
+
 import matplotlib.pyplot as plt
 import numpy as np
-import datetime
-from utils import *
-from uep import *
+
 from plots import *
+from uep import *
+from utils import *
 
 if __name__ == "__main__":
     data = load_data_prefix("uep_iid/uep_vs_oh_iid_")
@@ -24,8 +26,8 @@ if __name__ == "__main__":
     p = plots()
     p.automaticXScale = True
     #p.automaticXScale = [0,0.3]
-    p.add_plot({'plot_name':'per','xlabel':'Overhead', 'ylabel':'PER', 'logy':True})
-    p.add_plot({'plot_name':'nblocks','xlabel':'Overhead', 'ylabel':'nblocks', 'logy':False})
+    p.add_plot(plot_name='per',xlabel='Overhead',ylabel='PER',logy=True)
+    p.add_plot(plot_name='nblocks',xlabel='Overhead',ylabel='nblocks',logy=False)
 
     for params in param_set:
         data_same_pars = [d for d in data if (tuple(d['Ks']),
@@ -68,31 +70,14 @@ if __name__ == "__main__":
                       "c={:.2f},"
                       "delta={:.2f},"
                       "e={:.0e}").format(*params)
-        
-        p.add_data({'plot_name':'per','label':legend_str, 'type':'mib', 'x':overheads, 'y':avg_pers[:,0]})
-        #p.add_data({'plot_name':'per','label':legend_str, 'type':'lib', 'x':overheads, 'y':avg_pers[:,1]})
-        
-        p.add_data({'plot_name':'nblocks','label':legend_str, 'x':overheads, 'y':nblocks})
 
-                
-        #plt.figure('per')
-        #plt.plot(overheads, avg_pers[:,0],
-        #         marker='.',
-        #         linestyle='-',
-        #         linewidth=1.5,
-        #         label="MIB " + legend_str)
-        #plt.plot(overheads, avg_pers[:,1],
-        #         marker='.',
-        #         linestyle='-',
-        #         linewidth=1.5,
-        #         label="LIB " + legend_str)
+        p.add_data(plot_name='per',label=legend_str,type='mib',
+                   x=overheads, y=avg_pers[:,0])
+        p.add_data(plot_name='per',label=legend_str,type='lib',
+                   x=overheads, y=avg_pers[:,1])
 
-        #plt.figure('nblocks')
-        #plt.plot(overheads, nblocks,
-        #         marker='.',
-        #         linestyle='-',
-        #         linewidth=1.5,
-        #         label=legend_str)
+        p.add_data(plot_name='nblocks',label=legend_str,
+                   x=overheads, y=nblocks)
 
         #the_oh_is = [i for i,oh in enumerate(overheads)
         #             if math.isclose(oh, 0.24)]
@@ -103,27 +88,8 @@ if __name__ == "__main__":
         #    print(" -> MIB={:e}, LIB={:e}".format(avg_pers[the_oh_i, 0],
         #                                          avg_pers[the_oh_i, 1]))
 
-    #per_plot = plt.figure('per')
-    #plt.gca().set_yscale('log')
-    #plt.ylim(1e-8, 1)
-    #plt.xlabel('Overhead')
-    #plt.ylabel('UEP PER')
-    #plt.legend()
-    #plt.grid()
-
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
     save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)
 
-    #plt.savefig('uep_iid_per.pdf', format='pdf')
-
-    #nblocks_plot = plt.figure('nblocks')
-    #plt.xlabel('Overhead')
-    #plt.ylabel('nblocks')
-    #plt.legend()
-    #plt.grid()
-
-    #plt.savefig('uep_iid_nblocks.pdf', format='pdf')
-
-    #save_plot_png(nblocks_plot,'iid_nblocks_'+datestr)
     #plt.show()
