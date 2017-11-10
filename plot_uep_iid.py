@@ -7,23 +7,34 @@ if __name__ == "__main__":
     data = load_data_prefix("uep_iid/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
 
+    # Old data is always error-free
+    for d in data:
+        if 'iid_per' not in d:
+            d['iid_per'] = 0
+
     param_set = sorted(set((tuple(d['Ks']),
                             tuple(d['RFs']),
                             d['EF'],
                             d['c'],
-                            d['delta']) for d in data))
+                            d['delta'],
+                            d['iid_per']) for d in data))
 
     for params in param_set:
-        data_same_pars = [d for d in data if (tuple(d['Ks']) == params[0] and
-                                              tuple(d['RFs']) == params[1] and
-                                              d['EF'] == params[2] and
-                                              d['c'] == params[3] and
-                                              d['delta'] == params[4])]
+        data_same_pars = [d for d in data if (tuple(d['Ks']),
+                                              tuple(d['RFs']),
+                                              d['EF'],
+                                              d['c'],
+                                              d['delta'],
+                                              d['iid_per']) == params]
         Ks = params[0]
         RFs = params[1]
         EF = params[2]
+        c = params[3]
+        delta = params[4]
+        iid_per = params[5]
 
         overheads = sorted(set(o for d in data_same_pars for o in d['overheads']))
+
         avg_pers = np.zeros((len(overheads), len(Ks)))
         nblocks = np.zeros(len(overheads))
         for i, oh in enumerate(overheads):
@@ -37,54 +48,46 @@ if __name__ == "__main__":
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
 
-        if min(nblocks) < 10000: continue
-        if Ks == (500,500): continue
+        #if min(nblocks) < 10000: continue
+        #if Ks[0] < 5000: continue
+        if Ks != (100,900): continue
+        if EF != 4: continue
+        if RFs[0] not in [3,5,6]: continue
+
+        legend_str = ("Ks={!s},"
+                      "RFs={!s},"
+                      "EF={:d},"
+                      "c={:.3f},"
+                      "delta={:.3f},"
+                      "e={:.0e}").format(*params)
 
         plt.figure('per')
         plt.plot(overheads, avg_pers[:,0],
                  marker='.',
                  linestyle='-',
                  linewidth=1.5,
-                 label="MIB Ks={!s},"
-                 "RFs={!s},"
-                 "EF={:d},"
-                 "c={:.3f},"
-                 "delta={:.3f}".format(*params))
+                 label="MIB " + legend_str)
         plt.plot(overheads, avg_pers[:,1],
                  marker='.',
                  linestyle='-',
                  linewidth=1.5,
-                 label="LIB Ks={!s},"
-                 "RFs={!s},"
-                 "EF={:d},"
-                 "c={:.3f},"
-                 "delta={:.3f}".format(*params))
+                 label="LIB " + legend_str)
 
         plt.figure('nblocks')
         plt.plot(overheads, nblocks,
                  marker='.',
                  linestyle='-',
                  linewidth=1.5,
-                 label="Ks={!s},"
-                 "RFs={!s},"
-                 "EF={:d},"
-                 "c={:.3f},"
-                 "delta={:.3f}".format(*params))
+                 label=legend_str)
 
         the_oh_is = [i for i,oh in enumerate(overheads)
                      if math.isclose(oh, 0.24)]
-        the_oh_i = the_oh_is[0]
-        print("At overhead {:.2f}:\n"
-              "Ks={!s},"
-              "RFs={!s},"
-              "EF={:d},"
-              "c={:.3f},"
-              "delta={:.3f}"
-              " -> MIB={:e},"
-              "LIB={:e}".format(overheads[the_oh_i],
-                                *params,
-                                avg_pers[the_oh_i, 0],
-                                avg_pers[the_oh_i, 1]))
+        if len(the_oh_is) > 0:
+            the_oh_i = the_oh_is[0]
+            print("At overhead {:.2f}:".format(overheads[the_oh_i]))
+            print(" " * 4 + legend_str, end="")
+            print(" -> MIB={:e}, LIB={:e}".format(avg_pers[the_oh_i, 0],
+                                                  avg_pers[the_oh_i, 1]))
 
     plt.figure('per')
     plt.gca().set_yscale('log')
