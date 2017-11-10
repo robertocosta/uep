@@ -11,11 +11,6 @@ if __name__ == "__main__":
     data = load_data_prefix("uep_iid/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
 
-    # Old data is always error-free
-    for d in data:
-        if 'iid_per' not in d:
-            d['iid_per'] = 0
-
     param_set = sorted(set((tuple(d['Ks']),
                             tuple(d['RFs']),
                             d['EF'],
