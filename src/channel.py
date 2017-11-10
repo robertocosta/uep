@@ -20,23 +20,21 @@ class iid_ch:
         return self.__e
 
     def good_slot(self):
-        if (self.state): # GOOD channel
-            if (random.random()<self.e):
-                self.state = False
-            else:
-                self.state = True
-            return True
-        else: # BAD channel
-            if (random.random()<self.e):
-                self.state = False
-            else:
-                self.state = True
-            return False
+        return self()
+
+    def __call__(self):
+        if (random.random() < self.__e):
+            self.state = False # BAD channel
+        else:
+            self.state = True # GOOD channel
+
     def toStr(self):
+        return str(self)
+
+    def __str__(self):
         s = 'I.i.d. channel parameters:\n'
         s += 'e = '+'{:.2e}'.format(self.e) + '\n'
         s += 'pi_G = '+'{:.2e}'.format(self.piG)+', pi_B = '+'{:.2e}'.format(self.piB)+'\n'
-        #print(s)
         return s
 
 class markov_ch:
@@ -44,7 +42,7 @@ class markov_ch:
         self.__p = p
         self.__q = q
         self.__piG = q / (p+q)
-        self.__piB = 1 - self.piG        
+        self.__piB = 1 - self.piG
         if (random.random()<self.piB):
             self.state = False # BAD channel
         else:
@@ -67,19 +65,22 @@ class markov_ch:
         return self.toString()
 
     def good_slot(self):
+        return self()
+
+    def __call__(self):
         if (self.state): # GOOD channel
             if (random.random()<self.p):
                 self.state = False
-            else:
-                self.state = True
             return True
         else: # BAD channel
             if (random.random()<self.q):
                 self.state = True
-            else:
-                self.state = False
             return False
+
     def toString(self):
+        return str(self)
+
+    def __str__(self):
         s = 'Markov channel parameters:\n'
         s += 'p = '+'{:.2e}'.format(self.p)+', q = '+'{:.2e}'.format(self.q) + '\n'
         s += 'pi_G = '+'{:.2e}'.format(self.piG)+', pi_B = '+'{:.2e}'.format(self.piB)+'\n'
