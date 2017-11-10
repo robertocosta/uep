@@ -123,11 +123,14 @@ class plots:
         ls = '-'
         if (this_type == 'lib'): ls += '-'
 
-        plt.plot(x, y, marker='.',linewidth=0.5,linestyle=ls,label=(this_type + params['label']))
+        if 'color' not in params:
+            params['color'] = None
+        newlines = plt.plot(x, y, color=params['color'], marker='.',linewidth=0.5,linestyle=ls,label=(this_type + params['label']))
         plt.xlim(p['xmin'], p['xmax']+math.fabs(p['xmax'])/100)
         plt.ylim(p['ymin'], p['ymax'] + math.fabs(p['ymax'])/100)
         plt.grid()
         plt.legend()
+        return newlines[0]
 
     def get_plot_obj(self, name):
         if (name in ['*', '']):
