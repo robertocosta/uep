@@ -3,17 +3,19 @@
 set -eu -o pipefail
 
 dei_user=${1}
-if [ "$dei_user" == 'costarob' ]; then
-make -j$(( $(nproc) + 1))
-else
-pushd build
-make -j$(( $(nproc) + 1))
+build_dir="build_dei"
+cmake_dir="$PWD"
+
+mkdir -p "$build_dir"
+pushd "$build_dir"
+cmake -DCMAKE_BUILD_TYPE=Release "$cmake_dir"
+make -j$(( $(nproc) + 1)) mppy
 popd
 fi
 
 ssh ${dei_user}@login.dei.unipd.it 'mkdir -p ~/uep_run'
 scp \
-    lib/mppy.so \
+    "${build_dir}/lib/mppy.so" \
     run_uep_iid.job \
     run_uep_iid.py \
     uep.py \
