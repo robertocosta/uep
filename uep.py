@@ -69,10 +69,12 @@ class UEPSimulation:
               self.markov_pBG != 1): # Use Markov channel
             channel = markov_ch(self.markov_pGB,
                                 self.markov_pBG)
-            raise RuntimeError("Not implemented")
 
         for nb in range(self.nblocks):
             mpctx.reset()
+            # Markov channel must start from iid state
+            if channel is not None:
+                channel.reset()
 
             for l in range(n):
                 if (channel is None or channel()):

@@ -37,6 +37,9 @@ class iid_ch:
         s += 'pi_G = '+'{:.2e}'.format(self.piG)+', pi_B = '+'{:.2e}'.format(self.piB)+'\n'
         return s
 
+    def reset(self):
+        pass
+
 class markov_ch:
     def __init__(self,p,q):
         self.__p = p
@@ -87,6 +90,11 @@ class markov_ch:
         #print(s)
         return s
 
+    def reset(self):
+        if (random.random() < self.__piB):
+            self.state = False # BAD channel
+        else:
+            self.state = True # GOOD channel
 
 if __name__ == '__main__':
     EnG = 49
