@@ -7,6 +7,18 @@ from plots import *
 from uep import *
 from utils import *
 
+def pf_EF_1000(Ks, RFs, EF, c, delta, iid_per):
+    return (Ks == (100,900) and
+            RFs == (1,1))
+
+def pf_RFs(Ks, RFs, EF, c, delta, iid_per):
+    return (Ks == (100,900) and
+            EF == 4)
+
+def pf_EF_20000(Ks, RFs, EF, c, delta, iid_per):
+    return (Ks == (20000,) and
+            RFs == (1,))
+
 if __name__ == "__main__":
     data = load_data_prefix("uep_iid/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
@@ -17,6 +29,8 @@ if __name__ == "__main__":
                             d['c'],
                             d['delta'],
                             d['iid_per']) for d in data))
+
+    param_filter = pf_RFs
 
     p = plots()
     p.automaticXScale = True
@@ -53,11 +67,7 @@ if __name__ == "__main__":
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
 
-        #if min(nblocks) < 10000: continue
-        #if Ks == (500,500): continue
-        if Ks != (100,900): continue
-        #if EF != 4: continue
-        #if RFs[0] not in [3,5,6]: continue
+        if not param_filter(*params): continue
 
         legend_str = ("Ks={!s},"
                       "RFs={!s},"
