@@ -9,18 +9,25 @@ from uep import *
 
 if __name__ == "__main__":
     Ks = [100, 900]
-    RFs = [3,1]
-    EF = 4
+    RFs = [1,1]
+    EF = 2 # in 3,5,8
+    
     c = 0.1
     delta = 0.5
 
     iid_per = 0
 
-    nblocks = 100
+    nblocks = 100000
 
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                         nblocks=nblocks)
 
+    
+    #oh = set(np.linspace(0,0.4,16))
+    #oh.update(np.linspace(0,0.1,16))
+    #oh.update(np.linspace(0.2,0.3,16))
+    #oh = sorted(oh)
+    #overheads = np.array(oh[20:])
     overheads = np.linspace(0, 0.4, 16)
 
     avg_pers = np.zeros((len(overheads), 2))
