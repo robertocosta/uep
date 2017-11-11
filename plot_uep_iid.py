@@ -68,9 +68,10 @@ if __name__ == "__main__":
 
         mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
                            x=overheads, y=avg_pers[:,0])
-        p.add_data(plot_name='per',label=legend_str,type='lib',
-                   x=overheads, y=avg_pers[:,1],
-                   color=mibline.get_color())
+        if len(Ks) > 1:
+            p.add_data(plot_name='per',label=legend_str,type='lib',
+                       x=overheads, y=avg_pers[:,1],
+                       color=mibline.get_color())
 
         p.add_data(plot_name='nblocks',label=legend_str,
                    x=overheads, y=nblocks)

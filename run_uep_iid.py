@@ -22,7 +22,6 @@ if __name__ == "__main__":
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                         nblocks=nblocks)
 
-    
     #oh = set(np.linspace(0,0.4,16))
     #oh.update(np.linspace(0,0.1,16))
     #oh.update(np.linspace(0.2,0.3,16))
@@ -30,12 +29,12 @@ if __name__ == "__main__":
     #overheads = np.array(oh[20:])
     overheads = np.linspace(0, 0.4, 16)
 
-    avg_pers = np.zeros((len(overheads), 2))
+    avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
     for j, oh in enumerate(overheads):
         sim.overhead = oh
         results = run_parallel(sim)
-        avg_pers[j,:] = results['error_rates']
+        avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
 
     newid = random.getrandbits(64)
