@@ -17,6 +17,8 @@ scp \
     "${build_dir}/lib/mppy.so" \
     run_uep_iid.job \
     run_uep_iid.py \
+    run_uep_markov.job \
+    run_uep_markov.py \
     src/channel.py \
     uep.py \
     uep_random.py \
