@@ -1,7 +1,12 @@
 import bisect
-import math
-import random
+import hashlib
 import itertools
+import lzma
+import math
+import os
+import pathlib
+import pickle
+import random
 
 def soliton_pmd(K, deg):
     if deg == 1:
@@ -43,9 +48,41 @@ class DegreeGenerator:
         self.__c = c
         self.__delta = delta
 
+        self.__cdf_cache = self.__load_cdf()
+        if self.__cdf_cache is None:
+            self.__cdf_cache = self.__write_cdf()
+
+    def __load_cdf(self):
+        try:
+            n = self.__cachename()
+            raw = open(n, 'rb').read()
+            data = pickle.loads(lzma.decompress(raw))
+            assert(data['K'] == self.__K)
+            assert(data['c'] == self.__c)
+            assert(data['delta'] == self.__delta)
+            return data['cdf']
+        except FileNotFoundError:
+            return None
+
+    def __write_cdf(self):
         cdf_acc = lambda s, i: s + robust_pmd(self.__K,self.__c,self.__delta, i)
         cdf = itertools.accumulate(range(0, self.__K+1), func=cdf_acc)
-        self.__cdf_cache = list(cdf)
+        cdf = list(cdf)
+
+        data = {'cdf': cdf, 'K': self.__K, 'c': self.__c, 'delta': self.__delta}
+        name = self.__cachename()
+
+        raw = lzma.compress(pickle.dumps(data))
+        pathlib.Path(name).parent.mkdir(parents=True, exist_ok=True)
+        open(name, 'xb').write(raw)
+        return cdf
+
+    def __cachename(self):
+        name = pickle.dumps((self.__K, self.__c, self.__delta))
+        hash = hashlib.sha1(name).hexdigest()
+        path = pathlib.Path.home().joinpath(".cache", "uep_degree_generator",
+                                            hash + ".pickle.xz")
+        return str(path)
 
     @property
     def K(self):
@@ -140,7 +177,7 @@ if __name__ == "__main__":
         tdiff = time.process_time() - t
         degtimes.append(tdiff)
         #print("Time diff {:f}".format(tdiff))
-    
+
     print("done. Avg tdiff = {:f}".format(np.mean(degtimes)))
 
     rowtimes = list()
@@ -151,9 +188,9 @@ if __name__ == "__main__":
         tdiff = time.process_time() - t
         rowtimes.append(tdiff)
         print("Time diff {:f}".format(tdiff))
-    
+
     print("done. Avg tdiff = {:f}".format(np.mean(rowtimes)))
-    
+
     Ks = [1000, 9000]
     RFs = [3,1]
     EF = 4
@@ -180,7 +217,7 @@ if __name__ == "__main__":
     print("Probability of selecting a MIB packet is {:f}".format(selection_prob_mib))
     print("Probability of selecting a LIB packet is {:f}".format(1 - selection_prob_mib))
 
-    
+
     plt.figure()
     plt.stem(histo)
     plt.figure()
