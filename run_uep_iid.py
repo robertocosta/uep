@@ -31,11 +31,13 @@ if __name__ == "__main__":
 
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
+    avg_ripples = np.zeros(len(overheads))
     for j, oh in enumerate(overheads):
         sim.overhead = oh
         results = run_parallel(sim)
         avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
+        avg_ripples[j] = results['avg_ripple']
 
     newid = random.getrandbits(64)
     save_data("uep_iid/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
@@ -49,4 +51,5 @@ if __name__ == "__main__":
               iid_per=iid_per,
               nblocks=nblocks,
               avg_pers=avg_pers,
-              avg_drops=avg_drops)
+              avg_drops=avg_drops,
+              avg_ripples=avg_ripples)

@@ -11,6 +11,7 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
+#include "counter.hpp"
 #include "skip_false_iterator.hpp"
 
 namespace uep { namespace mp {
@@ -149,6 +150,8 @@ public:
   bool has_decoded() const;
   /** Return the time it took to complete the last call to run. */
   double run_duration() const;
+  /** Return the average ripple size since the last reset. */
+  double average_ripple_size() const;
 
   /** Return an iterator to the start of the set of input symbols.
    *  The symbols are either decoded or convertible to false.
@@ -194,6 +197,10 @@ private:
 						*   last call to run
 						*   took.
 						*/
+
+  stat::average_counter _ripple_size; /**< Mesaure the average ripple
+				       *   size since the last reset.
+				       */
 
   /** Insert an output node in the list of degree one nodes. */
   void insert_degone(node *np);
@@ -268,7 +275,8 @@ mp_context<Symbol,SymbolTraits>::mp_context(mp_context &&other) :
   degone_first(std::move(other.degone_first)),
   degone_last(std::move(other.degone_last)),
   decoded_count_(std::move(other.decoded_count_)),
-  last_run_time(std::move(other.last_run_time)) {
+  last_run_time(std::move(other.last_run_time)),
+  _ripple_size(std::move(other._ripple_size)) {
 }
 
 template <class Symbol, class SymbolTraits>
@@ -279,7 +287,8 @@ mp_context<Symbol,SymbolTraits>::mp_context(const mp_context &other) :
   degone_first(nullptr), // The list must be rebuilt
   degone_last(nullptr), // The list must be rebuilt
   decoded_count_(other.decoded_count_),
-  last_run_time(other.last_run_time) {
+  last_run_time(other.last_run_time),
+  _ripple_size(other._ripple_size) {
   std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
 		 [](const std::unique_ptr<node> &p){
 		   return std::make_unique<node>(*p);
@@ -303,6 +312,7 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(mp_c
   degone_last = std::move(other.degone_last);
   decoded_count_ = std::move(other.decoded_count_);
   last_run_time = std::move(other.last_run_time);
+  _ripple_size = std::move(other._ripple_size);
   return *this;
 }
 
@@ -315,6 +325,7 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(cons
   degone_last = nullptr; // The list must be rebuilt
   decoded_count_ = other.decoded_count_;
   last_run_time = other.last_run_time;
+  _ripple_size = other._ripple_size;
   std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
 		 [](const std::unique_ptr<node> &p){
 		   return std::make_unique<node>(*p);
@@ -367,6 +378,7 @@ void mp_context<Symbol,SymbolTraits>::add_output(symbol_type &&s,
 
 template <class Symbol, class SymbolTraits>
 void mp_context<Symbol,SymbolTraits>::decode_degree_one() {
+  std::size_t ripple_inserted = 0;
   // Process each output node in the degone list
   for (node *np = degone_first; np != nullptr; np = np->next) {
     node *inp = inputs[*(np->edges.begin())].get();
@@ -374,6 +386,7 @@ void mp_context<Symbol,SymbolTraits>::decode_degree_one() {
       symbol_traits::swap(inp->symbol, np->symbol);
       ++decoded_count_;
       insert_ripple(inp);
+      ++ripple_inserted;
     }
     // Remove the edge
     np->edges.clear();
@@ -382,6 +395,7 @@ void mp_context<Symbol,SymbolTraits>::decode_degree_one() {
   // All this outputs have now degree 0. Clear the list
   degone_first = nullptr;
   degone_last = nullptr;
+  _ripple_size.add_sample(ripple_inserted);
 }
 
 template <class Symbol, class SymbolTraits>
@@ -539,11 +553,17 @@ void mp_context<Symbol,SymbolTraits>::reset() {
     n->edges.clear();
   }
   outputs.clear();
+  _ripple_size.reset();
 }
 
 template <class Symbol, class SymbolTraits>
 double mp_context<Symbol,SymbolTraits>::run_duration() const {
   return last_run_time.count();
+}
+
+template<typename Symbol, typename SymbolTraits>
+double mp_context<Symbol,SymbolTraits>::average_ripple_size() const {
+  return _ripple_size.value();
 }
 
 }}

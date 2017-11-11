@@ -60,6 +60,7 @@ class UEPSimulation:
         results = dict()
         results['error_counts'] = [0 for k in self.Ks]
         results['drop_count'] = 0
+        sum_avg_ripples = 0
 
         n = math.ceil(self.K * (1 + self.overhead))
         mpctx = mp_context(self.__rowgen.K)
@@ -87,6 +88,8 @@ class UEPSimulation:
             mpctx.run()
             dec = mpctx.input_symbols()
 
+            sum_avg_ripples += mpctx.average_ripple_size()
+
             offset = 0
             for i, k in enumerate(self.Ks):
                 err = sum(1 for p in dec[offset:offset+k] if not p)
@@ -98,6 +101,7 @@ class UEPSimulation:
                                   for e,k in z_ek]
         results['drop_rate'] = (results['drop_count'] /
                                 (self.nblocks * n))
+        results['avg_ripple'] = sum_avg_ripples / self.nblocks
         return results
 
 def run_parallel(sim):
@@ -123,6 +127,7 @@ def run_parallel(sim):
     results['error_rates'] = [0 for k in sim.Ks]
     results['drop_count'] = 0
     results['drop_rate'] = 0
+    results['avg_ripple'] = 0
     for i, fs in enumerate(result_futures):
         r = f.result()
         w = split_nb[i] / sim.nblocks
@@ -131,6 +136,7 @@ def run_parallel(sim):
             results['error_rates'][j] += w * r['error_rates'][j]
         results['drop_count'] += r['drop_count']
         results['drop_rate'] += w * r['drop_rate']
+        results['avg_ripple'] += w * r['avg_ripple']
     return results
 
 def save_data(key, **kwargs):

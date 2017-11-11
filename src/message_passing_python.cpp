@@ -61,11 +61,6 @@ static PyMemberDef mp_context_members[] = {
   {NULL}  /* Sentinel */
 };
 
-static PyObject *mp_context_hello(mp_ctx_py *self)
-{
-  return PyUnicode_FromString("Hello World");
-}
-
 struct sequence_iterator {
   explicit sequence_iterator(PyObject *seq, std::size_t start = 0) {
     _seq = seq;
@@ -153,6 +148,10 @@ static PyObject *mp_context_run_duration(mp_ctx_py *self) {
   return PyFloat_FromDouble(self->mp_ctx->run_duration());
 }
 
+static PyObject *mp_context_average_ripple_size(mp_ctx_py *self) {
+  return PyFloat_FromDouble(self->mp_ctx->average_ripple_size());
+}
+
 static PyObject *mp_context_input_symbols(mp_ctx_py *self) {
   const mp_ctx_t &mp_ctx = *(self->mp_ctx);
   PyObject *out = PyList_New(mp_ctx.input_size());
@@ -166,9 +165,6 @@ static PyObject *mp_context_input_symbols(mp_ctx_py *self) {
 }
 
 static PyMethodDef mp_context_methods[] = {
-  {"hello", (PyCFunction)mp_context_hello, METH_NOARGS,
-   "Return the hello world"
-  },
   {"add_output", (PyCFunction)mp_context_add_output, METH_VARARGS,
    "Add an output symbol"
   },
@@ -192,6 +188,9 @@ static PyMethodDef mp_context_methods[] = {
   },
   {"run_duration", (PyCFunction)mp_context_run_duration, METH_NOARGS,
    "Run duration"
+  },
+  {"average_ripple_size", (PyCFunction)mp_context_average_ripple_size, METH_NOARGS,
+   "Avg ripple size"
   },
   {"input_symbols", (PyCFunction)mp_context_input_symbols, METH_NOARGS,
    "Input symbols"
