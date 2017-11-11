@@ -30,7 +30,7 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
     return RFs == (1,)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_iid/uep_vs_oh_iid_")
+    data = load_data_prefix("uep_iid_mpfix/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
 
     param_set = sorted(set((tuple(d['Ks']),
