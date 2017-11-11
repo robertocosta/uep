@@ -1,4 +1,5 @@
 import math
+import threading
 
 import matplotlib.pyplot as plt
 
@@ -11,6 +12,7 @@ class plots:
         self.minExp = -16
         self.__minY = math.pow(10,self.minExp)
         self.automaticXScale = True
+        self.automaticYScale = True
 
     def __check_name(self,name):
         names = [self.__plots[i]['name'] for i in range(self.__nplots)]
@@ -22,9 +24,6 @@ class plots:
 
     @property
     def toStr(self):
-        return str(self)
-
-    def __str__(self):
         s = 'plots:\n'
         names = [self.__plots[i]['name'] for i in range(self.__nplots)]
         for i in range(len(names)):
@@ -105,12 +104,26 @@ class plots:
                 y_positive = [yi for yi in y if yi > 0]
                 #assert(all(y_positive[i]>0 for i in range(len(y_positive))))
                 #print('y_min = {:.1e}, p[\'y_min\'] = {:.1e}'.format(min(y_positive),p['ymin']))
-                p['ymin'] = min([p['ymin'],min(y_positive)])
+                if (self.automaticYScale == True):
+                    p['ymin'] = min([p['ymin'],min(y_positive)])
+                else:
+                    p['ymin'] = self.automaticYScale[0]
                 y = [max(self.__minY, yi) for yi in y]
             else:
-                p['ymin'] = min([p['ymin'],min(y)])
+                if (self.automaticYScale == True):
+                    p['ymin'] = min([p['ymin'],min(y)])
+                else:
+                    p['ymin'] = self.automaticYScale[0]
+
         else:
-            p['ymin'] = min([p['ymin'],min(y)])
+            if (self.automaticYScale == True):
+                p['ymin'] = min([p['ymin'],min(y)])
+            else:
+                p['ymin'] = self.automaticYScale[0]
+        if (self.automaticYScale == True):
+            p['ymax'] = max([p['ymax'],max(y)])
+        else:
+            p['ymax'] = self.automaticYScale[1]
 
         if (self.automaticXScale == True):
             p['xmin'] = min([p['xmin'],min(x)])
@@ -119,13 +132,12 @@ class plots:
             p['xmin'] = self.automaticXScale[0]
             p['xmax'] = self.automaticXScale[1]
 
-        p['ymax'] = max([p['ymax'],max(y)])
         ls = '-'
         if (this_type == 'lib'): ls += '-'
 
         if 'color' not in params:
             params['color'] = None
-        newlines = plt.plot(x, y, color=params['color'], marker='.',linewidth=0.5,linestyle=ls,label=(this_type + params['label']))
+        newlines = plt.plot(x, y, color=params['color'], marker='.',linewidth=0.5,linestyle=ls,label=(this_type.upper() +' '+ params['label']))
         plt.xlim(p['xmin'], p['xmax']+math.fabs(p['xmax'])/100)
         plt.ylim(p['ymin'], p['ymax'] + math.fabs(p['ymax'])/100)
         plt.grid()
@@ -149,14 +161,21 @@ class plots:
 
     def show_plot(self, name):
         if (self.__check_name(name)==True):
-            plt.show()
+            self.thread_plt()
         else:
             print('No plot named '+name)
-
+    def thread_plt (self):
+        plt.show()
+    def run(self):
+        mt = threading.main_thread()
+        t = threading.Thread(target = self.thread_plt)
+        t.start()
+        t.join()
+        print('Plot closed.')
     def describe_plot(self, name):
         if (self.__check_name(name)==True):
             p = self.__plots[self.__plot_ind]
-            return p['ylabel'] + ' VS ' + p['xlabel'] + ' '
+            return p['name'] + '_vs_' + p['xlabel']
         else:
             print('No plot named '+name)
 
