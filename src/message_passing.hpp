@@ -2,6 +2,7 @@
 #define UEP_MP_MESSAGE_PASSING_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <memory>
 #include <type_traits>
@@ -180,15 +181,16 @@ private:
    *  nodes.
    */
   std::vector<std::unique_ptr<node>> outputs;
-  node *ripple_first; /**< Start of the singly linked list of nodes in
-		       *   the ripple.
-		       */
+
   node *degone_first; /**< Start of the linked list of nodes with
 		       *   degree one.
 		       */
   node *degone_last; /**< End of the linked list of nodes with
 		      *   degree one.
 		      */
+  std::size_t degone_size; /**< Size of the list of nodes with degree
+			    *   one.
+			    */
   std::size_t decoded_count_; /**< Number of currenlty decoded
 			       *   packets.
 			       */
@@ -206,17 +208,15 @@ private:
   void insert_degone(node *np);
   /** Remove an output node from the list of degree one nodes. */
   void remove_degone(node *np);
-  /** Insert an input node in the ripple. */
-  void insert_ripple(node *np);
 
-  /** Decode symbols with output degree one and update the ripple and
-   *  degone lists.
+  /** Decode a symbol with output degree one and return it. If there
+   *  are no decodable symbols return nullptr.
    */
-  void decode_degree_one();
-  /** Process the input symbols in the ripple to remove some edges by
-   *  XOR-ing with the decoded values.
+  node *decode_degree_one();
+  /** Process the last decoded input symbol to remove its edges and
+   *  XOR it with the connected output symbols.
    */
-  void process_ripple();
+  void process_ripple(node *last_decoded);
 
 public: // old typedefs
   typedef inputs_iterator input_symbols_iterator;
@@ -229,9 +229,8 @@ struct mp_context<Symbol,SymbolTraits>::node {
   std::size_t position; /**< The position of this node in the inputs
 			 *   or outputs list.
 			 */
-  node *next; /**< Pointer to the next node in a singly linked
-	       *   list. Can be used either by the ripple or the
-	       *   degone lists.
+  node *next; /**< Pointer to the next node in a linked list. Is used
+	       *   by the degone list.
 	       */
   node *prev; /**< Pointer to the previous node in a linked list. Is
 	       *   used by the degone list.
@@ -252,9 +251,9 @@ struct mp_context<Symbol,SymbolTraits>::node2sym {
 
 template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(std::size_t in_size) :
-  ripple_first(nullptr),
   degone_first(nullptr),
   degone_last(nullptr),
+  degone_size(0),
   decoded_count_(0),
   last_run_time(std::chrono::duration<double>::zero()) {
   // Build in_size empty input nodes
@@ -271,9 +270,9 @@ template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(mp_context &&other) :
   inputs(std::move(other.inputs)),
   outputs(std::move(other.outputs)),
-  ripple_first(std::move(other.ripple_first)),
   degone_first(std::move(other.degone_first)),
   degone_last(std::move(other.degone_last)),
+  degone_size(std::move(other.degone_size)),
   decoded_count_(std::move(other.decoded_count_)),
   last_run_time(std::move(other.last_run_time)),
   _ripple_size(std::move(other._ripple_size)) {
@@ -283,9 +282,9 @@ template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits>::mp_context(const mp_context &other) :
   inputs(other.inputs.size()), // copied after
   outputs(other.outputs.size()), // copied after
-  ripple_first(nullptr), // Is always null outside of run()
   degone_first(nullptr), // The list must be rebuilt
   degone_last(nullptr), // The list must be rebuilt
+  degone_size(0), // The list must be rebuilt
   decoded_count_(other.decoded_count_),
   last_run_time(other.last_run_time),
   _ripple_size(other._ripple_size) {
@@ -307,9 +306,9 @@ template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(mp_context &&other) {
   inputs = std::move(other.inputs);
   outputs = std::move(other.outputs);
-  ripple_first = std::move(other.ripple_first);
   degone_first = std::move(other.degone_first);
   degone_last = std::move(other.degone_last);
+  degone_size = std::move(other.degone_size);
   decoded_count_ = std::move(other.decoded_count_);
   last_run_time = std::move(other.last_run_time);
   _ripple_size = std::move(other._ripple_size);
@@ -320,9 +319,9 @@ template <class Symbol, class SymbolTraits>
 mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(const mp_context &other) {
   inputs.resize(other.inputs.size()); // copied after
   outputs.resize(other.outputs.size()); // copied after
-  ripple_first = nullptr; // Is always null outside of run()
   degone_first = nullptr; // The list must be rebuilt
   degone_last = nullptr; // The list must be rebuilt
+  degone_size = 0; // The list must be rebuilt
   decoded_count_ = other.decoded_count_;
   last_run_time = other.last_run_time;
   _ripple_size = other._ripple_size;
@@ -377,52 +376,53 @@ void mp_context<Symbol,SymbolTraits>::add_output(symbol_type &&s,
 }
 
 template <class Symbol, class SymbolTraits>
-void mp_context<Symbol,SymbolTraits>::decode_degree_one() {
-  std::size_t ripple_inserted = 0;
-  // Process each output node in the degone list
-  for (node *np = degone_first; np != nullptr; np = np->next) {
-    node *inp = inputs[*(np->edges.begin())].get();
-    if (symbol_traits::is_empty(inp->symbol)) { // Not already decoded
-      symbol_traits::swap(inp->symbol, np->symbol);
-      ++decoded_count_;
-      insert_ripple(inp);
-      ++ripple_inserted;
-    }
+typename mp_context<Symbol,SymbolTraits>::node *
+mp_context<Symbol,SymbolTraits>::decode_degree_one() {
+  for (node *out = degone_first; out != nullptr; out = out->next) {
+    std::size_t inp_index = *(out->edges.cbegin());
+    std::unique_ptr<node> &inp = inputs[inp_index];
+
     // Remove the edge
-    np->edges.clear();
-    inp->edges.erase(np->position); // Ok with parallel edges too
+    out->edges.clear();
+    inp->edges.erase(out->position); // Ok with parallel: must be a single edge
+
+    remove_degone(out);
+
+    if (symbol_traits::is_empty(inp->symbol)) { // Not already decoded
+      symbol_traits::swap(inp->symbol, out->symbol);
+      ++decoded_count_;
+      return inp.get();
+    }
   }
-  // All this outputs have now degree 0. Clear the list
-  degone_first = nullptr;
-  degone_last = nullptr;
-  _ripple_size.add_sample(ripple_inserted);
+  return nullptr;
 }
 
 template <class Symbol, class SymbolTraits>
-void mp_context<Symbol,SymbolTraits>::process_ripple() {
-  // Iterate over the ripple
-  for (node *inp = ripple_first; inp != nullptr; inp = inp->next) {
-    // Follow each edge
-    for (auto i = inp->edges.cbegin(); i != inp->edges.cend(); ++i) {
-      node *outp = outputs[*i].get();
-      // Update the output symbol
-      symbol_traits::inplace_xor(outp->symbol, inp->symbol);
-      // Remove the edge (in <- out)
-      auto e = outp->edges.find(inp->position);
-      outp->edges.erase(e); // Delete only one edge
-      // Update degree one list
-      if (outp->edges.size() == 1) {
-	insert_degone(outp);
-      }
-      else if (outp->edges.size() == 0) {
-	remove_degone(outp);
-      }
+void mp_context<Symbol,SymbolTraits>::process_ripple(node *last_decoded) {
+  // Follow each edge of the decoded input
+  for (auto i = last_decoded->edges.cbegin();
+       i != last_decoded->edges.cend();
+       ++i) {
+    std::unique_ptr<node> &outp = outputs[*i];
+
+    // Update the output symbol
+    symbol_traits::inplace_xor(outp->symbol, last_decoded->symbol);
+
+    // Remove the edge (in <- out)
+    auto e = outp->edges.find(last_decoded->position);
+    outp->edges.erase(e); // Delete only one edge
+
+    // Update degree one list
+    if (outp->edges.size() == 1) {
+      insert_degone(outp.get());
     }
-    // Remove all edges (in -> out)
-    inp->edges.clear();
+    else if (outp->edges.size() == 0) {
+      remove_degone(outp.get());
+    }
   }
-  // Clear the ripple
-  ripple_first = nullptr;
+
+  // Remove all edges (in -> out)
+  last_decoded->edges.clear();
 }
 
 template <class Symbol, class SymbolTraits>
@@ -437,12 +437,12 @@ void mp_context<Symbol,SymbolTraits>::run() {
   auto t = high_resolution_clock::now();
 
   for (;;) {
-    decode_degree_one();
-    if (has_decoded() || ripple_first == nullptr) {
-      ripple_first = nullptr; // Guarantee empty ripple at return
+    _ripple_size.add_sample(degone_size);
+    node *last_decoded = decode_degree_one();
+    if (has_decoded() || last_decoded == nullptr) {
       break;
     }
-    process_ripple();
+    process_ripple(last_decoded);
   }
 
   last_run_time = high_resolution_clock::now() - t;
@@ -509,6 +509,7 @@ void mp_context<Symbol,SymbolTraits>::insert_degone(node *np) {
     np->next = nullptr;
     np->prev = nullptr;
   }
+  ++degone_size;
 }
 
 template <class Symbol, class SymbolTraits>
@@ -533,19 +534,14 @@ void mp_context<Symbol,SymbolTraits>::remove_degone(node *np) {
     degone_first = nullptr;
     degone_last = nullptr;
   }
-}
-
-template <class Symbol, class SymbolTraits>
-void mp_context<Symbol,SymbolTraits>::insert_ripple(node *np) {
-  np->next = ripple_first;
-  ripple_first = np;
+  --degone_size;
 }
 
 template <class Symbol, class SymbolTraits>
 void mp_context<Symbol,SymbolTraits>::reset() {
-  ripple_first = nullptr;
   degone_first = nullptr;
   degone_last = nullptr;
+  degone_size = 0;
   decoded_count_ = 0;
   last_run_time = std::chrono::duration<double>::zero();
   for (std::unique_ptr<node> &n : inputs) {
