@@ -53,6 +53,7 @@ if __name__ == "__main__":
     p.add_plot(plot_name='per',xlabel='Overhead',ylabel='PER',logy=True)
     p.add_plot(plot_name='nblocks',xlabel='Overhead',ylabel='nblocks',logy=False)
     p.add_plot(plot_name='ripple',xlabel='Overhead',ylabel='ripple',logy=False)
+    p.add_plot(plot_name='drop_rate',xlabel='Overhead',ylabel='drop_rate',logy=False)
 
     for params in param_set:
         data_same_pars = [d for d in data if (tuple(d['Ks']),
@@ -73,9 +74,11 @@ if __name__ == "__main__":
         avg_pers = np.zeros((len(overheads), len(Ks)))
         nblocks = np.zeros(len(overheads))
         avg_ripples = np.zeros(len(overheads))
+        avg_drop_rates = np.zeros(len(overheads))
         for i, oh in enumerate(overheads):
             avg_counters = [AverageCounter() for k in Ks]
             avg_ripple = AverageCounter()
+            avg_drop = AverageCounter()
             for d in data_same_pars:
                 for l, d_oh in enumerate(d['overheads']):
                     if d_oh != oh: continue
@@ -86,7 +89,10 @@ if __name__ == "__main__":
                     if not math.isnan(d['avg_ripples'][l]):
                         avg_ripple.add(d['avg_ripples'][l],
                                        d['nblocks'])
+                    avg_drop.add(d['avg_drops'][l], d['nblocks'])
+
             avg_ripples[i] = avg_ripple.avg
+            avg_drop_rates[i] = avg_drop.avg
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
 
@@ -111,6 +117,9 @@ if __name__ == "__main__":
 
         p.add_data(plot_name='ripple',label=legend_str,
                    x=overheads, y=avg_ripples)
+
+        p.add_data(plot_name='drop_rate',label=legend_str,
+                   x=overheads, y=avg_drop_rates)
 
         #the_oh_is = [i for i,oh in enumerate(overheads)
         #             if math.isclose(oh, 0.24)]
