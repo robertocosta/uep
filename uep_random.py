@@ -118,6 +118,11 @@ class RowGenerator:
                        sum(k * rf for k, rf in
                            zip(self.__Ks, self.__RFs)))
 
+        # Check position of the robust soliton peak
+        S = robust_S(self.__Kdeg, self.__c, self.__delta)
+        if round(self.__Kdeg / S) > self.__K:
+            raise RuntimeError("The degree distrib. peak is larger than sum(K)")
+
         self.__deg_gen = DegreeGenerator(self.__Kdeg, self.__c, self.__delta)
 
         self.__build_pos_map()
@@ -157,10 +162,17 @@ class RowGenerator:
         return self.__delta
 
     def __call__(self):
-        deg = self.__deg_gen()
-        row = random.sample(range(self.__Kdeg), deg)
-        row_mapped = [self.__pos_map[i] for i in row]
-        return row_mapped
+        deg = None
+        while deg is None or deg > self.__K:
+            deg = self.__deg_gen()
+
+        row_mapped = set()
+        while len(row_mapped) < deg:
+            missing =  deg - len(row_mapped)
+            indices = random.sample(range(self.__Kdeg), missing)
+            row_mapped.update(self.__pos_map[i] for i in indices)
+
+        return list(row_mapped)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -187,7 +199,7 @@ if __name__ == "__main__":
         row = rg()
         tdiff = time.process_time() - t
         rowtimes.append(tdiff)
-        print("Time diff {:f}".format(tdiff))
+        #print("Time diff {:f}".format(tdiff))
 
     print("done. Avg tdiff = {:f}".format(np.mean(rowtimes)))
 
