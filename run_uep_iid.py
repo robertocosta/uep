@@ -9,11 +9,11 @@ import numpy as np
 from uep import *
 
 if __name__ == "__main__":
-    Ks = [10000]
-    RFs = [1]
+    Ks = [100, 1900]
+    RFs = [5, 1]
     EF = 1
 
-    c = 0.03
+    c = 0.1
     delta = 0.5
 
     iid_per = 0
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     #oh.update(np.linspace(0.2,0.3,16))
     #oh = sorted(oh)
     #overheads = np.array(oh[20:])
-    overheads = np.linspace(0, 0.2, 16)
+    overheads = np.linspace(0, 0.4, 16)
 
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
