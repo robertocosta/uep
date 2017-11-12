@@ -30,7 +30,16 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
     return RFs == (1,)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_iid_mpfix/uep_vs_oh_iid_")
+    data = load_data_prefix("uep_iid_mpfix_fixdeg/uep_vs_oh_iid_")
+
+    git_sha1_set = sorted(set(d.get('git_sha1', 'no_git_commit')
+                              for d in data))
+    print("Using {:d} commits:".format(len(git_sha1_set)))
+    for s in git_sha1_set:
+        print(" " * 2 + s)
+
+    data = [d for d in data if d.get('git_sha1') == "fd13d65c764c7310c5492b0fdf71d43cd225aa9a"]
+
     print("Using {:d} data packs".format(len(data)))
 
     param_set = sorted(set((tuple(d['Ks']),
@@ -50,6 +59,7 @@ if __name__ == "__main__":
     p = plots()
     p.automaticXScale = True
     #p.automaticXScale = [0,0.3]
+    p.automaticYScale = [1e-8, 1]
     p.add_plot(plot_name='per',xlabel='Overhead',ylabel='PER',logy=True)
     p.add_plot(plot_name='nblocks',xlabel='Overhead',ylabel='nblocks',logy=False)
     p.add_plot(plot_name='ripple',xlabel='Overhead',ylabel='ripple',logy=False)
@@ -111,15 +121,19 @@ if __name__ == "__main__":
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=overheads, y=avg_pers[:,1],
                        color=mibline.get_color())
+        plt.grid()
 
         p.add_data(plot_name='nblocks',label=legend_str,
                    x=overheads, y=nblocks)
+        plt.autoscale(enable=True, axis='y', tight=False)
 
         p.add_data(plot_name='ripple',label=legend_str,
                    x=overheads, y=avg_ripples)
+        plt.autoscale(enable=True, axis='y', tight=False)
 
         p.add_data(plot_name='drop_rate',label=legend_str,
                    x=overheads, y=avg_drop_rates)
+        plt.autoscale(enable=True, axis='y', tight=False)
 
         #the_oh_is = [i for i,oh in enumerate(overheads)
         #             if math.isclose(oh, 0.24)]
