@@ -9,16 +9,16 @@ import numpy as np
 from uep import *
 
 if __name__ == "__main__":
-    Ks = [100, 900]
-    RFs = [1,1]
-    EF = 2 # in 3,5,8
-    
-    c = 0.1
+    Ks = [10000]
+    RFs = [1]
+    EF = 1
+
+    c = 0.03
     delta = 0.5
 
     iid_per = 0
 
-    nblocks = 100000
+    nblocks = 10000
 
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                         nblocks=nblocks)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     #oh.update(np.linspace(0.2,0.3,16))
     #oh = sorted(oh)
     #overheads = np.array(oh[20:])
-    overheads = np.linspace(0, 0.4, 16)
+    overheads = np.linspace(0, 0.2, 16)
 
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
@@ -61,7 +61,7 @@ if __name__ == "__main__":
             pass
 
     newid = random.getrandbits(64)
-    save_data("uep_iid_mpfix/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+    save_data("uep_iid_mpfix_fixdeg/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               overheads=overheads,
