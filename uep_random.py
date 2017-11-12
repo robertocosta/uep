@@ -162,17 +162,24 @@ class RowGenerator:
         return self.__delta
 
     def __call__(self):
-        deg = None
-        while deg is None or deg > self.__K:
-            deg = self.__deg_gen()
+        deg = min(self.__deg_gen(), self.__K)
+        map_func = lambda i: self.__pos_map[i]
+        return list(mapped_sample(map_func, range(self.__Kdeg), deg))
 
-        row_mapped = set()
-        while len(row_mapped) < deg:
-            missing =  deg - len(row_mapped)
-            indices = random.sample(range(self.__Kdeg), missing)
-            row_mapped.update(self.__pos_map[i] for i in indices)
-
-        return list(row_mapped)
+def mapped_sample(map_func, seq, size):
+    if size <= len(seq) / 2:
+        sample = set()
+        while len(sample) < size:
+            missing = size - len(sample)
+            rs = random.sample(seq, missing)
+            sample.update(map_func(s) for s in rs)
+    else:
+        sample = set(map_func(s) for s in seq)
+        while len(sample) > size:
+            missing = len(sample) - size
+            rs = random.sample(seq, missing)
+            sample.difference_update(map_func(s) for s in rs)
+    return sample
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
