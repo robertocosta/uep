@@ -9,9 +9,9 @@ import numpy as np
 from uep import *
 
 if __name__ == "__main__":
-    Ks = [100, 1900]
-    RFs = [5, 1]
-    EF = 1
+    Ks = [100, 900]
+    RFs = [3, 1]
+    EF = 4
 
     c = 0.1
     delta = 0.5
