@@ -61,6 +61,7 @@
 Makefile
 cmake_defines.hpp
 figure_*.png
+git_commit_sha1
 iid_*.xz
 iid_*.xz
 jsvm-prefix/

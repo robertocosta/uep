@@ -2,6 +2,7 @@ import datetime
 import lzma
 import pickle
 import random
+import subprocess
 
 import numpy as np
 
@@ -39,8 +40,27 @@ if __name__ == "__main__":
         avg_drops[j] = results['drop_rate']
         avg_ripples[j] = results['avg_ripple']
 
+    git_sha1 = None
+    try:
+        git_proc = subprocess.run(["git", "log",
+                                   "-1",
+                                   "--format=%H"],
+                                  check=False,
+                                  stdout=subprocess.PIPE)
+        if git_proc.returncode == 0:
+            git_sha1 = git_proc.stdout.strip().decode()
+    except FileNotFoundError:
+        pass
+
+    if git_sha1 is None:
+        try:
+            git_sha1 = open('git_commit_sha1', 'r').read().strip()
+        except FileNotFound:
+            pass
+
     newid = random.getrandbits(64)
     save_data("uep_iid_mpfix/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+              git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               overheads=overheads,
               Ks=Ks,
