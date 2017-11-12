@@ -4,8 +4,10 @@ import lzma
 import math
 import os
 import os.path
+import pathlib
 import pickle
 import random
+
 #export PYTHONPATH='/mnt/d/git/uep/lib'
 
 import boto3
@@ -143,18 +145,17 @@ def save_data(key, **kwargs):
     return url
 
 def load_data(key):
-    cachedir = "/tmp/uep_load_data.cache"
+    path = pathlib.Path.home().joinpath(".cache", "uep_load_data", key)
     try:
-        bindata = open(cachedir + "/" + key, 'rb').read()
+        bindata = open(str(path), 'rb').read()
     except FileNotFoundError as e:
         config = botocore.client.Config(read_timeout=300)
         s3 = boto3.client('s3', config=config)
         obj = s3.get_object(Bucket='uep.zanol.eu',
                             Key=key)
         bindata = obj['Body'].read()
-        os.makedirs(os.path.dirname(cachedir + "/" + key),
-                    exist_ok=True)
-        open(cachedir + "/" + key, 'xb').write(bindata)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        open(str(path), 'xb').write(bindata)
 
     return pickle.loads(lzma.decompress(bindata))
 
