@@ -79,9 +79,10 @@ if __name__ == "__main__":
             for d in data_same_pars:
                 for l, d_oh in enumerate(d['overheads']):
                     if d_oh != oh: continue
+
                     for j,k in enumerate(Ks):
-                        avg_counters[j].add(d['avg_pers'][l][j],
-                                            d['nblocks'])
+                        per = d['error_counts'][l][j] / (k * d['nblocks'])
+                        avg_counters[j].add(per, d['nblocks'])
                     if not math.isnan(d['avg_ripples'][l]):
                         avg_ripple.add(d['avg_ripples'][l],
                                        d['nblocks'])

@@ -33,12 +33,14 @@ if __name__ == "__main__":
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
     avg_ripples = np.zeros(len(overheads))
+    error_counts = np.zeros((len(overheads), len(Ks)), dtype=int)
     for j, oh in enumerate(overheads):
         sim.overhead = oh
         results = run_parallel(sim)
         avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
         avg_ripples[j] = results['avg_ripple']
+        error_counts[j] = results['error_counts']
 
     git_sha1 = None
     try:
@@ -72,4 +74,5 @@ if __name__ == "__main__":
               nblocks=nblocks,
               avg_pers=avg_pers,
               avg_drops=avg_drops,
-              avg_ripples=avg_ripples)
+              avg_ripples=avg_ripples,
+              error_counts=error_counts)
