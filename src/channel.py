@@ -27,6 +27,7 @@ class iid_ch:
             self.state = False # BAD channel
         else:
             self.state = True # GOOD channel
+        return self.state
 
     def toStr(self):
         return str(self)
