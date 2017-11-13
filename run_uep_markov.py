@@ -15,6 +15,9 @@ if __name__ == "__main__":
     parser.add_argument("rf", help="MIB Repeating factor",type=int)
     parser.add_argument("ef", help="Expanding factor",type=int)
     parser.add_argument("nblocks", help="nblocks for the simulation",type=int)
+    parser.add_argument("--avg_per", help="Average channel PER",type=float, default=0)
+    parser.add_argument("--avg_bad_run", help="Average channel bad run length",type=float, default=1)
+    parser.add_argument("--overhead", help="Overhead",type=float, default=0.25)
     args = parser.parse_args()
 
     git_sha1 = None
@@ -41,10 +44,10 @@ if __name__ == "__main__":
     c = 0.1
     delta = 0.5
 
-    overhead = 0.25
+    overhead = args.overhead
 
-    avg_per = 0
-    avg_bad_run = 1
+    avg_per = args.avg_per
+    avg_bad_run = args.avg_bad_run
 
     nblocks = args.nblocks
 
@@ -72,6 +75,8 @@ if __name__ == "__main__":
         assert(all(ki > 0 for ki in Ks))
         used_Ks[j] = Ks
 
+        print("Run with Ks = {!s}".format(Ks))
+
         sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                             overhead=overhead,
                             markov_pGB=pGB,
@@ -81,9 +86,11 @@ if __name__ == "__main__":
         avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
         error_counts[j] = results['error_counts']
+        print("  PERs = {!s}".format(avg_pers[j]))
+        print("  errors = {!s}".format(error_counts[j]))
 
     newid = random.getrandbits(64)
-    save_data("uep_markov_mpfix_fixdeg/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
+    save_data("uep_markov_final/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               k_blocks=k_blocks,

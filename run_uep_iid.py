@@ -62,15 +62,18 @@ if __name__ == "__main__":
     avg_ripples = np.zeros(len(overheads))
     error_counts = np.zeros((len(overheads), len(Ks)), dtype=int)
     for j, oh in enumerate(overheads):
+        print("Run with oh = {:.3f}".format(oh))
         sim.overhead = oh
         results = run_parallel(sim)
         avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
         avg_ripples[j] = results['avg_ripple']
         error_counts[j] = results['error_counts']
+        print("  PERs = {!s}".format(avg_pers[j]))
+        print("  errors = {!s}".format(error_counts[j]))
 
     newid = random.getrandbits(64)
-    save_data("uep_iid_mpfix_fixdeg/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+    save_data("uep_iid_final/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               overheads=overheads,
