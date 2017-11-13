@@ -40,15 +40,14 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
 if __name__ == "__main__":
     data = load_data_prefix("uep_iid_mpfix_fixdeg/uep_vs_oh_iid_")
 
-    git_sha1_set = sorted(set(d.get('git_sha1', 'no_git_commit')
-                              for d in data))
+    git_sha1_set = sorted(set(d.get('git_sha1') or 'None' for d in data))
     print("Found {:d} commits:".format(len(git_sha1_set)))
     for s in git_sha1_set:
-        print(" " * 2 + s)
+        print("  - " + s)
 
     wanted_commits = [
-        "f1d548503dba80a89062b3c5bdd092bd2dc46a14",
-        "fd13d65c764c7310c5492b0fdf71d43cd225aa9a",
+        "fd13d65c764c7310c5492b0fdf71d43cd225aa9a", # GOOD PLOTS
+
     ]
 
     data = [d for d in data if d.get('git_sha1') in wanted_commits]
