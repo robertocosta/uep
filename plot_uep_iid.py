@@ -18,6 +18,14 @@ def pf_RFs(Ks, RFs, EF, c, delta, iid_per):
     return (Ks == (100,900) and
             EF == 4)
 
+def pf_paper_only(Ks, RFs, EF, c, delta, iid_per):
+    return (Ks == (100,900) and
+            RFs == (3,1) and
+            EF == 4 and
+            c == 0.1 and
+            delta == 0.5 and
+            iid_per == 0)
+
 def pf_EF_20000(Ks, RFs, EF, c, delta, iid_per):
     return (Ks == (20000,) and
             RFs == (1,))
@@ -34,11 +42,16 @@ if __name__ == "__main__":
 
     git_sha1_set = sorted(set(d.get('git_sha1', 'no_git_commit')
                               for d in data))
-    print("Using {:d} commits:".format(len(git_sha1_set)))
+    print("Found {:d} commits:".format(len(git_sha1_set)))
     for s in git_sha1_set:
         print(" " * 2 + s)
 
-    data = [d for d in data if d.get('git_sha1') == "fd13d65c764c7310c5492b0fdf71d43cd225aa9a"]
+    wanted_commits = [
+        "f1d548503dba80a89062b3c5bdd092bd2dc46a14",
+        "fd13d65c764c7310c5492b0fdf71d43cd225aa9a",
+    ]
+
+    data = [d for d in data if d.get('git_sha1') in wanted_commits]
 
     print("Using {:d} data packs".format(len(data)))
 
