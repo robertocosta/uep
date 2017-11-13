@@ -11,7 +11,20 @@ def pf_all(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
     return True
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_markov/uep_vs_k_markov_")
+    data = load_data_prefix("uep_markov_mpfix_fixdeg/uep_vs_k_markov_")
+
+    git_sha1_set = sorted(set(d.get('git_sha1', 'no_git_commit')
+                              for d in data))
+    print("Found {:d} commits:".format(len(git_sha1_set)))
+    for s in git_sha1_set:
+        print(" " * 2 + s)
+
+    wanted_commits = [
+        "5132862a8656e4df1565ca9c77f0471a79300c1b",
+    ]
+
+    data = [d for d in data if d.get('git_sha1') in wanted_commits]
+
     print("Using {:d} data packs".format(len(data)))
 
     param_set = sorted(set((tuple(d['RFs']),
@@ -59,8 +72,9 @@ if __name__ == "__main__":
                 for l, d_k_block in enumerate(d['k_blocks']):
                     if d_k_block != k_block: continue
                     for j, _ in enumerate(Ks_frac):
-                        avg_counters[j].add(d['avg_pers'][l][j],
-                                            d['nblocks'])
+                        per = (d['error_counts'][l][j] /
+                               (d['used_Ks'][l][j] * d['nblocks']))
+                        avg_counters[j].add(per, d['nblocks'])
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
 
@@ -81,9 +95,11 @@ if __name__ == "__main__":
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=k_blocks, y=avg_pers[:,1],
                        color=mibline.get_color())
+        plt.grid()
 
         p.add_data(plot_name='nblocks',label=legend_str,
                    x=k_blocks, y=nblocks)
+        plt.autoscale(enable=True, axis='y', tight=False)
 
         #the_oh_is = [i for i,oh in enumerate(overheads)
         #             if math.isclose(oh, 0.24)]
