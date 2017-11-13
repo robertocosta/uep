@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     nblocks = args.nblocks
 
-    k_blocks = np.logspace(math.log10(10), math.log10(10000), 16, dtype=int)
+    k_blocks = np.logspace(math.log10(100), math.log10(10000), 16, dtype=int)
     Ks_frac = [0.1, 0.9]
 
     pBG = 1/avg_bad_run
