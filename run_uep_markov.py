@@ -17,6 +17,24 @@ if __name__ == "__main__":
     parser.add_argument("nblocks", help="nblocks for the simulation",type=int)
     args = parser.parse_args()
 
+    git_sha1 = None
+    try:
+        git_proc = subprocess.run(["git", "log",
+                                   "-1",
+                                   "--format=%H"],
+                                  check=False,
+                                  stdout=subprocess.PIPE)
+        if git_proc.returncode == 0:
+            git_sha1 = git_proc.stdout.strip().decode()
+    except FileNotFoundError:
+        pass
+
+    if git_sha1 is None:
+        try:
+            git_sha1 = open('git_commit_sha1', 'r').read().strip()
+        except FileNotFound:
+            pass
+
     RFs = [args.rf,1]
     EF = args.ef
 
@@ -63,24 +81,6 @@ if __name__ == "__main__":
         avg_pers[j] = results['error_rates']
         avg_drops[j] = results['drop_rate']
         error_counts[j] = results['error_counts']
-
-    git_sha1 = None
-    try:
-        git_proc = subprocess.run(["git", "log",
-                                   "-1",
-                                   "--format=%H"],
-                                  check=False,
-                                  stdout=subprocess.PIPE)
-        if git_proc.returncode == 0:
-            git_sha1 = git_proc.stdout.strip().decode()
-    except FileNotFoundError:
-        pass
-
-    if git_sha1 is None:
-        try:
-            git_sha1 = open('git_commit_sha1', 'r').read().strip()
-        except FileNotFound:
-            pass
 
     newid = random.getrandbits(64)
     save_data("uep_markov_mpfix_fixdeg/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
