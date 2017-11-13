@@ -187,6 +187,15 @@ if __name__ == "__main__":
     import time
     import sys
 
+    rg = RowGenerator(Ks=[100,900], RFs=[3,1], EF=4, c=0.1, delta=0.5)
+    rows = [rg() for i in range(100000)]
+    assert(all(len(r) <= 1000 for r in rows))
+    assert(any(len(r) == 1000 for r in rows))
+    assert(all(len(r) >= 1 for r in rows))
+    assert(any(len(r) == 1 for r in rows))
+
+    assert(all( i >= 0 and i < 1000 for r in rows for i in r))
+    assert(sorted(set(i for r in rows for i in r)) == list(range(0, 1000)))
 
     degtimes = list()
     dg = DegreeGenerator(4800, 0.1, 0.5)
@@ -210,11 +219,11 @@ if __name__ == "__main__":
 
     print("done. Avg tdiff = {:f}".format(np.mean(rowtimes)))
 
-    Ks = [1000, 9000]
+    Ks = [100, 900]
     RFs = [3,1]
     EF = 4
-    c = 0.2
-    delta = 0.05
+    c = 0.1
+    delta = 0.5
 
     row_gen = RowGenerator(Ks=[sum(Ks)], RFs=[1], EF=1, c=c, delta=delta)
     row_gen_uep = RowGenerator(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta)
@@ -236,17 +245,9 @@ if __name__ == "__main__":
     print("Probability of selecting a MIB packet is {:f}".format(selection_prob_mib))
     print("Probability of selecting a LIB packet is {:f}".format(1 - selection_prob_mib))
 
-
     plt.figure()
-    plt.stem(histo)
+    plt.stem(histo, basefmt=' ', markerfmt='C0.', linefmt=' ')
     plt.figure()
-    plt.stem(histo_uep)
-
-    # plt.figure()
-    # dg = DegreeGenerator(10000, 0.2, 0.05)
-    # degs = [dg() for i in range(0, 10000)]
-    # degs_histo = np.bincount(degs) / len(degs)
-    # plt.stem(degs_histo)
-    # plt.xlim(0, 50)
+    plt.stem(histo_uep, basefmt=' ', markerfmt='C0.', linefmt=' ')
 
     plt.show()
