@@ -28,7 +28,7 @@ if __name__ == "__main__":
     nblocks = args.nblocks
 
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
-                        nblocks=nblocks)
+                        nblocks=nblocks, iid_per=iid_per)
 
     #oh = set(np.linspace(0,0.4,16))
     #oh.update(np.linspace(0,0.1,16))
