@@ -162,7 +162,10 @@ class RowGenerator:
         return self.__delta
 
     def __call__(self):
-        deg = min(self.__deg_gen(), self.__K)
+        deg = self.__deg_gen()
+        while deg > self.__K:
+            deg = self.__deg_gen()
+
         row = set()
         while len(row) < deg:
             i = random.choice(self.__pos_map)
