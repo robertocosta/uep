@@ -10,10 +10,12 @@ import numpy as np
 from uep import *
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Runs an IID UEP simulation.')
+    parser = argparse.ArgumentParser(description='Runs an IID UEP simulation.',
+                                     allow_abbrev=False)
     parser.add_argument("rf", help="MIB Repeating factor",type=int)
     parser.add_argument("ef", help="Expanding factor",type=int)
     parser.add_argument("nblocks", help="nblocks for the simulation",type=int)
+    parser.add_argument("--iid_per", help="Channel packet drop rate",type=float, default=0)
     args = parser.parse_args()
 
     Ks = [100, 900]
@@ -23,7 +25,7 @@ if __name__ == "__main__":
     c = 0.1
     delta = 0.5
 
-    iid_per = 0
+    iid_per = args.iid_per
 
     nblocks = args.nblocks
 
