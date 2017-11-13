@@ -20,7 +20,8 @@ if __name__ == "__main__":
         print(" " * 2 + s)
 
     wanted_commits = [
-        "5132862a8656e4df1565ca9c77f0471a79300c1b",
+        "921f5e0f5bf82591ec93f215cd490f8bdd9473fe",
+        "a616ad6478ac1f80dc3f7983cbf5b4958bf9fcfb",
     ]
 
     data = [d for d in data if d.get('git_sha1') in wanted_commits]

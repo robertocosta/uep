@@ -46,8 +46,8 @@ if __name__ == "__main__":
         print("  - " + s)
 
     wanted_commits = [
-        "fd13d65c764c7310c5492b0fdf71d43cd225aa9a", # GOOD PLOTS
-
+#        "fd13d65c764c7310c5492b0fdf71d43cd225aa9a", # GOOD PLOTS
+        "ccc27d2682e7d634ac2d28c8e01882781f0f680e", # Last run: same as GOOD PLOT?
     ]
 
     data = [d for d in data if d.get('git_sha1') in wanted_commits]
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         if 'avg_ripples' not in d:
             d['avg_ripples'] = [float('nan') for o in d['overheads']]
 
-    param_filter = pf_all
+    param_filter = pf_all #pf_paper_only
 
     p = plots()
     p.automaticXScale = True
@@ -92,6 +92,8 @@ if __name__ == "__main__":
         iid_per = params[5]
 
         overheads = sorted(set(o for d in data_same_pars for o in d['overheads']))
+
+        # overheads = sorted(set(overheads).intersection(np.linspace(0, 0.4, 16)))
 
         avg_pers = np.zeros((len(overheads), len(Ks)))
         nblocks = np.zeros(len(overheads))
