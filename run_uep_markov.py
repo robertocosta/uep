@@ -15,8 +15,8 @@ if __name__ == "__main__":
     parser.add_argument("rf", help="MIB Repeating factor",type=int)
     parser.add_argument("ef", help="Expanding factor",type=int)
     parser.add_argument("nblocks", help="nblocks for the simulation",type=int)
-    parser.add_argument("--avg_per", help="Average channel PER",type=float, default=0)
-    parser.add_argument("--avg_bad_run", help="Average channel bad run length",type=float, default=1)
+    parser.add_argument("piB", help="1 over the steady state prob. of being in a Bad slot.",type=float)
+    parser.add_argument("EnB", help="Avg. number of contiguous Bad slots",type=int)
     parser.add_argument("--overhead", help="Overhead",type=float, default=0.25)
     args = parser.parse_args()
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         except FileNotFound:
             pass
 
-    RFs = [args.rf,1]
+    RFs = [args.rf, 1]
     EF = args.ef
 
     c = 0.1
@@ -46,8 +46,8 @@ if __name__ == "__main__":
 
     overhead = args.overhead
 
-    avg_per = args.avg_per
-    avg_bad_run = args.avg_bad_run
+    avg_per = 1 / args.piB
+    avg_bad_run = args.EnB
 
     nblocks = args.nblocks
 

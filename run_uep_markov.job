@@ -1,13 +1,28 @@
 #!/bin/bash
 #$ -cwd -m ea
 
+set -eu -o pipefail
+
 export MPLBACKEND=PDF
 
-python3 run_uep_markov.py --avg_per 0 --avg_bad_run 1 --overhead 0.25 \
-	3 4 1000
+rfs=(5)
+efs=(1)
+piB=(100) # ! 1/pi_B !
+EnB=(5 10 50 100)
 
-for br in 10 50 100 500; do
-    python3 run_uep_markov.py --avg_per 0.01 --avg_bad_run "$br" --overhead 0.25 \
-	    3 4 1000
-    echo "Done with br = $br"
+nblocks=30000
+overhead=0.25
+
+python3 run_uep_markov.py --overhead "$overhead" \
+	5 1 "$nblocks" "inf" 1
+
+for pib in ${piB[*]}; do
+    for enb in ${EnB[*]}; do
+	for rf in ${rfs[*]}; do
+	    for ef in ${efs[*]}; do
+		python3 run_uep_markov.py --overhead "$overhead" \
+			"$rf" "$ef" "$nblocks" "$pib" "$enb"
+	    done
+	done
+    done
 done
