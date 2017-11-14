@@ -57,6 +57,8 @@ if __name__ == "__main__":
     #overheads = np.array(oh[20:])
     overheads = np.linspace(0, 0.8, 33)
 
+    used_rngstate = random.getstate()
+
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
     avg_ripples = np.zeros(len(overheads))
