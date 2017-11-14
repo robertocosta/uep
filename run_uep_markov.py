@@ -54,6 +54,8 @@ if __name__ == "__main__":
     k_blocks = np.logspace(math.log10(100), math.log10(10000), 16, dtype=int)
     Ks_frac = [0.1, 0.9]
 
+    used_rngstate = random.getstate()
+
     pBG = 1/avg_bad_run
     assert(pBG >= 0 and pBG <= 1)
     pGB = pBG * avg_per / (1 - avg_per)
@@ -93,6 +95,7 @@ if __name__ == "__main__":
     save_data("uep_markov_final/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
+              used_rngstate=used_rngstate,
               k_blocks=k_blocks,
               Ks_frac=Ks_frac,
               used_Ks=used_Ks,
