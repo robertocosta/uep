@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import lzma
 import pickle
@@ -9,16 +10,22 @@ import numpy as np
 from uep import *
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Runs a simulation.')
+    parser.add_argument("rf", help="MIB Repeating factor",type=int)
+    parser.add_argument("ef", help="Expanding factor",type=int)
+    parser.add_argument("nblocks", help="nblocks for the simulation",type=int)
+    args = parser.parse_args()
+
     Ks = [100, 1900]
-    RFs = [5, 1]
-    EF = 1
+    RFs = [args.rf, 1]
+    EF = args.ef
 
     c = 0.1
     delta = 0.5
 
     iid_per = 0
 
-    nblocks = 10000
+    nblocks = args.nblocks
 
     sim = UEPSimulation(Ks=Ks, RFs=RFs, EF=EF, c=c, delta=delta,
                         nblocks=nblocks)
@@ -61,7 +68,7 @@ if __name__ == "__main__":
             pass
 
     newid = random.getrandbits(64)
-    save_data("uep_iid_mpfix_fixdeg/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+    save_data("uep_iid_rc_17_11_12/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               overheads=overheads,
