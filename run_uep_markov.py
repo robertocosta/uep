@@ -51,7 +51,9 @@ if __name__ == "__main__":
 
     nblocks = args.nblocks
 
-    k_blocks = np.linspace(100, 15100, 16, dtype=int)
+    k_blocks = np.linspace(100, 15100, 16, dtype=int).tolist()
+    k_blocks += np.linspace(100, 2100, 11, dtype=int)[:-1].tolist()
+    k_blocks = sorted(set(k_blocks))
     Ks_frac = [0.05, 0.95]
 
     used_rngstate = random.getstate()
