@@ -1,4 +1,6 @@
+import argparse
 import datetime
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,10 +9,35 @@ from plots import *
 from uep import *
 from utils import *
 
-def pf_all(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
-    return True
+
+class param_filters:
+    @staticmethod
+    def all(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return True
+
+    @staticmethod
+    def error_free(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_per == 0 and avg_bad_run == 1)
+
+    @staticmethod
+    def br5(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 5)
+
+    @staticmethod
+    def br10(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 10)
+
+    @staticmethod
+    def br50(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 50)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Plots the Markov UEP results.',
+                                     allow_abbrev=False)
+    parser.add_argument("--param_filter", help="How to filter the data",
+                        type=str, default="all")
+    args = parser.parse_args()
+
     data = load_data_prefix("uep_markov_final/")
 
     git_sha1_set = sorted(set(d.get('git_sha1') or 'None' for d in data))
@@ -36,7 +63,8 @@ if __name__ == "__main__":
                             d['avg_bad_run'],
                             tuple(d['Ks_frac'])) for d in data))
 
-    param_filter = pf_all
+    param_filter = getattr(param_filters, args.param_filter)
+    assert(callable(param_filter))
 
     p = plots()
     p.automaticXScale = True
@@ -120,11 +148,14 @@ if __name__ == "__main__":
         #                                          avg_pers[the_oh_i, 1]))
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_plot_png(p.get_plot('per'),'markov/{} {}'.format(p.describe_plot('per'),
-                                                       datestr))
-    save_plot_png(p.get_plot('nblocks'),'markov/{} {}'.format(p.describe_plot('nblocks'),
-                                                       datestr))
-    save_plot_png(p.get_plot('drop_rate'),'markov/{} {}'.format(p.describe_plot('drop_rate'),
-                                                       datestr))
+    save_plot_png(p.get_plot('per'),'markov/{}/{} {}'.format(args.param_filter,
+                                                             p.describe_plot('per'),
+                                                             datestr))
+    save_plot_png(p.get_plot('nblocks'),'markov/{}/{} {}'.format(args.param_filter,
+                                                                 p.describe_plot('nblocks'),
+                                                                 datestr))
+    save_plot_png(p.get_plot('drop_rate'),'markov/{}/{} {}'.format(args.param_filter,
+                                                                   p.describe_plot('drop_rate'),
+                                                                   datestr))
 
     plt.show()

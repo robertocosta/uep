@@ -1,4 +1,6 @@
+import argparse
 import datetime
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,37 +9,26 @@ from plots import *
 from uep import *
 from utils import *
 
-def pf_all(Ks, RFs, EF, c, delta, iid_per):
-    return True
+class param_filters:
+    @staticmethod
+    def all(Ks, RFs, EF, c, delta, iid_per):
+        return True
 
-def pf_EF_1000(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            RFs == (1,1))
+    @staticmethod
+    def error_free(Ks, RFs, EF, c, delta, iid_per):
+        return (iid_per == 0)
 
-def pf_RFs(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            EF == 4)
-
-def pf_paper_only(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            RFs == (3,1) and
-            EF == 4 and
-            c == 0.1 and
-            delta == 0.5 and
-            iid_per == 0)
-
-def pf_EF_20000(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (20000,) and
-            RFs == (1,))
-
-def pf_EEP(Ks, RFs, EF, c, delta, iid_per):
-    return ((RFs == (1,) or RFs == (1,1)) and
-            EF == 1)
-
-def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
-    return RFs == (1,)
+    @staticmethod
+    def iid_errors(Ks, RFs, EF, c, delta, iid_per):
+        return (iid_per != 0)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Plots the IID UEP results.',
+                                     allow_abbrev=False)
+    parser.add_argument("--param_filter", help="How to filter the data",
+                        type=str, default="all")
+    args = parser.parse_args()
+
     data = load_data_prefix("uep_iid_final/")
 
     git_sha1_set = sorted(set(d.get('git_sha1') or 'None' for d in data))
@@ -65,7 +56,8 @@ if __name__ == "__main__":
     #     if 'avg_ripples' not in d:
     #         d['avg_ripples'] = [float('nan') for o in d['overheads']]
 
-    param_filter = pf_all
+    param_filter = getattr(param_filters, args.param_filter)
+    assert(callable(param_filter))
 
     p = plots()
     p.automaticXScale = True
@@ -158,11 +150,14 @@ if __name__ == "__main__":
         #                                          avg_pers[the_oh_i, 1]))
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_plot_png(p.get_plot('per'),'iid/{} {}'.format(p.describe_plot('per'),
-                                                       datestr))
-    save_plot_png(p.get_plot('nblocks'),'iid/{} {}'.format(p.describe_plot('nblocks'),
-                                                       datestr))
-    save_plot_png(p.get_plot('drop_rate'),'iid/{} {}'.format(p.describe_plot('drop_rate'),
-                                                       datestr))
+    save_plot_png(p.get_plot('per'),'iid/{}/{} {}'.format(args.param_filter,
+                                                          p.describe_plot('per'),
+                                                          datestr))
+    save_plot_png(p.get_plot('nblocks'),'iid/{}/{} {}'.format(args.param_filter,
+                                                              p.describe_plot('nblocks'),
+                                                              datestr))
+    save_plot_png(p.get_plot('drop_rate'),'iid/{}/{} {}'.format(args.param_filter,
+                                                                p.describe_plot('drop_rate'),
+                                                                datestr))
 
     plt.show()
