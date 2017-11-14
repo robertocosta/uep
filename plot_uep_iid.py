@@ -31,7 +31,8 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
     return RFs == (1,)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_iid_rc_17_11_12/uep_vs_oh_iid_")
+    #data = load_data_prefix("uep_iid_other_deg_fix/uep_vs_oh_iid_")
+    data = load_data_prefix("uep_iid_other/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -53,18 +54,21 @@ if __name__ == "__main__":
 
     conditions = []
     six_plots = True
+    ks = [100,1900]
     if (six_plots == True):
-        conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':'*', 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':[100,1900],'rfs':[3,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':[100,1900],'rfs':[[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':[100,1900],'rfs':[[3,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':[100,1900],'rfs':[3,1], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[3,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':[100,1900],'rfs':[4,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':[100,1900],'rfs':[[5,1],[1,1]], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
     else:
-        conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
 
     RF_max = 5
     EF_max = 8
@@ -79,13 +83,13 @@ if __name__ == "__main__":
         #p.automaticXScale = [0,0.3]
 
         if nPlots>0:
-            p.add_plot(plot_name=plot_name[0],xlabel='K',ylabel='PER',logy=True)
+            p.add_plot(plot_name=plot_name[0],xlabel='overhead',ylabel='PER',logy=True)
         if nPlots>1:
-            p.add_plot(plot_name=plot_name[1],xlabel='K',ylabel='nblocks',logy=False)
+            p.add_plot(plot_name=plot_name[1],xlabel='overhead',ylabel='nblocks',logy=False)
         if nPlots>2:
-            p.add_plot(plot_name=plot_name[2],xlabel='K',ylabel='ripple',logy=False)
+            p.add_plot(plot_name=plot_name[2],xlabel='overhead',ylabel='ripple',logy=False)
         if nPlots>3:
-            p.add_plot(plot_name=plot_name[3],xlabel='K',ylabel='drop_rate',logy=False)
+            p.add_plot(plot_name=plot_name[3],xlabel='overhead',ylabel='drop_rate',logy=False)
 
         for params in param_set:
             p.automaticYScale = [math.pow(10,-7), 1]
@@ -139,9 +143,9 @@ if __name__ == "__main__":
                 if ((str(RFs) not in cond.rfs)*(cond.rfs != '*')):  continue
             else:
                 if ((str(RFs) != cond.rfs)*(cond.rfs != '*')):      continue
-            if hasattr(cond.ef, "__len__"):
+            if (cond.rfs != '*')*hasattr(cond.ef, "__len__"):
                 #print(cond.ef)
-                if ((EF not in cond.ef)*(cond.rfs != '*')):         continue
+                if ((cond.rfs != '*')*(EF not in cond.ef)):         continue
             else:
                 if ((EF != cond.ef)*(cond.ef != '*')):              continue
             
@@ -157,10 +161,12 @@ if __name__ == "__main__":
             legend_str = (  "Ks={!s},"
                             "RFs={!s},"
                             "EF={:d},"
-                            "E[nblocks]={:.0e}").format(params[0], 
-                                                        params[1], 
-                                                        params[2], 
-                                                        np.mean(nblocks))
+                            "E[nbl.]={:.0e},"
+                            "pi_b={:.1e}").format(  params[0], 
+                                                    params[1], 
+                                                    params[2], 
+                                                    np.mean(nblocks),
+                                                    iid_per)
 
             if (cond.type == '*'):
                 # MIB PLOT

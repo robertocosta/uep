@@ -17,7 +17,7 @@ def pf_51(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
             EF == 1)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_17_11_14_2/uep_vs_k_markov_")
+    data = load_data_prefix("uep_17_11_14_3/uep_vs_k_markov_")
     #data = load_data_prefix("uep_markov_rc_17_11_12/uep_vs_k_markov_")
     print("Using {:d} data packs".format(len(data)))
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     p.add_plot(plot_name='per',xlabel='K',ylabel='PER',logy=True)
     #p.add_plot(plot_name='nblocks',xlabel='K',ylabel='nblocks',logy=False)
     #param_filter = pf_all
-    nPlots = 1 # how many different plot do you want for each condition? per
+    nPlots = 1 # how many different plot do you want for each condition? per, nbocks
     conditions = []
     six_plots = True
     if (six_plots == True):
@@ -44,13 +44,14 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[4,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[1,1], 'ef': 1, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[1,1], 'ef': 1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[1,1], 'ef': 3, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 3, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 3, 'c':'*', 'delta':'*', 'type':'*'}))
         conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':3, 'c':'*', 'delta':'*', 'type':'*'}))
-        
+        conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[5,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
     else:
         conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
@@ -61,14 +62,14 @@ if __name__ == "__main__":
         #p.cleanup()
     for cond in conditions:
         plot_name = 'per_' + cond.toStr
-        
+        plot_name_nbl = 'nblocks' + cond.toStr
         p.automaticXScale = True
         p.automaticXScale = [1,6200]
 
         if nPlots>0:
             p.add_plot(plot_name = plot_name,xlabel='K',ylabel='PER',logy=True)
         if nPlots>1:
-            p.add_plot(plot_name=plot_name[1],xlabel='Overhead',ylabel='nblocks',logy=False)
+            p.add_plot(plot_name=plot_name_nbl,xlabel='K',ylabel='nblocks',logy=False)
         if nPlots>2:
             p.add_plot(plot_name=plot_name[2],xlabel='Overhead',ylabel='ripple',logy=False)
         if nPlots>3:
@@ -155,7 +156,13 @@ if __name__ == "__main__":
                 p.add_data(plot_name=plot_name,label=legend_str,type='lib',
                         x=k_blocks, y=avg_pers[:,1],
                         color=mibline.get_color())
+            
+            p.automaticYScale = True
 
+            if nPlots > 1:
+                p.add_data(plot_name=plot_name_nbl,label=legend_str,
+                        x=k_blocks, y=nblocks)
+            
             #p.add_data(plot_name='nblocks',label=legend_str,
             #        x=k_blocks, y=nblocks)
 
@@ -173,7 +180,7 @@ if __name__ == "__main__":
         if nPlots>0:
             save_plot_png(p.get_plot(plot_name),datestr + '_' + p.describe_plot(plot_name))
         if nPlots>1:
-            save_plot_png(p.get_plot(plot_name[1]),datestr + '_' + p.describe_plot(plot_name[1]))
+            save_plot_png(p.get_plot(plot_name_nbl),datestr + '_' + p.describe_plot(plot_name_nbl))
 
     #save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
     #save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)

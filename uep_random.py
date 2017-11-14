@@ -123,7 +123,7 @@ class RowGenerator:
         if round(self.__Kdeg / S) > self.__K:
             raise RuntimeError("The degree distrib. peak is larger than sum(K)")
 
-        self.__deg_gen = DegreeGenerator(self.__Kdeg, self.__c, self.__delta)
+        self.__deg_gen = DegreeGenerator(self.__K, self.__c, self.__delta)
 
         self.__build_pos_map()
 

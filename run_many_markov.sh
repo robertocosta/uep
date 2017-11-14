@@ -2,12 +2,12 @@
 
 set -eu -o pipefail
 
-rfs=(1 3)
-efs=(1 3)
-#EnG=(960 999)
-EnG=(960)
+rfs=(1 3 5)
+efs=(1 4)
+EnG=(960 999)
+#EnG=(999)
 max_corr=1000
-nblocks=640
+nblocks=3200
 
 echo -e "#!/bin/bash" > ./run_uep_markov.job
 echo -e "#$ -cwd -m ea"  >> ./run_uep_markov.job

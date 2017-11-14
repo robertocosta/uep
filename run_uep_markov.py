@@ -34,8 +34,10 @@ if __name__ == "__main__":
 
     #k_blocks = np.linspace(200,4200, 21, dtype=int)
     #k_blocks = np.linspace(5200,6200, 2, dtype=int)
-    k_blocks = np.linspace(4200,5200, 6, dtype=int)
-    Ks_frac = [0.1, 0.9]
+    k_blocks = np.linspace(200,4200, 21, dtype=int)
+
+    
+    Ks_frac = [0.05, 0.95]
     pBG = 1/avg_bad_run
     pGB = 1/avg_good_run
     avg_per = pGB / (pGB + pBG)
@@ -69,7 +71,7 @@ if __name__ == "__main__":
         avg_drops[j] = results['drop_rate']
 
     newid = random.getrandbits(64)
-    save_data("uep_17_11_14_2/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
+    save_data("uep_17_11_14_3/uep_vs_k_markov_{:d}.pickle.xz".format(newid),
               timestamp=datetime.datetime.now().timestamp(),
               k_blocks=k_blocks,
               Ks_frac=Ks_frac,
