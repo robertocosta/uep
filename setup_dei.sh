@@ -3,6 +3,7 @@
 set -eu -o pipefail
 
 dei_user=${1}
+dei_dir=${2-~/uep_run}
 build_dir="build_dei"
 cmake_dir="$PWD"
 
@@ -14,7 +15,7 @@ popd
 
 git log -1 --format='%H' > git_commit_sha1
 
-ssh ${dei_user}@login.dei.unipd.it 'mkdir -p ~/uep_run'
+ssh ${dei_user}@login.dei.unipd.it "mkdir -p '$dei_dir'"
 scp \
     "${build_dir}/lib/mppy.so" \
     git_commit_sha1 \
@@ -25,5 +26,5 @@ scp \
     src/channel.py \
     uep.py \
     uep_random.py \
-    ${dei_user}@login.dei.unipd.it:~/uep_run/
-ssh -t ${dei_user}@login.dei.unipd.it 'cd ~/uep_run && $SHELL -l'
+    ${dei_user}@login.dei.unipd.it:"$dei_dir"
+ssh -t ${dei_user}@login.dei.unipd.it "cd '$dei_dir' && \$SHELL -l"
