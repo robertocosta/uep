@@ -11,10 +11,13 @@ class parameters:
             exit()
         self.__ks = params['ks']
         self.__rfs = params['rfs']
+        self.__rfind = 0
         self.__ef = params['ef']
         self.__c = params['c']
         self.__delta = params['delta']
         self.__type = params['type']
+        #if ('overhead' in params and avg_per in params and avg_bad_run in params):
+            
     @property
     def ks(self):
         if self.__ks == '*':
@@ -29,7 +32,15 @@ class parameters:
         if self.__rfs == '*':
             return '*'
         else:
-            return '('+str(self.__rfs[0])+', '+str(self.__rfs[1]) + ')' 
+            rfs = self.__rfs
+            s = []
+            if hasattr(rfs[0], "__len__"):   # more than 1 condition for rfs [[]]
+                for rfi in self.__rfs:
+                    s.append('('+str(rfi[0])+', '+str(rfi[1]) + ')')
+            else:
+                s = '('+str(self.__rfs[0])+', '+str(self.__rfs[1]) + ')'
+
+            return s
     @rfs.setter
     def rfs(self,value):
         self.__rfs = value
@@ -69,14 +80,29 @@ class parameters:
     def __rfs2str(self):
         if (self.__rfs != '*'):
             s = 'rfs_'
-            for i in range(len(self.__rfs)-1):
-                s += '{:d}-'.format(self.__rfs[i])
-            s += '{:d}'.format(self.__rfs[-1])
+            if hasattr(self.__rfs[0], "__len__"):
+                for rfi in self.__rfs:
+                    for i in range(len(rfi)-1):
+                        s += '{:d}-'.format(rfi[i])
+                    s += '{:d}'.format(rfi[-1])+'_'
+                s = s[0:len(s)-1]
+            else:
+                for i in range(len(self.__rfs)-1):
+                    s += '{:d}-'.format(self.__rfs[i])
+                s += '{:d}'.format(self.__rfs[-1])
+            
             return s
         else: return ''
     def __ef2str(self):
         if (self.__ef != '*'):
-            return 'ef_' + str(self.__ef)
+            s = 'ef_'
+            if hasattr(self.__ef, "__len__"):
+                for ef in self.__ef:
+                    s += str(ef)+'_'
+                s = s[0:len(s)-1]
+            else:
+                s += str(self.__ef)
+            return s
         else: return ''
     def __c2str(self):
         if (self.__c != '*'):

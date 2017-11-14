@@ -3,6 +3,7 @@ import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 
+from parameters import *
 from plots import *
 from uep import *
 from utils import *
@@ -30,8 +31,9 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
     return RFs == (1,)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_iid_mpfix/uep_vs_oh_iid_")
+    data = load_data_prefix("uep_iid_rc_17_11_12/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
+    datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     param_set = sorted(set((tuple(d['Ks']),
                             tuple(d['RFs']),
@@ -45,93 +47,155 @@ if __name__ == "__main__":
         if 'avg_ripples' not in d:
             d['avg_ripples'] = [float('nan') for o in d['overheads']]
 
-    param_filter = pf_all
+    #param_filter = pf_all
 
-    p = plots()
-    p.automaticXScale = True
-    #p.automaticXScale = [0,0.3]
-    p.add_plot(plot_name='per',xlabel='Overhead',ylabel='PER',logy=True)
-    p.add_plot(plot_name='nblocks',xlabel='Overhead',ylabel='nblocks',logy=False)
-    p.add_plot(plot_name='ripple',xlabel='Overhead',ylabel='ripple',logy=False)
-    p.add_plot(plot_name='drop_rate',xlabel='Overhead',ylabel='drop_rate',logy=False)
+    nPlots = 1 # how many different plot do you want? per, nblocks, ripple, drop_rate
 
-    for params in param_set:
-        data_same_pars = [d for d in data if (tuple(d['Ks']),
-                                              tuple(d['RFs']),
-                                              d['EF'],
-                                              d['c'],
-                                              d['delta'],
-                                              d['iid_per']) == params]
-        Ks = params[0]
-        RFs = params[1]
-        EF = params[2]
-        c = params[3]
-        delta = params[4]
-        iid_per = params[5]
+    conditions = []
+    six_plots = True
+    if (six_plots == True):
+        conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':[100,1900],'rfs':'*', 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':[100,1900],'rfs':[3,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':[100,1900],'rfs':[[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':[100,1900],'rfs':[[3,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':[100,1900],'rfs':[3,1], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':[100,1900],'rfs':[4,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':[100,1900],'rfs':[[5,1],[1,1]], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
+    else:
+        conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
 
-        overheads = sorted(set(o for d in data_same_pars for o in d['overheads']))
+    RF_max = 5
+    EF_max = 8
 
-        avg_pers = np.zeros((len(overheads), len(Ks)))
-        nblocks = np.zeros(len(overheads))
-        avg_ripples = np.zeros(len(overheads))
-        avg_drop_rates = np.zeros(len(overheads))
-        for i, oh in enumerate(overheads):
-            avg_counters = [AverageCounter() for k in Ks]
-            avg_ripple = AverageCounter()
-            avg_drop = AverageCounter()
-            for d in data_same_pars:
-                for l, d_oh in enumerate(d['overheads']):
-                    if d_oh != oh: continue
+    for cond in conditions:
+        plot_name = [   'per_' + cond.toStr,
+                        'nblocks_' + cond.toStr, 
+                        'ripple_' + cond.toStr, 
+                        'drop_rate_'+ cond.toStr]
+        p = plots()
+        p.automaticXScale = True
+        #p.automaticXScale = [0,0.3]
 
-                    for j,k in enumerate(Ks):
-                        per = d['error_counts'][l][j] / (k * d['nblocks'])
-                        avg_counters[j].add(per, d['nblocks'])
-                    if not math.isnan(d['avg_ripples'][l]):
-                        avg_ripple.add(d['avg_ripples'][l],
-                                       d['nblocks'])
-                    avg_drop.add(d['avg_drops'][l], d['nblocks'])
+        if nPlots>0:
+            p.add_plot(plot_name=plot_name[0],xlabel='K',ylabel='PER',logy=True)
+        if nPlots>1:
+            p.add_plot(plot_name=plot_name[1],xlabel='K',ylabel='nblocks',logy=False)
+        if nPlots>2:
+            p.add_plot(plot_name=plot_name[2],xlabel='K',ylabel='ripple',logy=False)
+        if nPlots>3:
+            p.add_plot(plot_name=plot_name[3],xlabel='K',ylabel='drop_rate',logy=False)
 
-            avg_ripples[i] = avg_ripple.avg
-            avg_drop_rates[i] = avg_drop.avg
-            avg_pers[i,:] = [c.avg for c in avg_counters]
-            nblocks[i] = avg_counters[0].total_weigth
+        for params in param_set:
+            p.automaticYScale = [math.pow(10,-7), 1]
 
-        if not param_filter(*params): continue
+            data_same_pars = [d for d in data if (tuple(d['Ks']),
+                                                tuple(d['RFs']),
+                                                d['EF'],
+                                                d['c'],
+                                                d['delta'],
+                                                d['iid_per']) == params]
+            Ks = params[0]
+            RFs = params[1]
+            EF = params[2]
+            c = params[3]
+            delta = params[4]
+            iid_per = params[5]
 
-        legend_str = ("Ks={!s},"
-                      "RFs={!s},"
-                      "EF={:d},"
-                      "c={:.2f},"
-                      "delta={:.2f},"
-                      "e={:.0e}").format(*params)
+            overheads = sorted(set(o for d in data_same_pars for o in d['overheads']))
 
-        mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
-                           x=overheads, y=avg_pers[:,0])
-        if len(Ks) > 1:
-            p.add_data(plot_name='per',label=legend_str,type='lib',
-                       x=overheads, y=avg_pers[:,1],
-                       color=mibline.get_color())
+            avg_pers = np.zeros((len(overheads), len(Ks)))
+            nblocks = np.zeros(len(overheads))
+            avg_ripples = np.zeros(len(overheads))
+            avg_drop_rates = np.zeros(len(overheads))
+            for i, oh in enumerate(overheads):
+                avg_counters = [AverageCounter() for k in Ks]
+                avg_ripple = AverageCounter()
+                avg_drop = AverageCounter()
+                for d in data_same_pars:
+                    for l, d_oh in enumerate(d['overheads']):
+                        if d_oh != oh: continue
 
-        p.add_data(plot_name='nblocks',label=legend_str,
-                   x=overheads, y=nblocks)
+                        for j,k in enumerate(Ks):
+                            per = d['error_counts'][l][j] / (k * d['nblocks'])
+                            avg_counters[j].add(per, d['nblocks'])
+                        if not math.isnan(d['avg_ripples'][l]):
+                            avg_ripple.add(d['avg_ripples'][l],
+                                        d['nblocks'])
+                        avg_drop.add(d['avg_drops'][l], d['nblocks'])
 
-        p.add_data(plot_name='ripple',label=legend_str,
-                   x=overheads, y=avg_ripples)
+                avg_ripples[i] = avg_ripple.avg
+                avg_drop_rates[i] = avg_drop.avg
+                avg_pers[i,:] = [c.avg for c in avg_counters]
+                nblocks[i] = avg_counters[0].total_weigth
 
-        p.add_data(plot_name='drop_rate',label=legend_str,
-                   x=overheads, y=avg_drop_rates)
+            #if not param_filter(*params): continue
+            if (RFs[0]>RF_max):                                     continue
+            if (EF>EF_max):                                         continue
+            if ((str(Ks) != cond.ks)*(cond.ks != '*')):             continue
+            #print(dir(cond.rfs))
+            if hasattr(cond.rfs[0], "__len__"):
+                if ((str(RFs) not in cond.rfs)*(cond.rfs != '*')):  continue
+            else:
+                if ((str(RFs) != cond.rfs)*(cond.rfs != '*')):      continue
+            if hasattr(cond.ef, "__len__"):
+                #print(cond.ef)
+                if ((EF not in cond.ef)*(cond.rfs != '*')):         continue
+            else:
+                if ((EF != cond.ef)*(cond.ef != '*')):              continue
+            
+            if ((c != cond.c)*(cond.c != '*')):                     continue
+            if ((delta != cond.delta)*(cond.delta != '*')):         continue
 
-        #the_oh_is = [i for i,oh in enumerate(overheads)
-        #             if math.isclose(oh, 0.24)]
-        #if len(the_oh_is) > 0:
-        #    the_oh_i = the_oh_is[0]
-        #    print("At overhead {:.2f}:".format(overheads[the_oh_i]))
-        #    print(" " * 4 + legend_str, end="")
-        #    print(" -> MIB={:e}, LIB={:e}".format(avg_pers[the_oh_i, 0],
-        #                                          avg_pers[the_oh_i, 1]))
+            #legend_str = ("Ks={!s},"
+            #            "RFs={!s},"
+            #            "EF={:d},"
+            #            "c={:.2f},"
+            #            "delta={:.2f},"
+            #            "e={:.0e}").format(*params)
+            legend_str = (  "Ks={!s},"
+                            "RFs={!s},"
+                            "EF={:d},"
+                            "E[nblocks]={:.0e}").format(params[0], 
+                                                        params[1], 
+                                                        params[2], 
+                                                        np.mean(nblocks))
 
-    datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    #save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
-    #save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)
+            if (cond.type == '*'):
+                # MIB PLOT
+                mibline = p.add_data(plot_name=plot_name[0],label=legend_str,type='mib',
+                        x=overheads, y=avg_pers[:,0])
+                # LIB PLOT
+                p.add_data(plot_name=plot_name[0],label=legend_str,type='lib',
+                        x=overheads, y=avg_pers[:,1],
+                        color=mibline.get_color())
+            else:
+                if (cond.type == 'lib'):
+                    p.add_data(plot_name=plot_name[0],label=legend_str,type='lib',
+                        x=overheads, y=avg_pers[:,1])
+                else:
+                    p.add_data(plot_name=plot_name[0],label=legend_str,type='mib',
+                        x=overheads, y=avg_pers[:,0])
 
-    plt.show()
+            p.automaticYScale = True
+            # nblocks
+            if nPlots>1:
+                p.add_data( plot_name=plot_name[1],label=legend_str, 
+                            x=overheads, y=nblocks)
+            # ripples
+            if nPlots>2:
+                p.add_data( plot_name=plot_name[2],label=legend_str,
+                            x=overheads, y=avg_ripples)
+            # drops
+            if nPlots>3:
+                p.add_data(plot_name=plot_name[3],label=legend_str,
+                    x=overheads, y=avg_drop_rates)
+
+            print(p.describe_plot(plot_name[0])+ ':' + legend_str)
+        if nPlots>0:
+            save_plot_png(p.get_plot(plot_name[0]),datestr + '_' + p.describe_plot(plot_name[0]))
+        if nPlots>1:
+            save_plot_png(p.get_plot(plot_name[1]),datestr + '_' + p.describe_plot(plot_name[1]))
+
+    #plt.show()

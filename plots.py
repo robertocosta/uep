@@ -3,16 +3,18 @@ import threading
 
 import matplotlib.pyplot as plt
 
+
 class plots:
 
     def __init__(self):
+        
         self.__plots = []
         self.__plot_ind = 0
         self.__nplots = 0
         self.minExp = -16
         self.__minY = math.pow(10,self.minExp)
-        self.automaticXScale = True
-        self.automaticYScale = True
+        self.__automaticXScale = True
+        self.__automaticYScale = True
 
     def __check_name(self,name):
         names = [self.__plots[i]['name'] for i in range(self.__nplots)]
@@ -21,7 +23,21 @@ class plots:
             return True
         else:
             return False
-
+    
+    @property
+    def automaticXScale(self):
+        return self.__automaticXScale
+    @automaticXScale.setter
+    def automaticXScale(self,value):
+        self.__automaticXScale = value
+    
+    @property
+    def automaticYScale(self):
+        return self.__automaticYScale
+    @automaticYScale.setter
+    def automaticYScale(self,value):
+        self.__automaticYScale = value
+    
     @property
     def toStr(self):
         s = 'plots:\n'
@@ -29,8 +45,8 @@ class plots:
         for i in range(len(names)):
             s += str(i) + ' : ' + names[i] + '\n'
         return s
-
-    def add_plot(self, **params): # params: { plot_name, xlabel, ylabel, logy}
+    
+    def add_plot(self,**params): # params: { plot_name, xlabel, ylabel, logy}
         plot_name = ''
         if ('plot_name' in params):
             plot_name = params['plot_name']
@@ -50,15 +66,15 @@ class plots:
             print('Error: no field \'ylabel\' specified')
             exit()
         logy = False
-        if ('logy' in params):
+        if ('logy' in params): 
             if (params['logy']==True):
                 logy = True
 
-
-        self.__plots.append({   'name':plot_name,
-                                'xmin': 0,
+             
+        self.__plots.append({   'name':plot_name, 
+                                'xmin': 0, 
                                 'xmax': 0,
-                                'ymin': 0.1*logy,
+                                'ymin': 0.1*logy, 
                                 'ymax': self.__minY,
                                 'xlabel': xlabel,
                                 'ylabel': ylabel,
@@ -67,10 +83,11 @@ class plots:
         self.__nplots += 1
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        if (logy):
+        plt.grid()
+        if (logy): 
             plt.gca().set_yscale('log')
 
-    def add_data(self, **params): #params = {'plot_name', 'x', 'y', 'label', 'type' in ['mib', 'lib']}
+    def add_data(self,**params): #params = {'plot_name', 'x', 'y', 'label', 'type' in ['mib', 'lib']}
         p = self.__plots
         if ('plot_name' in params):
             plt_name = params['plot_name']
@@ -86,7 +103,7 @@ class plots:
             print('Error: x, y array are necessary and they must be of the same length')
             exit()
         if ('label' in params == False):
-            print('Error: label is a necessary fields')
+            print('Error: label is a necessary fields')   
             exit()
         this_type = ''
         if ('type' in params):
@@ -97,50 +114,54 @@ class plots:
         y = params['y']
         x = params['x']
 
+        
         if (p['logy'] == True):
             if (min(y) <= 0):
-                print('Error: impossible to plot negative value in log scale.')
-                print('approximating 0 with {:.1e}'.format(self.__minY))
-                y_positive = [yi for yi in y if yi > 0]
+                #print('Error: impossible to plot negative value in log scale.')
+                #print('approximating 0 with {:.1e}'.format(self.__minY))
+                y_positive = y[[i for i in range(len(y)) if y[i]>0]]
                 #assert(all(y_positive[i]>0 for i in range(len(y_positive))))
                 #print('y_min = {:.1e}, p[\'y_min\'] = {:.1e}'.format(min(y_positive),p['ymin']))
-                if (self.automaticYScale == True):
-                    p['ymin'] = min([p['ymin'],min(y_positive)])
+                if (self.__automaticYScale == True):
+                    try:
+                        p['ymin'] = min([p['ymin'],min(y_positive)])
+                    except ValueError:
+                        p['ymin'] = self.__minY
                 else:
-                    p['ymin'] = self.automaticYScale[0]
-                y = [max(self.__minY, yi) for yi in y]
+                    p['ymin'] = self.__automaticYScale[0]
+                y[[i for i in range(len(y)) if y[i]<=0]] = self.__minY
             else:
-                if (self.automaticYScale == True):
+                if (self.__automaticYScale == True):
                     p['ymin'] = min([p['ymin'],min(y)])
                 else:
-                    p['ymin'] = self.automaticYScale[0]
-
+                    p['ymin'] = self.__automaticYScale[0]
+                
         else:
-            if (self.automaticYScale == True):
+            if (self.__automaticYScale == True):
                 p['ymin'] = min([p['ymin'],min(y)])
             else:
-                p['ymin'] = self.automaticYScale[0]
-        if (self.automaticYScale == True):
+                p['ymin'] = self.__automaticYScale[0]
+        if (self.__automaticYScale == True):
             p['ymax'] = max([p['ymax'],max(y)])
         else:
-            p['ymax'] = self.automaticYScale[1]
+            p['ymax'] = self.__automaticYScale[1]
 
-        if (self.automaticXScale == True):
+        if (self.__automaticXScale == True):
             p['xmin'] = min([p['xmin'],min(x)])
             p['xmax'] = max([p['xmax'],max(x)])
         else:
-            p['xmin'] = self.automaticXScale[0]
-            p['xmax'] = self.automaticXScale[1]
+            p['xmin'] = self.__automaticXScale[0]
+            p['xmax'] = self.__automaticXScale[1]
 
         ls = '-'
         if (this_type == 'lib'): ls += '-'
-
         if 'color' not in params:
             params['color'] = None
         newlines = plt.plot(x, y, color=params['color'], marker='.',linewidth=0.5,linestyle=ls,label=(this_type.upper() +' '+ params['label']))
+
+        #plt.plot(x, y, marker='.',linewidth=0.5,linestyle=ls,label=(this_type.upper() +' '+ params['label']))
         plt.xlim(p['xmin'], p['xmax']+math.fabs(p['xmax'])/100)
         plt.ylim(p['ymin'], p['ymax'] + math.fabs(p['ymax'])/100)
-        plt.grid()
         plt.legend()
         return newlines[0]
 
