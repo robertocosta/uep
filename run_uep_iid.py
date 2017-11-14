@@ -37,7 +37,7 @@ if __name__ == "__main__":
             pass
 
     Ks = [100, 1900]
-    RFs = [args.rf,1]
+    RFs = [args.rf, 1]
     EF = args.ef
 
     c = 0.1
@@ -55,10 +55,7 @@ if __name__ == "__main__":
     #oh.update(np.linspace(0.2,0.3,16))
     #oh = sorted(oh)
     #overheads = np.array(oh[20:])
-    overheads = np.linspace(0, 0.4, 16).tolist()
-    overheads += np.linspace(0.4, 0.8, 17)[1:].tolist()
-
-    used_rngstate = random.getstate()
+    overheads = np.linspace(0, 0.8, 33)
 
     avg_pers = np.zeros((len(overheads), len(Ks)))
     avg_drops = np.zeros(len(overheads))
@@ -76,7 +73,7 @@ if __name__ == "__main__":
         print("  errors = {!s}".format(error_counts[j]))
 
     newid = random.getrandbits(64)
-    save_data("uep_iid_other/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
+    save_data("uep_iid_final/uep_vs_oh_iid_{:d}.pickle.xz".format(newid),
               git_sha1=git_sha1,
               timestamp=datetime.datetime.now().timestamp(),
               used_rngstate=used_rngstate,

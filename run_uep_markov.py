@@ -51,8 +51,8 @@ if __name__ == "__main__":
 
     nblocks = args.nblocks
 
-    k_blocks = np.logspace(math.log10(100), math.log10(10000), 16, dtype=int)
-    Ks_frac = [0.1, 0.9]
+    k_blocks = np.linspace(100, 15100, 16, dtype=int)
+    Ks_frac = [0.05, 0.95]
 
     used_rngstate = random.getstate()
 
