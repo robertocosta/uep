@@ -4,6 +4,6 @@
 export MPLBACKEND=PDF
 
 for p in 0 0.01 0.1 0.3; do
-    python3 run_uep_iid.py --iid_per "$p" 3 4 1000
+    python3 run_uep_iid.py --iid_per "$p" 5 1 30000
     echo "Done with iid_per = $p"
 done
