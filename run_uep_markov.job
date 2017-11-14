@@ -1,28 +1,34 @@
 #!/bin/bash
-#$ -cwd -m ea
+#$ -cwd -m beas
 
 set -eu -o pipefail
 
 export MPLBACKEND=PDF
 
-rfs=(5)
-efs=(1)
-piB=(100) # ! 1/pi_B !
-EnB=(5 10 50 100)
+nblocks=5000
+overhead=0.3
 
-nblocks=30000
-overhead=0.25
+# Case 1: error-free vs K
+ef=1
+echo "Running error-free"
+for rf in 1 3 5; do
+    python3 run_uep_markov.py --overhead "$overhead" \
+	    "$rf" "$ef" "$nblocks" "inf" 1
+    echo "OK with RF = $rf"
+done
 
-python3 run_uep_markov.py --overhead "$overhead" \
-	5 1 "$nblocks" "inf" 1
-
+# Cases 3,4,5: vary EnB and pi_B
+piB=(10 100) # ! 1/pi_B !
+EnB=(5 10 50)
+rfs=(1 5)
+ef=1
+echo "Running correlated"
 for pib in ${piB[*]}; do
     for enb in ${EnB[*]}; do
 	for rf in ${rfs[*]}; do
-	    for ef in ${efs[*]}; do
-		python3 run_uep_markov.py --overhead "$overhead" \
-			"$rf" "$ef" "$nblocks" "$pib" "$enb"
-	    done
+	    python3 run_uep_markov.py --overhead "$overhead" \
+		    "$rf" "$ef" "$nblocks" "$pib" "$enb"
+	    echo "OK with RF = $rf, EnB = $enb, pi_B = $pib"
 	done
     done
 done

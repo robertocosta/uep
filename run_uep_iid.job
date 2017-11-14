@@ -1,5 +1,7 @@
 #!/bin/bash
-#$ -cwd -m ea
+#$ -cwd -m beas
+
+set -eu -o pipefail
 
 export MPLBACKEND=PDF
 
