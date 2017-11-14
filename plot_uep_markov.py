@@ -15,9 +15,21 @@ def pf_51(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
     return (Ks == (100,900) and
             RFs == (5,1) and
             EF == 1)
+def load_data_prefix_2(prefix, filter_func=None):
+    s3 = boto3.client('s3')
+    resp = s3.list_objects_v2(Bucket='uep.zanol.eu',
+                              Prefix=prefix)
+    items = list()
+    print("Found {:d} packs".format(len(resp['Contents'])))
+    for obj in resp['Contents']:
+        if filter_func is None or filter_func(obj):
+            items.append((load_data(obj['Key']), obj['Key']))
+    return items
+
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_17_11_14_3/uep_vs_k_markov_")
+    url = "uep_markov_final/"
+    data = load_data_prefix(url)
     #data = load_data_prefix("uep_markov_rc_17_11_12/uep_vs_k_markov_")
     print("Using {:d} data packs".format(len(data)))
 
@@ -29,6 +41,24 @@ if __name__ == "__main__":
                             d['avg_per'],
                             d['avg_bad_run'],
                             tuple(d['Ks_frac'])) for d in data))
+    #for item in param_set:
+    for j, k in load_data_prefix_2(url):
+        legend_str = ("Ks={!s},"
+                    "RFs={!s},"
+                    "EF={:d},"
+                    "c={:.2f},"
+                    "delta={:.2f},"
+                    "pib={:.1e}"
+                    "enb={:.1e}").format(j.get('Ks', 'none'),
+                                        j.get('RFs', 'none'),
+                                        j.get('EF', -1),
+                                        j.get('c', -1),
+                                        j.get('delta', -1),
+                                        j.get('avg_per',-1),
+                                        j.get('avg_bad_run',-1))
+        print("Key = " + k)
+        print("  " + legend_str)
+            
     param_filter = pf_all
     p = plots()
     #p.automaticXScale = True
@@ -37,8 +67,9 @@ if __name__ == "__main__":
     #param_filter = pf_all
     nPlots = 1 # how many different plot do you want for each condition? per, nbocks
     conditions = []
-    six_plots = True
-    if (six_plots == True):
+    four_plots = True
+    ks = [100,1900]
+    if (four_plots == True):
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':3, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
@@ -48,13 +79,47 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[1,1], 'ef': 3, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[3,1], 'ef': 3, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
-        #conditions.append(parameters({'ks':'*','rfs':[5,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[3,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':0,
+                                        'enb':1}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[3,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.01, 0.1],
+                                        'enb':5}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[3,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.01, 0.1],
+                                        'enb':10}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[3,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.01, 0.1],
+                                        'enb':50}))
     else:
         conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     RF_max = 5
     EF_max = 8
@@ -64,7 +129,7 @@ if __name__ == "__main__":
         plot_name = 'per_' + cond.toStr
         plot_name_nbl = 'nblocks' + cond.toStr
         p.automaticXScale = True
-        p.automaticXScale = [1,6200]
+        #p.automaticXScale = [1,6200]
 
         if nPlots>0:
             p.add_plot(plot_name = plot_name,xlabel='K',ylabel='PER',logy=True)
@@ -115,22 +180,57 @@ if __name__ == "__main__":
             #if ((EF != cond.ef)*(cond.ef != '*')):              continue
             #if ((c != cond.c)*(cond.c != '*')):                 continue
             #if ((delta != cond.delta)*(cond.delta != '*')):     continue
-            if (RFs[0]>RF_max):                                     continue
-            if (EF>EF_max):                                         continue
-            #if ((str(Ks) != cond.ks)*(cond.ks != '*')):             continue
-            #print(dir(cond.rfs))
-            if hasattr(cond.rfs[0], "__len__"):
-                if ((str(RFs) not in cond.rfs)*(cond.rfs != '*')):  continue
-            else:
-                if ((str(RFs) != cond.rfs)*(cond.rfs != '*')):      continue
-            if hasattr(cond.ef, "__len__"):
-                #print(cond.ef)
-                if ((EF not in cond.ef)*(cond.rfs != '*')):         continue
-            else:
-                if ((EF != cond.ef)*(cond.ef != '*')):              continue
             
-            if ((c != cond.c)*(cond.c != '*')):                     continue
-            if ((delta != cond.delta)*(cond.delta != '*')):         continue
+            if (RFs[0]>RF_max):                         
+                continue
+            if (EF>EF_max):                             
+                continue
+            # overhead check
+            if (cond.rfs != '*'):
+                if hasattr(cond.rfs[0], "__len__"):
+                    if (list(RFs) not in cond.rfs):    
+                        #print('RFs=',list(RFs),' not in ',cond.rfs,'=cond.rf')  
+                        continue
+                else:
+                    if (list(RFs) != cond.rfs):          
+                        continue
+            if (cond.ef != '*'):
+                if hasattr(cond.ef, "__len__"):
+                    if (EF not in cond.ef):            
+                        continue
+                else:
+                    if (EF != cond.ef):                 
+                        continue
+            if (cond.pib != '*'):
+                if hasattr(cond.pib, "__len__"):
+                    # many channels
+                    if avg_per not in cond.pib:
+                        #print('avg_per=',avg_per,' not in ', cond.pib,'=cond.pib')   
+
+                        continue
+                else:
+                    if (avg_per != cond.pib):  
+                        continue
+            if (cond.enb != '*'):
+                if hasattr(cond.enb, "__len__"):
+                    # many channels
+                    if avg_bad_run not in cond.enb: 
+                        #print('avg_bad_run=',avg_bad_run,' != ', cond.enb,'=cond.enb')   
+                        continue
+                else:
+                    if (avg_bad_run != cond.enb):  
+                        continue
+
+            if ((c != cond.c)*(cond.c != '*')):        
+                print('wrong c')
+                continue
+            if (cond.delta != '*'):
+                if (delta != cond.delta):
+                    print('wrong delta')
+                    continue
+
+
+
 
             legend_str = (  "RFs={!s},"
                             "EF={:d},"
@@ -140,6 +240,8 @@ if __name__ == "__main__":
                             "pi_b={:.0e},"
                             "EnB={:.2f},"
                             "Ks_frac={!s}").format(*params)
+            eng = float('inf')
+            if (avg_per!=0): eng = (avg_bad_run*(1-avg_per)/avg_per)
             legend_str = ( 
                             "RFs={!s},"
                             "EF={:d},"
@@ -147,7 +249,7 @@ if __name__ == "__main__":
                             "EnB={:.0f},"
                             "E[nblocks]={:.0e}").format(RFs[0], 
                                                         EF, 
-                                                        avg_bad_run*(1-avg_per)/avg_per,
+                                                        eng,
                                                         avg_bad_run, 
                                                         np.mean(nblocks))
             mibline = p.add_data(plot_name=plot_name,label=legend_str,type='mib',

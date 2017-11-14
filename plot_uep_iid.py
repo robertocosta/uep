@@ -32,7 +32,7 @@ def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
 
 if __name__ == "__main__":
     #data = load_data_prefix("uep_iid_other_deg_fix/uep_vs_oh_iid_")
-    data = load_data_prefix("uep_iid_other/uep_vs_oh_iid_")
+    data = load_data_prefix("uep_iid_final/uep_vs_oh_iid_")
     print("Using {:d} data packs".format(len(data)))
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -63,7 +63,39 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':ks,'rfs':[[3,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':ks,'rfs':[[3,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':[1,2,4], 'c':'*', 'delta':'*', 'type':'*', 'e':0}))
+        #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':[1,2], 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'e':0}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':[1,4], 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'e':0}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':2, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'e':[0.01, 0.1, 0.2]}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':2, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'e':[0.01, 0.1, 0.3]}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*', 'e':0}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*', 'e':0}))
+        #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*', 'e':0}))
         #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':[100,1900],'rfs':[4,1], 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':[1,2], 'c':'*', 'delta':'*', 'type':'*'}))
@@ -80,7 +112,7 @@ if __name__ == "__main__":
                         'drop_rate_'+ cond.toStr]
         p = plots()
         p.automaticXScale = True
-        #p.automaticXScale = [0,0.3]
+        #p.automaticXScale = [0,0.4]
 
         if nPlots>0:
             p.add_plot(plot_name=plot_name[0],xlabel='overhead',ylabel='PER',logy=True)
@@ -135,22 +167,43 @@ if __name__ == "__main__":
                 nblocks[i] = avg_counters[0].total_weigth
 
             #if not param_filter(*params): continue
-            if (RFs[0]>RF_max):                                     continue
-            if (EF>EF_max):                                         continue
-            if ((str(Ks) != cond.ks)*(cond.ks != '*')):             continue
-            #print(dir(cond.rfs))
-            if hasattr(cond.rfs[0], "__len__"):
-                if ((str(RFs) not in cond.rfs)*(cond.rfs != '*')):  continue
-            else:
-                if ((str(RFs) != cond.rfs)*(cond.rfs != '*')):      continue
-            if (cond.rfs != '*')*hasattr(cond.ef, "__len__"):
-                #print(cond.ef)
-                if ((cond.rfs != '*')*(EF not in cond.ef)):         continue
-            else:
-                if ((EF != cond.ef)*(cond.ef != '*')):              continue
-            
-            if ((c != cond.c)*(cond.c != '*')):                     continue
-            if ((delta != cond.delta)*(cond.delta != '*')):         continue
+            if (RFs[0]>RF_max):                         
+                continue
+            if (EF>EF_max):                             
+                continue
+            if (cond.ks != '*'):
+                if (str(Ks) != cond.ks):                
+                    continue
+            if (cond.rfs != '*'):
+                if hasattr(cond.rfs[0], "__len__"):
+                    if (list(RFs) not in cond.rfs):      
+                        continue
+                else:
+                    if (list(RFs) != cond.rfs):          
+                        continue
+            if (cond.ef != '*'):
+                if hasattr(cond.ef, "__len__"):
+                    if (EF not in cond.ef):            
+                        continue
+                else:
+                    if (EF != cond.ef):                 
+                        continue
+            if (cond.e != '*'):
+                if hasattr(cond.e, "__len__"):
+                    # many channels
+                    if iid_per not in cond.e:          
+                        continue
+                else:
+                    if (iid_per != cond.e):  
+                        continue
+
+            if ((c != cond.c)*(cond.c != '*')):        
+                print('wrong c')
+                continue
+            if (cond.delta != '*'):
+                if (delta != cond.delta):
+                    print('wrong delta')
+                    continue
 
             #legend_str = ("Ks={!s},"
             #            "RFs={!s},"
@@ -162,7 +215,7 @@ if __name__ == "__main__":
                             "RFs={!s},"
                             "EF={:d},"
                             "E[nbl.]={:.0e},"
-                            "pi_b={:.1e}").format(  params[0], 
+                            "e={:.1e}").format(  params[0], 
                                                     params[1], 
                                                     params[2], 
                                                     np.mean(nblocks),

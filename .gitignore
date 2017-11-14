@@ -68,3 +68,4 @@ jsvm-prefix/
 plot*.pdf
 python/*.cxx
 python/*.py
+*.job

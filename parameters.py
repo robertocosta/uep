@@ -9,6 +9,14 @@ class parameters:
         if (all_good == False):
             print('Error: ks, rfs, ef, c, delta, type are all necessary parameters.\nFill with * for any.')
             exit()
+        self.__e = '*'
+        self.__pib = '*'
+        self.__enb = '*'
+        if ('e' in params):
+            self.__e = params['e']
+        if ('pib' in params and 'enb' in params):
+            self.__pib = params['pib']
+            self.__enb = params['enb']
         self.__ks = params['ks']
         self.__rfs = params['rfs']
         self.__rfind = 0
@@ -20,48 +28,53 @@ class parameters:
             
     @property
     def ks(self):
-        if self.__ks == '*':
+        if str(self.__ks) == '*':
             return '*'
         else:
             return '('+str(self.__ks[0])+', '+str(self.__ks[1]) + ')'
     @ks.setter
     def ks(self,value):
         self.__ks = value
+
     @property
     def rfs(self):
-        if self.__rfs == '*':
+        if str(self.__rfs) == '*':
             return '*'
         else:
             rfs = self.__rfs
-            s = []
-            if hasattr(rfs[0], "__len__"):   # more than 1 condition for rfs [[]]
-                for rfi in self.__rfs:
-                    s.append('('+str(rfi[0])+', '+str(rfi[1]) + ')')
-            else:
-                s = '('+str(self.__rfs[0])+', '+str(self.__rfs[1]) + ')'
-
-            return s
+            #s = []
+            #if hasattr(rfs[0], "__len__"):   # more than 1 condition for rfs [[]]
+            #    for rfi in self.__rfs:
+            #        s.append('('+str(rfi[0])+', '+str(rfi[1]) + ')')
+            #else:
+            #    s = '('+str(self.__rfs[0])+', '+str(self.__rfs[1]) + ')'
+            #return s
+            return rfs
     @rfs.setter
     def rfs(self,value):
         self.__rfs = value
+
     @property
     def ef(self):
         return self.__ef
     @ef.setter
     def ef(self,value):
         self.__ef = value
+
     @property
     def c(self):
         return self.__c
     @c.setter
     def c(self,value):
         self.__c = value
+
     @property
     def delta(self):
         return self.__delta
     @delta.setter
     def delta(self,value):
         self.__delta = value
+
     @property
     def type(self):
         return self.__type
@@ -69,8 +82,29 @@ class parameters:
     def type(self,value):
         self.__type = value
 
+    @property
+    def e(self):
+        return self.__e
+    @e.setter
+    def e(self,value):
+        self.__e = value
+
+    @property
+    def pib(self):
+        return self.__pib
+    @pib.setter
+    def pib(self,value):
+        self.__pib = value  
+
+    @property
+    def enb(self):
+        return self.__enb
+    @enb.setter
+    def enb(self,value):
+        self.__enb = value
+
     def __ks2str(self):
-        if (self.__ks != '*'):
+        if (str(self.__ks) != '*'):
             s = 'ks_'
             for i in range(len(self.__ks)-1):
                 s += '{:d}-'.format(self.__ks[i])
@@ -78,7 +112,7 @@ class parameters:
             return s
         else: return ''
     def __rfs2str(self):
-        if (self.__rfs != '*'):
+        if (str(self.__rfs) != '*'):
             s = 'rfs_'
             if hasattr(self.__rfs[0], "__len__"):
                 for rfi in self.__rfs:
@@ -94,7 +128,7 @@ class parameters:
             return s
         else: return ''
     def __ef2str(self):
-        if (self.__ef != '*'):
+        if (str(self.__ef) != '*'):
             s = 'ef_'
             if hasattr(self.__ef, "__len__"):
                 for ef in self.__ef:
@@ -105,18 +139,51 @@ class parameters:
             return s
         else: return ''
     def __c2str(self):
-        if (self.__c != '*'):
+        if (str(self.__c) != '*'):
             return 'c_' + str(self.__c)
         else: return ''
     def __delta2str(self):
-        if (self.__delta != '*'):
+        if (str(self.__delta) != '*'):
             return 'ef_' + str(self.__delta)
         else: return ''
     def __type2str(self):
-        if (self.__type != '*'):
+        if (str(self.__type) != '*'):
             return 'type_' + str(self.__type)
         else: return ''
-
+    def __e2str(self):
+        if (str(self.__e) != '*'):
+            s = 'e_'
+            if hasattr(self.__e, "__len__"):
+                for e in self.__e:
+                    s += str(e)+'_'
+                s = s[0:len(s)-1]
+            else:
+                s += str(self.__e)
+            return s
+        else: return ''
+    def __pib2str(self):
+        if (str(self.__pib) != '*'):
+            s = 'pib_'
+            if hasattr(self.__pib, "__len__"):
+                for e in self.__pib:
+                    s += str(e)+'_'
+                s = s[0:len(s)-1]
+            else:
+                s += str(self.__pib)
+            return s
+        else: return ''
+    def __enb2str(self):
+        if (str(self.__enb) != '*'):
+            s = 'enb_'
+            if hasattr(self.__enb, "__len__"):
+                for e in self.__enb:
+                    s += str(e)+'_'
+                s = s[0:len(s)-1]
+            else:
+                s += str(self.__enb)
+            return s
+        else: return ''
+    
     @property
     def toStr(self):
         cond = [self.__ks!='*', 
@@ -124,13 +191,19 @@ class parameters:
                 self.__ef!='*',
                 self.__c!='*',
                 self.__delta!='*',
-                self.__type!='*']
+                self.__type!='*',
+                self.__e!='*',
+                self.__pib!='*',
+                self.__enb!='*']
         values = [  self.__ks2str(),
                     self.__rfs2str(),
                     self.__ef2str(),
                     self.__c2str(),
                     self.__delta2str(),
-                    self.__type2str()]
+                    self.__type2str(),
+                    self.__e2str(),
+                    self.__pib2str(),
+                    self.__enb2str()]
         n = sum([1 for i in range(len(cond)) if cond[i] == True])
         if n<1:
             return 'all'
