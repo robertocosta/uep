@@ -157,11 +157,12 @@ if __name__ == "__main__":
         #    print(" -> MIB={:e}, LIB={:e}".format(avg_pers[the_oh_i, 0],
         #                                          avg_pers[the_oh_i, 1]))
 
-    # datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
-    # save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)
-
-    plt.figure(p.get_plot('per'))
-    plt.savefig('uep_iid_per.pdf', format='pdf')
+    datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    save_plot_png(p.get_plot('per'),'iid/{} {}'.format(p.describe_plot('per'),
+                                                       datestr))
+    save_plot_png(p.get_plot('nblocks'),'iid/{} {}'.format(p.describe_plot('nblocks'),
+                                                       datestr))
+    save_plot_png(p.get_plot('drop_rate'),'iid/{} {}'.format(p.describe_plot('drop_rate'),
+                                                       datestr))
 
     plt.show()

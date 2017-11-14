@@ -3,14 +3,18 @@ import datetime
 import lzma
 import math
 import multiprocessing
+import os
+import os.path
 import pickle
 import random
 import re
 import sys
 
 import boto3
+import botocore
 import matplotlib.pyplot as plt
 
+from dateutil.tz import tzutc
 from scipy import stats
 
 if '../python' not in sys.path:
@@ -84,7 +88,7 @@ def update_average(m, sumw, s, w):
     #return m / (1 + w/sumw) + s / (w + sumw)
 	return (m*sumw+s*w)/(sumw+w)
 
-from dateutil.tz import tzutc
+
 
 def getUrls(*arg):
     s3 = boto3.client('s3')
@@ -123,15 +127,15 @@ def mean(numbers):
     return float(sum(numbers)) / max(len(numbers), 1)
 
 def save_plot_png(my_plot, name):
-    import os
     print_fig = my_plot
     print_fig.set_size_inches(10,8)
     print_fig.set_dpi(200)
-    os.makedirs('average', 777, True)
-    print_fig.savefig('average/'+name+'.png', format='png')
+    fullname = "average/{}.png".format(name)
+    os.makedirs(os.path.dirname(fullname), exist_ok=True)
+    print_fig.savefig(fullname, format='png')
 
 def load_data(key): 
-    import botocore
+
     config = botocore.client.Config(read_timeout=300)
     #s3 = boto3.resource('s3', config=config, region_name='us-east-1')
     s3 = boto3.client('s3', config=config)

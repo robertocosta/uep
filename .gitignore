@@ -29,6 +29,7 @@
 /.waf3-*/
 /CMakeC*
 /CMakeFiles/
+/average/
 /avg/*.png
 /bin/
 /build/
