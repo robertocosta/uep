@@ -1,6 +1,8 @@
 #ifndef UEP_DECODER_HPP
 #define UEP_DECODER_HPP
 
+#include <chrono>
+
 #include "block_decoder.hpp"
 #include "block_queues.hpp"
 #include "counter.hpp"
@@ -131,7 +133,7 @@ public:
   bool operator!() const;
 
   const base_row_generator &row_generator() const;
-  
+
 private:
   log::default_logger basic_lg, perf_lg;
 

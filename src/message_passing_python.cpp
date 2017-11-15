@@ -152,6 +152,10 @@ static PyObject *mp_context_average_ripple_size(mp_ctx_py *self) {
   return PyFloat_FromDouble(self->mp_ctx->average_ripple_size());
 }
 
+static PyObject *mp_context_average_run_duration(mp_ctx_py *self) {
+  return PyFloat_FromDouble(self->mp_ctx->average_run_duration());
+}
+
 static PyObject *mp_context_input_symbols(mp_ctx_py *self) {
   const mp_ctx_t &mp_ctx = *(self->mp_ctx);
   PyObject *out = PyList_New(mp_ctx.input_size());
@@ -191,6 +195,9 @@ static PyMethodDef mp_context_methods[] = {
   },
   {"average_ripple_size", (PyCFunction)mp_context_average_ripple_size, METH_NOARGS,
    "Avg ripple size"
+  },
+  {"average_run_duration", (PyCFunction)mp_context_average_run_duration, METH_NOARGS,
+   "Avg run duration"
   },
   {"input_symbols", (PyCFunction)mp_context_input_symbols, METH_NOARGS,
    "Input symbols"
