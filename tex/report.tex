@@ -298,12 +298,20 @@ Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti orig
 
 \section{Risultati} % Min 7 pages
 L'algoritmo per la protezione non uniforme esposto nel
-paragrafo~\ref{UEPsection} è stato testato nei due casi di canale senza
-memoria e di canale Markoviano per determinare la packet error rate
-ottenibile in queste due condizioni.
+paragrafo~\ref{UEPsection} è stato testato nei due casi di canale
+senza memoria e di canale Markoviano per determinare la packet error
+rate ottenibile in queste due condizioni.
 
 Sono stati inoltre misurati i tempi necessari alla codifica e
 decodifica dei pacchetti in funzione dell'overhead desiderato.
+
+Purtroppo l'esecuzione dell'intera implementazione dello schema di
+figura~\ref{fig:UDP} richiede un tempo tale da rendere difficoltosa la
+costruzione di grafici che siano precisi per PER basse.
+%
+I risultati dei paragrafi seguenti sono, quindi, stati ottenuti
+utilizzando solamente l'implementazione del message passing, senza
+trasmettere realmente dei pacchetti.
 
 \subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
