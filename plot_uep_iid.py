@@ -165,13 +165,13 @@ if __name__ == "__main__":
         #                                          avg_pers[the_oh_i, 1]))
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_plot_png(p.get_plot('per'),'iid/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('per'),'iid/{}/{} {}'.format(args.param_filter,
                                                           p.describe_plot('per'),
                                                           datestr))
-    save_plot_png(p.get_plot('nblocks'),'iid/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('nblocks'),'iid/{}/{} {}'.format(args.param_filter,
                                                               p.describe_plot('nblocks'),
                                                               datestr))
-    save_plot_png(p.get_plot('drop_rate'),'iid/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('drop_rate'),'iid/{}/{} {}'.format(args.param_filter,
                                                                 p.describe_plot('drop_rate'),
                                                                 datestr))
 
