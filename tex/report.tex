@@ -567,19 +567,14 @@ sub-linearmente al crescere di $EF$; i tempi di decodifica crescono
 velocemente fino al livello di overhead in cui la maggior parte dei
 pacchetti sono decodificati e, in seguito, la crescita diventa molto
 più lenta.
-
-anche se, nel
-caso di questa tesina, i valori sono molto più alti. Questo è dovuto
-al fatto che è stato considerato l'intero sistema di
-figura~\ref{fig:UDP}, con l'eccezione della generazione dei pacchetti
-e dell'invio tramite UDP.
 %
-Si può notare, in particolare, che il tempo di decodifica tende a
-saturare una volta raggiunto un livello di overhead che permette la
-decodifica di tutto il blocco.
-%
-Inoltre sia i tempi di codifica che di decodifica aumentano
-sub-linearmente in funzione di EF, come in \cite{uep}.
+I valori dei tempi di decodifica sono dello stesso ordine di grandezza
+di quelli riportati in \cite{uep}, mentre i valori dei tempi di
+codifica sono molto più alti, sia dell'articolo che dei tempi di
+decodifica corrisponenti. Questo può essere spiegato dal fatto che,
+mentre l'implementazione del message passing usata nelle simulazioni è
+scritta in C++, la generazione dei vettori di codifica è effettuata da
+uno script scritto in Python.
 
 \newpage
 \section{Conclusioni} % Max 0.5 pages
