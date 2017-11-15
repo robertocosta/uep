@@ -23,7 +23,9 @@ from operator import itemgetter
 from subprocess import check_call
 
 from ber import *
-from utils import *
+from utils.aws import *
+from utils.logs import *
+from utils.stats import *
 
 if __name__ == "__main__":
     config = botocore.client.Config(read_timeout=300)

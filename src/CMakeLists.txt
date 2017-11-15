@@ -105,12 +105,10 @@ set(python_files
   ber
   overhead
   plot_ber_iid
-  plot_ber_markov2_vs_ef
   plot_ber_markov2_vs_k
   plot_overhead
   uep_dec_time
   uep_enc_time
-  utils
 )
 
 foreach(pyf IN LISTS python_files)

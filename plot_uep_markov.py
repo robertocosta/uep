@@ -7,8 +7,9 @@ import numpy as np
 
 from plots import *
 from uep import *
-from utils import *
-
+from utils.aws import *
+from utils.plots import *
+from utils.stats import *
 
 class param_filters:
     @staticmethod

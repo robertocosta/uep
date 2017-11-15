@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
-from utils import *
+from utils.logs import *
 
 class ber_scanner:
     def sent_pkts_h(self, m):

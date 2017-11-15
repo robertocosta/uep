@@ -9,6 +9,8 @@ import subprocess
 import numpy as np
 
 from uep import *
+from utils.aws import *
+from utils.stats import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Runs a Markov UEP simulation.')

@@ -5,7 +5,7 @@ import numpy as np
 import sys
 import pandas as pd
 
-from utils import *
+from utils.logs import *
 
 class uep_dec_time_scanner:
     def __init__(self, clientlog):

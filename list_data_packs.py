@@ -1,5 +1,5 @@
 from uep import *
-
+from utils.aws import *
 
 def load_data_prefix_2(prefix, filter_func=None):
     s3 = boto3.client('s3')

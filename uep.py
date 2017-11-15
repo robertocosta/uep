@@ -1,18 +1,11 @@
 import concurrent.futures as cf
 import copy
-import lzma
 import math
 import os
-import os.path
-import pathlib
-import pickle
 import random
 import time
 
 #export PYTHONPATH='/mnt/d/git/uep/lib'
-
-import boto3
-import botocore
 
 from channel import *
 from mppy import *
@@ -147,61 +140,6 @@ def run_parallel(sim):
         results['drop_rate'] += w * r['drop_rate']
         results['avg_ripple'] += w * r['avg_ripple']
     return results
-
-def save_data(key, **kwargs):
-    s3 = boto3.client('s3')
-    data = lzma.compress(pickle.dumps(kwargs))
-    s3.put_object(Body=data,
-                  Bucket='uep.zanol.eu',
-                  Key=key,
-                  ACL='public-read')
-    url = ("http://uep.zanol.eu.s3"
-           ".amazonaws.com/{!s}".format(key))
-    return url
-
-def load_data(key):
-    path = pathlib.Path.home().joinpath(".cache", "uep_load_data", key)
-    try:
-        bindata = open(str(path), 'rb').read()
-    except FileNotFoundError as e:
-        config = botocore.client.Config(read_timeout=300)
-        s3 = boto3.client('s3', config=config)
-        obj = s3.get_object(Bucket='uep.zanol.eu',
-                            Key=key)
-        bindata = obj['Body'].read()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        open(str(path), 'xb').write(bindata)
-
-    return pickle.loads(lzma.decompress(bindata))
-
-def load_data_prefix(prefix, filter_func=None):
-    s3 = boto3.client('s3')
-    resp = s3.list_objects_v2(Bucket='uep.zanol.eu',
-                              Prefix=prefix)
-    items = list()
-    for obj in resp['Contents']:
-        if filter_func is None or filter_func(obj):
-            items.append(load_data(obj['Key']))
-    return items
-
-class AverageCounter:
-    def __init__(self):
-        self.__sum_w = 0
-        self.__avg = 0
-
-    def add(self, x, w):
-        new_sumw = self.__sum_w + w
-        self.__avg = (self.__sum_w * self.__avg +
-                      x * w) / new_sumw
-        self.__sum_w = new_sumw
-
-    @property
-    def avg(self):
-        return self.__avg
-
-    @property
-    def total_weigth(self):
-        return self.__sum_w
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
