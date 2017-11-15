@@ -516,35 +516,59 @@ padding e agli header.
 \subsection{Tempi di codifica e decodifica}
 Per verificare quanto tempo è necessario alla codifica e alla
 decodifica di un blocco di pacchetti al variare dei parametri è stata
-simulata la trasmissione di 100 blocchi al variare dell'overhead,
-utilizzando gli stessi parametri di \cite{uep}: $K = K_0 = 20000$,
-$RF_0 = 1$, $EF \in \{1,2,8\}$, $c=0.1$, $\delta=0.5$.
-%
-La dimensione dei pacchetti è stata impostata al valore ottimale
-$L=388$ per il video H264 trovata nel paragrafo~\ref{sec:pktsize}.
+simulata la trasmissione di 500 blocchi al variare dell'overhead,
+utilizzando lo stesso procedimento dei paragrafi precendenti.
 
-Nelle figure~\ref{fig:enctime} e~\ref{fig:dectime} sono mostrati,
-rispettivamente, i tempi medi di codifica e di decodifica ottenuti.
+Sono stati simulati sia il caso di equal error protection che quello
+di unequal error protection, usando diversi valori per il fattore di
+espansione $EF \in \{ 1,2,4 \}$. Gli altri parametri sono gli stessi
+dei paragrafi precedenti: $K = 2000$, $K_0 = K \cdot 0.05$, $c=0.1$,
+$\delta=0.5$ e per il caso UEP $RF_0 = 5$.
+
+In figura~\ref{fig:encdec} sono mostrati i tempi medi di codifica e di
+decodifica ottenuti eseguendo le simulazioni su una CPU Intel Xeon
+E5450 con 16 GB di RAM.
 %
 \begin{figure}[htb]
   \centering
   \begin{subfigure}{0.5\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{plot_enc_time}
-    \caption{Codifica}
-    \label{fig:enctime}
+    \includegraphics[width=\textwidth]{plot_enc_time_eep}
+    \caption{Codifica EEP}
+    \label{fig:enctime_eep}
   \end{subfigure}%
   \begin{subfigure}{0.5\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{plot_dec_time}
-    \caption{Decodifica}
-    \label{fig:dectime}
+    \includegraphics[width=\textwidth]{plot_dec_time_eep}
+    \caption{Decodifica EEP}
+    \label{fig:dectime_eep}
+  \end{subfigure}
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_enc_time_uep}
+    \caption{Codifica UEP}
+    \label{fig:enctime_uep}
+  \end{subfigure}%
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_dec_time_uep}
+    \caption{Decodifica UEP}
+    \label{fig:dectime_uep}
   \end{subfigure}
   \caption{Tempi medi di codifica e decodifica per un blocco di
-    $K=20000$ pacchetti.}
+    $K=2000$ pacchetti codificato usando EEP o UEP ($K_0 = 100$,
+    $RF_0=5$) con $EF \in \{1,2,4\}$.}
+  \label{fig:encdec}
 \end{figure}
 %
-Si può vedere che l'andamento è coerente con \cite{uep} anche se, nel
+Si può vedere che l'andamento è coerente con \cite{uep}: i tempi di
+codifica aumentano linearmente al crescere del'overhead e
+sub-linearmente al crescere di $EF$; i tempi di decodifica crescono
+velocemente fino al livello di overhead in cui la maggior parte dei
+pacchetti sono decodificati e, in seguito, la crescita diventa molto
+più lenta.
+
+anche se, nel
 caso di questa tesina, i valori sono molto più alti. Questo è dovuto
 al fatto che è stato considerato l'intero sistema di
 figura~\ref{fig:UDP}, con l'eccezione della generazione dei pacchetti
