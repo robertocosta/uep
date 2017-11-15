@@ -71,6 +71,10 @@ if __name__ == "__main__":
                                               d['EF'],
                                               d['c'],
                                               d['delta']) == params]
+        if len(data_same_pars) > 1:
+            print("Cannot average the execution times", file=sys.stderr)
+            sys.exit(1)
+
         Ks = params[0]
         RFs = params[1]
         EF = params[2]
