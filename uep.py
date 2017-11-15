@@ -7,6 +7,7 @@ import os.path
 import pathlib
 import pickle
 import random
+import time
 
 #export PYTHONPATH='/mnt/d/git/uep/lib'
 
@@ -60,7 +61,10 @@ class UEPSimulation:
         results = dict()
         results['error_counts'] = [0 for k in self.Ks]
         results['drop_count'] = 0
+
         sum_avg_ripples = 0
+        sum_avg_dec_times = 0
+        sum_avg_enc_times = 0
 
         n = math.ceil(self.K * (1 + self.overhead))
         mpctx = mp_context(self.__rowgen.K)
@@ -81,7 +85,9 @@ class UEPSimulation:
 
             for l in range(n):
                 if (channel is None or channel()):
+                    t = time.process_time()
                     mpctx.add_output(self.__rowgen())
+                    sum_avg_enc_times += time.process_time() - t
                 else:
                     results['drop_count'] += 1
 
@@ -89,6 +95,7 @@ class UEPSimulation:
             dec = mpctx.input_symbols()
 
             sum_avg_ripples += mpctx.average_ripple_size()
+            sum_avg_dec_times += mpctx.average_run_duration()
 
             offset = 0
             for i, k in enumerate(self.Ks):
@@ -102,6 +109,8 @@ class UEPSimulation:
         results['drop_rate'] = (results['drop_count'] /
                                 (self.nblocks * n))
         results['avg_ripple'] = sum_avg_ripples / self.nblocks
+        results['avg_dec_time'] = sum_avg_dec_times / self.nblocks
+        results['avg_enc_time'] = sum_avg_enc_times / self.nblocks
         return results
 
 def run_parallel(sim):
