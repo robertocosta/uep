@@ -40,6 +40,7 @@
 /doc/doxygen_sqlite3.db
 /doc/html
 /lib/
+/plot*.pdf
 /src/*.a
 /src/*.pb.cc
 /src/*.pb.h
@@ -66,6 +67,5 @@ git_commit_sha1
 iid_*.xz
 iid_*.xz
 jsvm-prefix/
-plot*.pdf
 python/*.cxx
 python/*.py
