@@ -122,13 +122,13 @@ if __name__ == "__main__":
         plt.autoscale(enable=True, axis='y', tight=False)
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_plot_png(p.get_plot('enc_time'),'time/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('enc_time'),'time/{}/{} {}'.format(args.param_filter,
                                                                 p.describe_plot('enc_time'),
                                                                 datestr))
-    save_plot_png(p.get_plot('dec_time'),'time/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('dec_time'),'time/{}/{} {}'.format(args.param_filter,
                                                                 p.describe_plot('dec_time'),
                                                                 datestr))
-    save_plot_png(p.get_plot('nblocks'),'time/{}/{} {}'.format(args.param_filter,
+    save_plot_pdf(p.get_plot('nblocks'),'time/{}/{} {}'.format(args.param_filter,
                                                                p.describe_plot('nblocks'),
                                                                datestr))
 
