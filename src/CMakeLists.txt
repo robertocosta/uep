@@ -58,22 +58,6 @@ target_link_libraries(nal_writer
   ${Boost_LIBRARIES}
 )
 
-add_executable(demo_ds demo_ds.cpp)
-target_link_libraries(demo_ds
-  block_encoder
-  block_queues
-  packets_rw
-  log
-  ${Boost_LIBRARIES}
-)
-
-add_executable(demo_dc demo_dc.cpp)
-target_link_libraries(demo_dc
-  decoder
-  packets_rw
-  log
-)
-
 add_executable(server server.cpp)
 target_link_libraries(server
   block_encoder
@@ -116,36 +100,6 @@ target_link_libraries(mppy
   ${PYTHON_LIBRARIES}
 )
 
-# add_executable(mp_plots mp_plots.cpp)
-# target_link_libraries(mp_plots
-#   decoder
-#   block_encoder
-#   log
-# )
-
-# add_executable(uep_mp_plots uep_mp_plots.cpp)
-# target_link_libraries(uep_mp_plots
-#   uep_decoder
-#   block_encoder
-#   log
-# )
-
-set_property(SOURCE uep_fast_run.i PROPERTY CPLUSPLUS ON)
-swig_add_module(uep_fast_run python
-  uep_fast_run.i
-  uep_fast_run.cpp
-  )
-swig_link_libraries(uep_fast_run
-  ${PYTHON_LIBRARIES}
-  block_encoder
-  log
-  uep_decoder
-)
-
-set_target_properties(${SWIG_MODULE_uep_fast_run_REAL_NAME}
-  PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SWIG_OUTDIR}
-)
-
 set(python_files
   avg_nal_segsizes
   ber
@@ -153,16 +107,7 @@ set(python_files
   plot_ber_iid
   plot_ber_markov2_vs_ef
   plot_ber_markov2_vs_k
-  plot_decodeable
-  plot_fast_iid
-  plot_fast_markov
-  plot_fast_time
   plot_overhead
-  plot_required
-  plot_time
-  separate_iid
-  separate_markov
-  separate_times
   uep_dec_time
   uep_enc_time
   utils

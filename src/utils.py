@@ -22,8 +22,6 @@ if '../python' not in sys.path:
 if './python' not in sys.path:
     sys.path.append('./python')
 
-from uep_fast_run import *
-
 class line_scanner:
     def __init__(self, fname):
         self.filename = fname
