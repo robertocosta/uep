@@ -1,0 +1,16 @@
+#!/bin/bash
+#$ -cwd -m beas
+
+set -eu -o pipefail
+
+export MPLBACKEND=PDF
+
+nblocks=1000
+
+echo "Running enc/dec times"
+for rf in 1 5; do
+    for ef in 1 2 4; do
+	python3 run_uep_time.py "$rf" "$ef" "$nblocks"
+    echo "OK with RF = $rf, EF = $ef"
+    done
+done
