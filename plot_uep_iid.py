@@ -87,7 +87,7 @@ if __name__ == "__main__":
         # overheads = sorted(set(overheads).intersection(np.linspace(0, 0.4, 16)))
 
         avg_pers = np.zeros((len(overheads), len(Ks)))
-        nblocks = np.zeros(len(overheads))
+        nblocks = np.zeros(len(overheads), dtype=int)
         avg_ripples = np.zeros(len(overheads))
         avg_drop_rates = np.zeros(len(overheads))
         for i, oh in enumerate(overheads):
@@ -113,6 +113,14 @@ if __name__ == "__main__":
 
         if not param_filter(*params): continue
 
+        # Average into a single PER when EEP
+        if len(RFs) > 1 and all(rf == 1 for rf in RFs):
+            new_pers = np.zeros((avg_pers.shape[0], 1))
+            for i, ps in enumerate(avg_pers):
+                avg_p = sum(p*k for p,k in zip(ps, Ks)) / sum(Ks)
+                new_pers[i] = avg_p
+            avg_pers = new_pers
+
         legend_str = ("Ks={!s},"
                       "RFs={!s},"
                       "EF={:d},"
@@ -120,9 +128,13 @@ if __name__ == "__main__":
                       "delta={:.2f},"
                       "e={:.0e}").format(*params)
 
-        mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
+        typestr = 'mib'
+        if all(rf == 1 for rf in RFs) or len(Ks) == 1:
+            typestr = 'eep'
+
+        mibline = p.add_data(plot_name='per',label=legend_str,type=typestr,
                            x=overheads, y=avg_pers[:,0])
-        if len(Ks) > 1:
+        if len(Ks) > 1 and any(rf != 1 for rf in RFs):
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=overheads, y=avg_pers[:,1],
                        color=mibline.get_color())

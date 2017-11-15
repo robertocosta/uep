@@ -94,8 +94,9 @@ if __name__ == "__main__":
         k_blocks = sorted(set(k for d in data_same_pars for k in d['k_blocks']))
 
         avg_pers = np.zeros((len(k_blocks), len(Ks_frac)))
-        nblocks = np.zeros(len(k_blocks))
+        nblocks = np.zeros(len(k_blocks), dtype=int)
         avg_drop_rates = np.zeros(len(k_blocks))
+        used_Ks = np.zeros((len(k_blocks), len(Ks_frac)), dtype=int)
         for i, k_block in enumerate(k_blocks):
             avg_counters = [AverageCounter() for k in Ks_frac]
             avg_drop = AverageCounter()
@@ -107,11 +108,21 @@ if __name__ == "__main__":
                                (d['used_Ks'][l][j] * d['nblocks']))
                         avg_counters[j].add(per, d['nblocks'])
                     avg_drop.add(d['avg_drops'][l], d['nblocks'])
+                    used_Ks[i] = d['used_Ks'][l]
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
             avg_drop_rates[i] = avg_drop.avg
 
         if not param_filter(*params): continue
+
+        # Average into a single PER when EEP
+        if len(RFs) > 1 and all(rf == 1 for rf in RFs):
+            new_pers = np.zeros((avg_pers.shape[0], 1))
+            for i, ps in enumerate(avg_pers):
+                avg_p = (sum(p*k for p,k in zip(ps, used_Ks[i])) /
+                         sum(used_Ks[i]))
+                new_pers[i] = avg_p
+            avg_pers = new_pers
 
         legend_str = ("RFs={!s},"
                       "EF={:d},"
@@ -122,9 +133,13 @@ if __name__ == "__main__":
                       "avg_bad_run={:.2f},"
                       "Ks_frac={!s}").format(*params)
 
-        mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
+        typestr = 'mib'
+        if all(rf == 1 for rf in RFs) or len(Ks_frac) == 1:
+            typestr = 'eep'
+
+        mibline = p.add_data(plot_name='per',label=legend_str,type=typestr,
                            x=k_blocks, y=avg_pers[:,0])
-        if len(Ks_frac) > 1:
+        if len(Ks_frac) > 1 and any(rf != 1 for rf in RFs):
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=k_blocks, y=avg_pers[:,1],
                        color=mibline.get_color())
