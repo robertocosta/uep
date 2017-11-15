@@ -16,6 +16,15 @@ class param_filters:
     def all(Ks, RFs, EF, c, delta):
         return True
 
+    @staticmethod
+    def eep(Ks, RFs, EF, c, delta):
+        return (len(Ks) == 1 or
+                all(rf == 1 for rf in RFs))
+
+    @staticmethod
+    def uep(*args):
+        return not param_filters.eep(*args)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Plots the UEP timing results.',
                                      allow_abbrev=False)
