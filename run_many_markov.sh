@@ -3,7 +3,7 @@
 set -eu -o pipefail
 
 jobName=(mar_2 mar_3 mar_4)
-nblocks=(6400)
+nblocks=(64000)
 
 function writeJob {
     pis=$4
