@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <chrono>
+#include <ctime>
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
@@ -149,10 +149,16 @@ public:
   std::size_t decoded_count() const;
   /** True when all the input symbols have been decoded. */
   bool has_decoded() const;
-  /** Return the time it took to complete the last call to run. */
+  /** Return the time it took to complete the last call to run. This
+   *  is valid only if the program is running single-threaded.
+   */
   double run_duration() const;
   /** Return the average ripple size since the last reset. */
   double average_ripple_size() const;
+  /** Return the average run duration since the last reset.  This is
+   *  valid only if the program is running single-threaded.
+   */
+  double average_run_duration() const;
 
   /** Return an iterator to the start of the set of input symbols.
    *  The symbols are either decoded or convertible to false.
@@ -195,12 +201,15 @@ private:
 			       *   packets.
 			       */
 
-  std::chrono::duration<double> last_run_time; /**< The time that the
-						*   last call to run
-						*   took.
-						*/
+  double last_run_time; /**< The time that the
+			 *   last call to run
+			 *   took.
+			 */
 
   stat::average_counter _ripple_size; /**< Mesaure the average ripple
+				       *   size since the last reset.
+				       */
+  stat::average_counter _avg_run_time; /**< Mesaure the average ripple
 				       *   size since the last reset.
 				       */
 
@@ -255,7 +264,7 @@ mp_context<Symbol,SymbolTraits>::mp_context(std::size_t in_size) :
   degone_last(nullptr),
   degone_size(0),
   decoded_count_(0),
-  last_run_time(std::chrono::duration<double>::zero()) {
+  last_run_time(0) {
   // Build in_size empty input nodes
   inputs.resize(in_size);
   std::size_t pos = 0;
@@ -275,7 +284,9 @@ mp_context<Symbol,SymbolTraits>::mp_context(mp_context &&other) :
   degone_size(std::move(other.degone_size)),
   decoded_count_(std::move(other.decoded_count_)),
   last_run_time(std::move(other.last_run_time)),
-  _ripple_size(std::move(other._ripple_size)) {
+  _ripple_size(std::move(other._ripple_size)),
+  _avg_run_time(std::move(other._avg_run_time)) {
+
 }
 
 template <class Symbol, class SymbolTraits>
@@ -287,7 +298,8 @@ mp_context<Symbol,SymbolTraits>::mp_context(const mp_context &other) :
   degone_size(0), // The list must be rebuilt
   decoded_count_(other.decoded_count_),
   last_run_time(other.last_run_time),
-  _ripple_size(other._ripple_size) {
+  _ripple_size(other._ripple_size),
+  _avg_run_time(other._avg_run_time) {
   std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
 		 [](const std::unique_ptr<node> &p){
 		   return std::make_unique<node>(*p);
@@ -312,6 +324,7 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(mp_c
   decoded_count_ = std::move(other.decoded_count_);
   last_run_time = std::move(other.last_run_time);
   _ripple_size = std::move(other._ripple_size);
+  _avg_run_time = std::move(other._avg_run_time);
   return *this;
 }
 
@@ -325,6 +338,7 @@ mp_context<Symbol,SymbolTraits> &mp_context<Symbol,SymbolTraits>::operator=(cons
   decoded_count_ = other.decoded_count_;
   last_run_time = other.last_run_time;
   _ripple_size = other._ripple_size;
+  _avg_run_time = other._avg_run_time;
   std::transform(other.inputs.cbegin(), other.inputs.cend(), inputs.begin(),
 		 [](const std::unique_ptr<node> &p){
 		   return std::make_unique<node>(*p);
@@ -427,14 +441,12 @@ void mp_context<Symbol,SymbolTraits>::process_ripple(node *last_decoded) {
 
 template <class Symbol, class SymbolTraits>
 void mp_context<Symbol,SymbolTraits>::run() {
-  using namespace std::chrono;
-
   if (has_decoded()) {
-    last_run_time = duration<double>::zero();
+    last_run_time = 0;
     return;
   }
 
-  auto t = high_resolution_clock::now();
+  std::clock_t t = std::clock();
 
   for (;;) {
     _ripple_size.add_sample(degone_size);
@@ -445,7 +457,8 @@ void mp_context<Symbol,SymbolTraits>::run() {
     process_ripple(last_decoded);
   }
 
-  last_run_time = high_resolution_clock::now() - t;
+  last_run_time = static_cast<double>(std::clock() - t) / CLOCKS_PER_SEC;
+  _avg_run_time.add_sample(last_run_time);
 }
 
 template <class Symbol, class SymbolTraits>
@@ -543,23 +556,29 @@ void mp_context<Symbol,SymbolTraits>::reset() {
   degone_last = nullptr;
   degone_size = 0;
   decoded_count_ = 0;
-  last_run_time = std::chrono::duration<double>::zero();
+  last_run_time = 0;
   for (std::unique_ptr<node> &n : inputs) {
     n->symbol = symbol_traits::create_empty();
     n->edges.clear();
   }
   outputs.clear();
   _ripple_size.reset();
+  _avg_run_time.reset();
 }
 
 template <class Symbol, class SymbolTraits>
 double mp_context<Symbol,SymbolTraits>::run_duration() const {
-  return last_run_time.count();
+  return last_run_time;
 }
 
 template<typename Symbol, typename SymbolTraits>
 double mp_context<Symbol,SymbolTraits>::average_ripple_size() const {
   return _ripple_size.value();
+}
+
+template<typename Symbol, typename SymbolTraits>
+double mp_context<Symbol,SymbolTraits>::average_run_duration() const {
+  return _avg_run_time.value();
 }
 
 }}

@@ -1,55 +1,49 @@
+import argparse
 import datetime
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from plots import *
 from uep import *
-from utils import *
+from utils.aws import *
+from utils.plots import *
+from utils.stats import *
 
-def pf_all(Ks, RFs, EF, c, delta, iid_per):
-    return True
 
-def pf_EF_1000(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            RFs == (1,1))
+class param_filters:
+    @staticmethod
+    def all(Ks, RFs, EF, c, delta, iid_per):
+        return True
 
-def pf_RFs(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            EF == 4)
+    @staticmethod
+    def error_free(Ks, RFs, EF, c, delta, iid_per):
+        return (iid_per == 0)
 
-def pf_paper_only(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            RFs == (3,1) and
-            EF == 4 and
-            c == 0.1 and
-            delta == 0.5 and
-            iid_per == 0)
-
-def pf_EF_20000(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (20000,) and
-            RFs == (1,))
-
-def pf_EEP(Ks, RFs, EF, c, delta, iid_per):
-    return ((RFs == (1,) or RFs == (1,1)) and
-            EF == 1)
-
-def pf_EF_EEP(Ks, RFs, EF, c, delta, iid_per):
-    return RFs == (1,)
+    @staticmethod
+    def iid_errors(Ks, RFs, EF, c, delta, iid_per):
+        return (iid_per != 0)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_iid_final/uep_vs_oh_iid_")
+    parser = argparse.ArgumentParser(description='Plots the IID UEP results.',
+                                     allow_abbrev=False)
+    parser.add_argument("--param_filter", help="How to filter the data",
+                        type=str, default="all")
+    args = parser.parse_args()
+
+    data = load_data_prefix("uep_iid_final/")
 
     git_sha1_set = sorted(set(d.get('git_sha1') or 'None' for d in data))
     print("Found {:d} commits:".format(len(git_sha1_set)))
     for s in git_sha1_set:
         print("  - " + s)
 
-    wanted_commits = [
-        "57551110162e9e4f4d2094c1d86c6686a501fd96",
-    ]
+    # wanted_commits = [
+    #     "57551110162e9e4f4d2094c1d86c6686a501fd96",
+    # ]
 
-    data = [d for d in data if d.get('git_sha1') in wanted_commits]
+    # data = [d for d in data if d.get('git_sha1') in wanted_commits]
 
     print("Using {:d} data packs".format(len(data)))
 
@@ -61,11 +55,12 @@ if __name__ == "__main__":
                             d['iid_per']) for d in data))
 
     # Old results no not have the avg_ripples
-    for d in data:
-        if 'avg_ripples' not in d:
-            d['avg_ripples'] = [float('nan') for o in d['overheads']]
+    # for d in data:
+    #     if 'avg_ripples' not in d:
+    #         d['avg_ripples'] = [float('nan') for o in d['overheads']]
 
-    param_filter = pf_all #pf_paper_only
+    param_filter = getattr(param_filters, args.param_filter)
+    assert(callable(param_filter))
 
     p = plots()
     p.automaticXScale = True
@@ -73,7 +68,7 @@ if __name__ == "__main__":
     p.automaticYScale = [1e-8, 1]
     p.add_plot(plot_name='per',xlabel='Overhead',ylabel='PER',logy=True)
     p.add_plot(plot_name='nblocks',xlabel='Overhead',ylabel='nblocks',logy=False)
-    p.add_plot(plot_name='ripple',xlabel='Overhead',ylabel='ripple',logy=False)
+    #p.add_plot(plot_name='ripple',xlabel='Overhead',ylabel='ripple',logy=False)
     p.add_plot(plot_name='drop_rate',xlabel='Overhead',ylabel='drop_rate',logy=False)
 
     for params in param_set:
@@ -95,7 +90,7 @@ if __name__ == "__main__":
         # overheads = sorted(set(overheads).intersection(np.linspace(0, 0.4, 16)))
 
         avg_pers = np.zeros((len(overheads), len(Ks)))
-        nblocks = np.zeros(len(overheads))
+        nblocks = np.zeros(len(overheads), dtype=int)
         avg_ripples = np.zeros(len(overheads))
         avg_drop_rates = np.zeros(len(overheads))
         for i, oh in enumerate(overheads):
@@ -121,6 +116,14 @@ if __name__ == "__main__":
 
         if not param_filter(*params): continue
 
+        # Average into a single PER when EEP
+        if len(RFs) > 1 and all(rf == 1 for rf in RFs):
+            new_pers = np.zeros((avg_pers.shape[0], 1))
+            for i, ps in enumerate(avg_pers):
+                avg_p = sum(p*k for p,k in zip(ps, Ks)) / sum(Ks)
+                new_pers[i] = avg_p
+            avg_pers = new_pers
+
         legend_str = ("Ks={!s},"
                       "RFs={!s},"
                       "EF={:d},"
@@ -128,9 +131,13 @@ if __name__ == "__main__":
                       "delta={:.2f},"
                       "e={:.0e}").format(*params)
 
-        mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
+        typestr = 'mib'
+        if all(rf == 1 for rf in RFs) or len(Ks) == 1:
+            typestr = 'eep'
+
+        mibline = p.add_data(plot_name='per',label=legend_str,type=typestr,
                            x=overheads, y=avg_pers[:,0])
-        if len(Ks) > 1:
+        if len(Ks) > 1 and any(rf != 1 for rf in RFs):
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=overheads, y=avg_pers[:,1],
                        color=mibline.get_color())
@@ -140,9 +147,9 @@ if __name__ == "__main__":
                    x=overheads, y=nblocks)
         plt.autoscale(enable=True, axis='y', tight=False)
 
-        p.add_data(plot_name='ripple',label=legend_str,
-                   x=overheads, y=avg_ripples)
-        plt.autoscale(enable=True, axis='y', tight=False)
+        # p.add_data(plot_name='ripple',label=legend_str,
+        #            x=overheads, y=avg_ripples)
+        # plt.autoscale(enable=True, axis='y', tight=False)
 
         p.add_data(plot_name='drop_rate',label=legend_str,
                    x=overheads, y=avg_drop_rates)
@@ -158,7 +165,14 @@ if __name__ == "__main__":
         #                                          avg_pers[the_oh_i, 1]))
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    #save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
-    #save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)
+    save_plot_pdf(p.get_plot('per'),'iid/{}/{} {}'.format(args.param_filter,
+                                                          p.describe_plot('per'),
+                                                          datestr))
+    save_plot_pdf(p.get_plot('nblocks'),'iid/{}/{} {}'.format(args.param_filter,
+                                                              p.describe_plot('nblocks'),
+                                                              datestr))
+    save_plot_pdf(p.get_plot('drop_rate'),'iid/{}/{} {}'.format(args.param_filter,
+                                                                p.describe_plot('drop_rate'),
+                                                                datestr))
 
     plt.show()

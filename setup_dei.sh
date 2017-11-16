@@ -16,17 +16,20 @@ popd
 git log -1 --format='%H' > git_commit_sha1
 
 ssh ${dei_user}@login.dei.unipd.it "mkdir -p '$dei_dir'"
-scp \
+scp -r \
     "${build_dir}/lib/mppy.so" \
     git_commit_sha1 \
-    run_many_markov.sh \
     run_many_iid.sh \
+    run_many_markov.sh \
     run_uep_iid.job \
     run_uep_iid.py \
     run_uep_markov.job \
     run_uep_markov.py \
+    run_uep_time.job \
+    run_uep_time.py \
     src/channel.py \
     uep.py \
     uep_random.py \
+    utils/ \
     ${dei_user}@login.dei.unipd.it:"$dei_dir"
 ssh -t ${dei_user}@login.dei.unipd.it "cd '$dei_dir' && \$SHELL -l"

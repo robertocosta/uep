@@ -87,7 +87,7 @@
 \tikzset{
   font={\fontsize{9pt}{12}\selectfont}}
 
-\usepackage{biblatex}
+\usepackage[sorting=none]{biblatex}
 \addbibresource{report.bib}
 
 %%% references %%%
@@ -298,12 +298,20 @@ Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti orig
 
 \section{Risultati} % Min 7 pages
 L'algoritmo per la protezione non uniforme esposto nel
-paragrafo~\ref{UEPsection} è stato testato nei due casi di canale senza
-memoria e di canale Markoviano per determinare la packet error rate
-ottenibile in queste due condizioni.
+paragrafo~\ref{UEPsection} è stato testato nei due casi di canale
+senza memoria e di canale Markoviano per determinare la packet error
+rate ottenibile in queste due condizioni.
 
 Sono stati inoltre misurati i tempi necessari alla codifica e
 decodifica dei pacchetti in funzione dell'overhead desiderato.
+
+Purtroppo l'esecuzione dell'intera implementazione dello schema di
+figura~\ref{fig:UDP} richiede un tempo tale da rendere difficoltosa la
+costruzione di grafici che siano precisi per PER basse.
+%
+I risultati dei paragrafi seguenti sono, quindi, stati ottenuti
+utilizzando solamente l'implementazione del message passing, senza
+trasmettere realmente dei pacchetti.
 
 \subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
@@ -311,69 +319,81 @@ applicazione ottenuta variando l'overhead e considerando diversi
 valori per la packet error rate del canale.
 %
 Facendo riferimento alla figura~\ref{fig:UDP}, la PER di livello
-applicazione è misurata come la frazione di pacchetti forniti all'UEP
-encoder che raggiungono l'uscita dell'UEP decoder.
+applicazione è la frazione di pacchetti forniti all'UEP encoder che
+raggiungono l'uscita dell'UEP decoder, che corrisponde alla frazione
+di pacchetti decodificati dal message passing.
 %
 L'overhead è definito, in modo analogo a \cite{uep}, come $t =
-\frac{N-K}{K}$, cioè come l'aumento relativo del numero di pacchetti
-trasmessi dovuto alla codifica.
-
-Per permettere l'esecuzione di un gran numero di test, l'encoder e il
-decoder sono stati eseguiti sullo stesso computer, senza inviare
-pacchetti UDP e simulando un canale senza memoria che scarta i
-pacchetti con una data probabilità $e$.
+\frac{N-K}{K}$, dove $N$ è il numero di pacchetti codificati prodotti
+per ogni blocco e $K$ è la dimensione del blocco.
 %
-Per lo stesso motivo è stata utilizzata in questo paragrafo una
-sorgente di pacchetti generati casualmente invece di segmentare
-realmente un video H264.
+Il canale iid è simulato scartando con probabilità $e$ ognuno degli
+$N$ pacchetti codificati.
 
-Sono stati usati gli stessi valori per i parametri specificati da
-\cite{uep} per permettere un confronto con i risultati ottenuti in
-questa tesina e di verificare la correttezza dell'implementazione.
-%
-I pacchetti in ingresso sono aggregati in blocchi di $K_0 = 100$
-pacchetti importanti e $K_1 = 900$ pacchetti non importanti; il blocco
-virtuale è stato costruito ripetendo $RF_0 = 3$ volte il primo
-sotto-blocco, $RF_1 = 1$ volte il secondo ed espandendo la sequenza di
-pacchetti così ottenuta di un fattore $EF = 4$. La lunghezza del
-blocco virtuale è quindi pari a $EF \cdot \left( RF_0 \cdot K_0 + RF_1
-\cdot K_1 \right) = 4800$ pacchetti.
+I valori per i parametri sono stati scelti come in \cite{uepother},
+una versione precedente di \cite{uep}, perché permettono di
+evidenziare meglio il diverso comportamento della PER relativa ai
+pacchetti importanti rispetto al resto del blocco.
+
+Sono stati usati blocchi contenenti $K_0 = 100$ pacchetti importanti e
+$K_1 = 1900$ pacchetti non importanti, il blocco virtuale è stato
+costruito ripetendo $RF_0 = 5$ volte il primo sotto-blocco, $RF_1 = 1$
+volte il secondo ed espandendo la sequenza di pacchetti così ottenuta
+di un fattore $EF = 2$. La lunghezza del blocco virtuale è quindi pari
+a $EF \cdot \left( RF_0 \cdot K_0 + RF_1 \cdot K_1 \right) = 4800$
+pacchetti.
 %
 L'overhead è stato fatto variare nell'intervallo $[0, 0.8]$, a cui
-corrisponde un numero di pacchetti inviati $N \in [1000, 1800]$ per
+corrisponde un numero di pacchetti inviati $N \in [2000, 3600]$ per
 ogni blocco di $K=K_0+K_1$ pacchetti.
 %
-La probabilità di errore del canale è stata impostata ai valori
-$e \in \left\{ 0, 10^{-2}, 10^{-1}, 2 \cdot 10^{-1} \right\}$.
+La probabilità di errore del canale è stata impostata ai valori $e \in
+\left\{10^{-2}, 10^{-1}, 2 \cdot 10^{-1} \right\}$, oltre al caso
+senza errori con $e=0$.
 
-In figura~\ref{fig:iid} sono mostrati i risultati della simulazione di
-una trasmissione di 10000 blocchi.
+Nelle figure~\ref{fig:zero_oh} e~\ref{fig:iid_oh} sono mostrati i
+risultati della simulazione di 10000 blocchi.
 %
-\begin{figure}[H]
-    \centering
-        \includegraphics[clip, trim=0cm 0cm 0cm 0cm, width=0.80\textwidth]{plot_ber_iid.pdf}
-    \caption{Packet error rate misurata su un canale iid al variare
-    dell'overhead}
-    \label{fig:iid}
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_ber_zero_oh}
+  \caption{Packet error rate al variare dell'overhead su un canale
+    senza errori.}
+  \label{fig:zero_oh}
 \end{figure}
 %
-Come è possibile osservare, le curve corrispondenti al canale senza
-errori ($e=0$) sono coerenti con \cite{uep} fino a una PER di
-$10^{-3}$, infatti in corrispondenza di un overhead del 25\% la PER
-della parte più importante scende sotto $10^-3$ come nel paper
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.8\textwidth]{plot_ber_iid}
+  \caption{Packet error rate al variare dell'overhead su un canale
+    iid.}
+  \label{fig:iid_oh}
+\end{figure}
 
-: la probabilità di errore
-scende sotto $10^{-3}$ con un over
-
-. Negli altri tre casi, invece, la PER segue lo
-stesso andamento del caso senza errori ed è semplicemente traslata
-verso destra di una lunghezza pari alla PER del canale.
+Nel caso senza errori (figura~\ref{fig:zero_oh}) si può vedere come la
+scelta dei vettori di codifica che predilige i pacchetti importanti
+fornisca un miglioramento nella PER relativa a questi ultimi, rispetto
+al caso EEP.
 %
-Si può infatti notare come nel caso $e = 10^{-2}$ l'algoritmo testato
-abbia delle prestazioni molto vicine a quelle ottenibili su un canale
-senza errori, mentre nei casi con PER $e = 10^{-1}$ ed $e = 3\cdot
-10^{-1}$ le curve siano traslate, rispettivamente, di $0.1$ e $0.3$
-rispetto al caso senza errori.
+D'altro canto vediamo come la PER relativa ai pacchetti meno
+importanti, anche se inizialmente è migliore del caso EEP, al crescere
+dell'overhead decresce più lentamente e rimane sopra a $10^{-8}$ per
+tutto l'intervallo considerato.
+%
+Il fattore di espansione $EF$ non fornisce miglioramenti significativi
+della PER del MIB, mentre permette di diminuire la PER del LIB per gli
+overhead più alti.
+
+Dal grafico delle PER per il caso in cui il canale perde pacchetti in
+modo iid (figura~\ref{fig:iid_oh}) è possible vedere che le curve
+seguono lo stesso andamento del caso precedente. Sono semplicemente
+traslate di una quantità pari al valore della PER del canale.
+%
+Infatti, nel caso $e = 10^{-2}$ l'algoritmo testato ha delle
+prestazioni molto vicine a quelle ottenibili sul canale senza errori,
+mentre nei casi con PER $e = 10^{-1}$ ed $e = 2\cdot 10^{-1}$ le curve
+siano traslate, rispettivamente, circa di $0.1$ e $0.2$ rispetto al
+caso senza errori.
 
 \subsection{Packet error rate su un canale Markoviano}
 Nel caso del canale Markoviano, descritto nel
@@ -516,46 +536,65 @@ padding e agli header.
 \subsection{Tempi di codifica e decodifica}
 Per verificare quanto tempo è necessario alla codifica e alla
 decodifica di un blocco di pacchetti al variare dei parametri è stata
-simulata la trasmissione di 100 blocchi al variare dell'overhead,
-utilizzando gli stessi parametri di \cite{uep}: $K = K_0 = 20000$,
-$RF_0 = 1$, $EF \in \{1,2,8\}$, $c=0.1$, $\delta=0.5$.
-%
-La dimensione dei pacchetti è stata impostata al valore ottimale
-$L=388$ per il video H264 trovata nel paragrafo~\ref{sec:pktsize}.
+simulata la trasmissione di 500 blocchi al variare dell'overhead,
+utilizzando lo stesso procedimento dei paragrafi precendenti.
 
-Nelle figure~\ref{fig:enctime} e~\ref{fig:dectime} sono mostrati,
-rispettivamente, i tempi medi di codifica e di decodifica ottenuti.
+Sono stati simulati sia il caso di equal error protection che quello
+di unequal error protection, usando diversi valori per il fattore di
+espansione $EF \in \{ 1,2,4 \}$. Gli altri parametri sono gli stessi
+dei paragrafi precedenti: $K = 2000$, $K_0 = K \cdot 0.05$, $c=0.1$,
+$\delta=0.5$ e per il caso UEP $RF_0 = 5$.
+
+In figura~\ref{fig:encdec} sono mostrati i tempi medi di codifica e di
+decodifica ottenuti eseguendo le simulazioni su una CPU Intel Xeon
+E5450 con 16 GB di RAM.
 %
 \begin{figure}[htb]
   \centering
   \begin{subfigure}{0.5\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{plot_enc_time}
-    \caption{Codifica}
-    \label{fig:enctime}
+    \includegraphics[width=\textwidth]{plot_enc_time_eep}
+    \caption{Codifica EEP}
+    \label{fig:enctime_eep}
   \end{subfigure}%
   \begin{subfigure}{0.5\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{plot_dec_time}
-    \caption{Decodifica}
-    \label{fig:dectime}
+    \includegraphics[width=\textwidth]{plot_dec_time_eep}
+    \caption{Decodifica EEP}
+    \label{fig:dectime_eep}
+  \end{subfigure}
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_enc_time_uep}
+    \caption{Codifica UEP}
+    \label{fig:enctime_uep}
+  \end{subfigure}%
+  \begin{subfigure}{0.5\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{plot_dec_time_uep}
+    \caption{Decodifica UEP}
+    \label{fig:dectime_uep}
   \end{subfigure}
   \caption{Tempi medi di codifica e decodifica per un blocco di
-    $K=20000$ pacchetti.}
+    $K=2000$ pacchetti codificato usando EEP o UEP ($K_0 = 100$,
+    $RF_0=5$) con $EF \in \{1,2,4\}$.}
+  \label{fig:encdec}
 \end{figure}
 %
-Si può vedere che l'andamento è coerente con \cite{uep} anche se, nel
-caso di questa tesina, i valori sono molto più alti. Questo è dovuto
-al fatto che è stato considerato l'intero sistema di
-figura~\ref{fig:UDP}, con l'eccezione della generazione dei pacchetti
-e dell'invio tramite UDP.
+Si può vedere che l'andamento è coerente con \cite{uep}: i tempi di
+codifica aumentano linearmente al crescere del'overhead e
+sub-linearmente al crescere di $EF$; i tempi di decodifica crescono
+velocemente fino al livello di overhead in cui la maggior parte dei
+pacchetti sono decodificati e, in seguito, la crescita diventa molto
+più lenta.
 %
-Si può notare, in particolare, che il tempo di decodifica tende a
-saturare una volta raggiunto un livello di overhead che permette la
-decodifica di tutto il blocco.
-%
-Inoltre sia i tempi di codifica che di decodifica aumentano
-sub-linearmente in funzione di EF, come in \cite{uep}.
+I valori dei tempi di decodifica sono dello stesso ordine di grandezza
+di quelli riportati in \cite{uep}, mentre i valori dei tempi di
+codifica sono molto più alti, sia dell'articolo che dei tempi di
+decodifica corrisponenti. Questo può essere spiegato dal fatto che,
+mentre l'implementazione del message passing usata nelle simulazioni è
+scritta in C++, la generazione dei vettori di codifica è effettuata da
+uno script scritto in Python.
 
 \newpage
 \section{Conclusioni} % Max 0.5 pages

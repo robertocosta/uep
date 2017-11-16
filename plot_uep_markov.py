@@ -1,30 +1,57 @@
+import argparse
 import datetime
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from plots import *
 from uep import *
-from utils import *
+from utils.aws import *
+from utils.plots import *
+from utils.stats import *
 
-def pf_all(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
-    return True
+class param_filters:
+    @staticmethod
+    def all(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return True
+
+    @staticmethod
+    def error_free(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_per == 0 and avg_bad_run == 1)
+
+    @staticmethod
+    def br5(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 5)
+
+    @staticmethod
+    def br10(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 10)
+
+    @staticmethod
+    def br50(RFs, EF, c, delta, overhead, avg_per, avg_bad_run, Ks_frac):
+        return (avg_bad_run == 50)
 
 if __name__ == "__main__":
-    data = load_data_prefix("uep_markov_mpfix_fixdeg/uep_vs_k_markov_")
+    parser = argparse.ArgumentParser(description='Plots the Markov UEP results.',
+                                     allow_abbrev=False)
+    parser.add_argument("--param_filter", help="How to filter the data",
+                        type=str, default="all")
+    args = parser.parse_args()
 
-    git_sha1_set = sorted(set(d.get('git_sha1', 'no_git_commit')
-                              for d in data))
+    data = load_data_prefix("uep_markov_final/")
+
+    git_sha1_set = sorted(set(d.get('git_sha1') or 'None' for d in data))
     print("Found {:d} commits:".format(len(git_sha1_set)))
     for s in git_sha1_set:
-        print(" " * 2 + s)
+        print("  - " + s)
 
-    wanted_commits = [
-        "921f5e0f5bf82591ec93f215cd490f8bdd9473fe",
-        "a616ad6478ac1f80dc3f7983cbf5b4958bf9fcfb",
-    ]
+    # wanted_commits = [
+    #     "921f5e0f5bf82591ec93f215cd490f8bdd9473fe",
+    #     "a616ad6478ac1f80dc3f7983cbf5b4958bf9fcfb",
+    # ]
 
-    data = [d for d in data if d.get('git_sha1') in wanted_commits]
+    # data = [d for d in data if d.get('git_sha1') in wanted_commits]
 
     print("Using {:d} data packs".format(len(data)))
 
@@ -37,13 +64,15 @@ if __name__ == "__main__":
                             d['avg_bad_run'],
                             tuple(d['Ks_frac'])) for d in data))
 
-    param_filter = pf_all
+    param_filter = getattr(param_filters, args.param_filter)
+    assert(callable(param_filter))
 
     p = plots()
     p.automaticXScale = True
     #p.automaticXScale = [0,0.3]
     p.add_plot(plot_name='per',xlabel='K',ylabel='PER',logy=True)
     p.add_plot(plot_name='nblocks',xlabel='K',ylabel='nblocks',logy=False)
+    p.add_plot(plot_name='drop_rate',xlabel='K',ylabel='drop_rate',logy=False)
 
     for params in param_set:
         data_same_pars = [d for d in data if (tuple(d['RFs']),
@@ -66,9 +95,12 @@ if __name__ == "__main__":
         k_blocks = sorted(set(k for d in data_same_pars for k in d['k_blocks']))
 
         avg_pers = np.zeros((len(k_blocks), len(Ks_frac)))
-        nblocks = np.zeros(len(k_blocks))
+        nblocks = np.zeros(len(k_blocks), dtype=int)
+        avg_drop_rates = np.zeros(len(k_blocks))
+        used_Ks = np.zeros((len(k_blocks), len(Ks_frac)), dtype=int)
         for i, k_block in enumerate(k_blocks):
             avg_counters = [AverageCounter() for k in Ks_frac]
+            avg_drop = AverageCounter()
             for d in data_same_pars:
                 for l, d_k_block in enumerate(d['k_blocks']):
                     if d_k_block != k_block: continue
@@ -76,10 +108,22 @@ if __name__ == "__main__":
                         per = (d['error_counts'][l][j] /
                                (d['used_Ks'][l][j] * d['nblocks']))
                         avg_counters[j].add(per, d['nblocks'])
+                    avg_drop.add(d['avg_drops'][l], d['nblocks'])
+                    used_Ks[i] = d['used_Ks'][l]
             avg_pers[i,:] = [c.avg for c in avg_counters]
             nblocks[i] = avg_counters[0].total_weigth
+            avg_drop_rates[i] = avg_drop.avg
 
         if not param_filter(*params): continue
+
+        # Average into a single PER when EEP
+        if len(RFs) > 1 and all(rf == 1 for rf in RFs):
+            new_pers = np.zeros((avg_pers.shape[0], 1))
+            for i, ps in enumerate(avg_pers):
+                avg_p = (sum(p*k for p,k in zip(ps, used_Ks[i])) /
+                         sum(used_Ks[i]))
+                new_pers[i] = avg_p
+            avg_pers = new_pers
 
         legend_str = ("RFs={!s},"
                       "EF={:d},"
@@ -90,9 +134,13 @@ if __name__ == "__main__":
                       "avg_bad_run={:.2f},"
                       "Ks_frac={!s}").format(*params)
 
-        mibline = p.add_data(plot_name='per',label=legend_str,type='mib',
+        typestr = 'mib'
+        if all(rf == 1 for rf in RFs) or len(Ks_frac) == 1:
+            typestr = 'eep'
+
+        mibline = p.add_data(plot_name='per',label=legend_str,type=typestr,
                            x=k_blocks, y=avg_pers[:,0])
-        if len(Ks_frac) > 1:
+        if len(Ks_frac) > 1 and any(rf != 1 for rf in RFs):
             p.add_data(plot_name='per',label=legend_str,type='lib',
                        x=k_blocks, y=avg_pers[:,1],
                        color=mibline.get_color())
@@ -100,6 +148,10 @@ if __name__ == "__main__":
 
         p.add_data(plot_name='nblocks',label=legend_str,
                    x=k_blocks, y=nblocks)
+        plt.autoscale(enable=True, axis='y', tight=False)
+
+        p.add_data(plot_name='drop_rate',label=legend_str,
+                   x=k_blocks, y=avg_drop_rates)
         plt.autoscale(enable=True, axis='y', tight=False)
 
         #the_oh_is = [i for i,oh in enumerate(overheads)
@@ -112,7 +164,14 @@ if __name__ == "__main__":
         #                                          avg_pers[the_oh_i, 1]))
 
     datestr = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    #save_plot_png(p.get_plot('per'),'iid '+p.describe_plot('per')+datestr)
-    #save_plot_png(p.get_plot('nblocks'),'iid '+p.describe_plot('nblocks')+datestr)
+    save_plot_pdf(p.get_plot('per'),'markov/{}/{} {}'.format(args.param_filter,
+                                                             p.describe_plot('per'),
+                                                             datestr))
+    save_plot_pdf(p.get_plot('nblocks'),'markov/{}/{} {}'.format(args.param_filter,
+                                                                 p.describe_plot('nblocks'),
+                                                                 datestr))
+    save_plot_pdf(p.get_plot('drop_rate'),'markov/{}/{} {}'.format(args.param_filter,
+                                                                   p.describe_plot('drop_rate'),
+                                                                   datestr))
 
     plt.show()

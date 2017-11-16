@@ -37,10 +37,6 @@ find_package(Threads REQUIRED)
 find_package(PythonLibs 3.4 REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
-find_package(SWIG REQUIRED)
-INCLUDE(${SWIG_USE_FILE})
-set(CMAKE_SWIG_OUTDIR ${CMAKE_BINARY_DIR}/python)
-
 find_package(Boost 1.58 REQUIRED COMPONENTS
   date_time
   filesystem
