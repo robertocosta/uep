@@ -153,13 +153,18 @@ if __name__ == "__main__":
                     for l, d_oh in enumerate(d['overheads']):
                         if d_oh != oh: continue
 
+                        if hasattr(d['nblocks'], '__len__'):
+                            d_nblocks = d['nblocks'][l]
+                        else:
+                            d_nblocks = d['nblocks']
+
                         for j,k in enumerate(Ks):
-                            per = d['error_counts'][l][j] / (k * d['nblocks'])
-                            avg_counters[j].add(per, d['nblocks'])
+                            per = d['error_counts'][l][j] / (k * d_nblocks)
+                            avg_counters[j].add(per, d_nblocks)
                         if not math.isnan(d['avg_ripples'][l]):
                             avg_ripple.add(d['avg_ripples'][l],
-                                        d['nblocks'])
-                        avg_drop.add(d['avg_drops'][l], d['nblocks'])
+                                        d_nblocks)
+                        avg_drop.add(d['avg_drops'][l], d_nblocks)
 
                 avg_ripples[i] = avg_ripple.avg
                 avg_drop_rates[i] = avg_drop.avg

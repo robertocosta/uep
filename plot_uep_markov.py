@@ -160,7 +160,7 @@ if __name__ == "__main__":
             p.automaticXScale = [1,6200]
         else:
             if cond.pib == 0.01:
-                p.automaticXScale = [1, 2200]
+                p.automaticXScale = [1, 4200]
         
         if nPlots>0:
             p.add_plot(plot_name = plot_name,xlabel='K',ylabel='PER',logy=True)
@@ -198,9 +198,13 @@ if __name__ == "__main__":
                 for d in data_same_pars:
                     for l, d_k_block in enumerate(d['k_blocks']):
                         if d_k_block != k_block: continue
+                        if hasattr(d['nblocks'], '__len__'):
+                            d_nblocks = d['nblocks'][l]
+                        else:
+                            d_nblocks = d['nblocks']
                         for j, _ in enumerate(Ks_frac):
                             avg_counters[j].add(d['avg_pers'][l][j],
-                                                d['nblocks'])
+                                                d_nblocks)
                 avg_pers[i,:] = [c.avg for c in avg_counters]
                 nblocks[i] = avg_counters[0].total_weigth
             #if not param_filter(*params): continue
