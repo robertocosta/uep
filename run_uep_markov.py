@@ -20,6 +20,9 @@ if __name__ == "__main__":
     parser.add_argument("piB", help="1 over the steady state prob. of being in a Bad slot.",type=float)
     parser.add_argument("EnB", help="Avg. number of contiguous Bad slots",type=int)
     parser.add_argument("--overhead", help="Overhead",type=float, default=0.25)
+    parser.add_argument("--kmin", help="k_min",type=int, default=100)
+    parser.add_argument("--kmax", help="k_max",type=int, default=None)
+
     args = parser.parse_args()
 
     git_sha1 = None
@@ -56,6 +59,8 @@ if __name__ == "__main__":
     k_blocks = np.linspace(100, 15100, 16, dtype=int).tolist()
     k_blocks += np.linspace(100, 2100, 11, dtype=int)[:-1].tolist()
     k_blocks = sorted(set(k_blocks))
+    k_blocks = [k_blocks[i] for i in range(len(k_blocks)) if 
+        k_blocks[i]>args.kmin and k_blocks[i]<args.kmax]
     Ks_frac = [0.05, 0.95]
 
     used_rngstate = random.getstate()
