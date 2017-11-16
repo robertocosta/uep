@@ -42,22 +42,23 @@ if __name__ == "__main__":
                             d['avg_bad_run'],
                             tuple(d['Ks_frac'])) for d in data))
     #for item in param_set:
-    for j, k in load_data_prefix_2(url):
-        legend_str = ("Ks={!s},"
-                    "RFs={!s},"
-                    "EF={:d},"
-                    "c={:.2f},"
-                    "delta={:.2f},"
-                    "pib={:.1e}"
-                    "enb={:.1e}").format(j.get('Ks', 'none'),
-                                        j.get('RFs', 'none'),
-                                        j.get('EF', -1),
-                                        j.get('c', -1),
-                                        j.get('delta', -1),
-                                        j.get('avg_per',-1),
-                                        j.get('avg_bad_run',-1))
-        print("Key = " + k)
-        print("  " + legend_str)
+    # for j, k in load_data_prefix_2(url):
+    #     pass
+    #     legend_str = ("Ks={!s},"
+    #                 "RFs={!s},"
+    #                 "EF={:d},"
+    #                 "c={:.2f},"
+    #                 "delta={:.2f},"
+    #                 "pib={:.1e}"
+    #                 "enb={:.1e}").format(j.get('Ks', 'none'),
+    #                                     j.get('RFs', 'none'),
+    #                                     j.get('EF', -1),
+    #                                     j.get('c', -1),
+    #                                     j.get('delta', -1),
+    #                                     j.get('avg_per',-1),
+    #                                     j.get('avg_bad_run',-1))
+    #     print("Key = " + k)
+    #     print("  " + legend_str)
             
     param_filter = pf_all
     p = plots()
@@ -83,40 +84,66 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':'*','rfs':[[1,1],[3,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
+        #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
 
         conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[3,1],[1,1]], 
+                                        'rfs':[[5,1],[1,1]], 
                                         'ef':1, 
                                         'c':'*', 
                                         'delta':'*', 
                                         'type':'*', 
                                         'pib':0,
                                         'enb':1}))
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[3,1],[1,1]], 
-                                        'ef':1, 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'pib':[0.01, 0.1],
-                                        'enb':5}))
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[3,1],[1,1]], 
-                                        'ef':1, 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'pib':[0.01, 0.1],
-                                        'enb':10}))
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[3,1],[1,1]], 
-                                        'ef':1, 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'pib':[0.01, 0.1],
-                                        'enb':50}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[3,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0.01, 0.1],
+        #                                 'enb':5}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[3,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0.01, 0.1],
+        #                                 'enb':10}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[3,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0.01, 0.1],
+        #                                 'enb':50}))
+        for pib in [0.01, 0.1]:
+            for enb in [5, 10, 50]:
+                conditions.append(parameters({  'ks':ks,
+                                                'rfs':[[5,1],[1,1]], 
+                                                'ef':1, 
+                                                'c':'*', 
+                                                'delta':'*', 
+                                                'type':'*', 
+                                                'pib':pib,
+                                                'enb':enb}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[3,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0.01],
+        #                                 'enb':5}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[3,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0.1],
+        #                                 'enb':[10]}))
     else:
         conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
 
@@ -129,8 +156,12 @@ if __name__ == "__main__":
         plot_name = 'per_' + cond.toStr
         plot_name_nbl = 'nblocks' + cond.toStr
         p.automaticXScale = True
-        #p.automaticXScale = [1,6200]
-
+        if cond.pib == 0:
+            p.automaticXScale = [1,6200]
+        else:
+            if cond.pib == 0.01:
+                p.automaticXScale = [1, 2200]
+        
         if nPlots>0:
             p.add_plot(plot_name = plot_name,xlabel='K',ylabel='PER',logy=True)
         if nPlots>1:

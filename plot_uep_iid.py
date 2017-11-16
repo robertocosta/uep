@@ -11,9 +11,9 @@ from utils import *
 def pf_all(Ks, RFs, EF, c, delta, iid_per):
     return True
 
-def pf_EF_1000(Ks, RFs, EF, c, delta, iid_per):
-    return (Ks == (100,900) and
-            RFs == (1,1))
+def pf_error_free(RFs, EF, iid_per):
+    tmp = (EF == 4 and (RFs == (1,1)) and (iid_per == 0))
+    return tmp == False
 
 def pf_RFs(Ks, RFs, EF, c, delta, iid_per):
     return (Ks == (100,900) and
@@ -65,13 +65,13 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':ks,'rfs':[[3,1],[1,1]], 'ef':2, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':ks,'rfs':[[5,1],[1,1]], 'ef':[1,2,4], 'c':'*', 'delta':'*', 'type':'*', 'e':0}))
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[1,1]], 
-                                        'ef':[1,2], 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'e':0}))
+        #conditions.append(parameters({  'ks':ks,
+        #                                'rfs':[[5,1],[1,1]], 
+        #                                'ef':[1,2], 
+        #                                'c':'*', 
+        #                                'delta':'*', 
+        #                                'type':'*', 
+        #                                'e':0}))
         conditions.append(parameters({  'ks':ks,
                                         'rfs':[[5,1],[1,1]], 
                                         'ef':[1,4], 
@@ -79,13 +79,13 @@ if __name__ == "__main__":
                                         'delta':'*', 
                                         'type':'*', 
                                         'e':0}))
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[1,1]], 
-                                        'ef':2, 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'e':[0.01, 0.1, 0.2]}))
+        #conditions.append(parameters({  'ks':ks,
+        #                                'rfs':[[5,1],[1,1]], 
+        #                                'ef':2, 
+        #                                'c':'*', 
+        #                                'delta':'*', 
+        #                                'type':'*', 
+        #                                'e':[0.01, 0.1, 0.2]}))
         conditions.append(parameters({  'ks':ks,
                                         'rfs':[[5,1],[1,1]], 
                                         'ef':2, 
@@ -166,7 +166,7 @@ if __name__ == "__main__":
                 avg_pers[i,:] = [c.avg for c in avg_counters]
                 nblocks[i] = avg_counters[0].total_weigth
 
-            #if not param_filter(*params): continue
+            if not pf_error_free(RFs, EF, iid_per): continue
             if (RFs[0]>RF_max):                         
                 continue
             if (EF>EF_max):                             
