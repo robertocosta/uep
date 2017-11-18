@@ -85,15 +85,22 @@ if __name__ == "__main__":
         #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':1, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':[[1,1],[5,1]], 'ef':4, 'c':'*', 'delta':'*', 'type':'*'}))
         #conditions.append(parameters({'ks':'*','rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
-
-        conditions.append(parameters({  'ks':ks,
-                                        'rfs':[[5,1],[1,1]], 
-                                        'ef':1, 
-                                        'c':'*', 
-                                        'delta':'*', 
-                                        'type':'*', 
-                                        'pib':0,
-                                        'enb':1}))
+       # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':0.01,
+        #                                 'enb':[50,500]}))
+        # conditions.append(parameters({  'ks':ks,
+        #                                 'rfs':[[5,1],[1,1]], 
+        #                                 'ef':1, 
+        #                                 'c':'*', 
+        #                                 'delta':'*', 
+        #                                 'type':'*', 
+        #                                 'pib':[0, 0.1],
+        #                                 'enb':[50,500]}))
         # conditions.append(parameters({  'ks':ks,
         #                                 'rfs':[[5,1],[3,1],[1,1]], 
         #                                 'ef':1, 
@@ -118,16 +125,16 @@ if __name__ == "__main__":
         #                                 'type':'*', 
         #                                 'pib':[0.01, 0.1],
         #                                 'enb':50}))
-        for pib in [0.01, 0.1]:
-            for enb in [5, 10, 50]:
-                conditions.append(parameters({  'ks':ks,
-                                                'rfs':[[5,1],[1,1]], 
-                                                'ef':1, 
-                                                'c':'*', 
-                                                'delta':'*', 
-                                                'type':'*', 
-                                                'pib':pib,
-                                                'enb':enb}))
+        # for pib in [0.01, 0.1]:
+        #     for enb in [5, 10, 50]:
+        #         conditions.append(parameters({  'ks':ks,
+        #                                         'rfs':[[5,1],[1,1]], 
+        #                                         'ef':1, 
+        #                                         'c':'*', 
+        #                                         'delta':'*', 
+        #                                         'type':'*', 
+        #                                         'pib':pib,
+        #                                         'enb':enb}))
         # conditions.append(parameters({  'ks':ks,
         #                                 'rfs':[[5,1],[3,1],[1,1]], 
         #                                 'ef':1, 
@@ -144,6 +151,40 @@ if __name__ == "__main__":
         #                                 'type':'*', 
         #                                 'pib':[0.1],
         #                                 'enb':[10]}))
+        
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0],
+                                        'enb':[1]}))        
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.01],
+                                        'enb':[5, 10, 50]}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.1],
+                                        'enb':[5, 10, 50]}))
+        conditions.append(parameters({  'ks':ks,
+                                        'rfs':[[5,1],[1,1]], 
+                                        'ef':1, 
+                                        'c':'*', 
+                                        'delta':'*', 
+                                        'type':'*', 
+                                        'pib':[0.1],
+                                        'enb':[50, 500]}))
+ 
     else:
         conditions.append(parameters({'ks':[100,900],'rfs':'*', 'ef':'*', 'c':'*', 'delta':'*', 'type':'*'}))
 
@@ -152,15 +193,25 @@ if __name__ == "__main__":
     EF_max = 8
     p = plots()
         #p.cleanup()
-    for cond in conditions:
+    for condN, cond in enumerate(conditions):
         plot_name = 'per_' + cond.toStr
         plot_name_nbl = 'nblocks' + cond.toStr
-        p.automaticXScale = True
-        if cond.pib == 0:
-            p.automaticXScale = [1,6200]
-        else:
-            if cond.pib == 0.01:
-                p.automaticXScale = [1, 4200]
+        # p.automaticXScale = True
+        
+        # if (condN < 2):
+        #     p.automaticXScale = [1,6200]
+        # if (condN == 2):
+        #     p.automaticXScale = [1,10200]
+        # if (condN == 4):
+        #     p.automaticXScale = [1,15000]
+        # if hasattr(cond.pib,'__len__'):
+        #     p.automaticXScale = [1,6200]
+        # else:
+        #     if cond.pib == 0:
+        #         p.automaticXScale = [1,10200]
+        #     else:
+        #         if cond.pib == 0.01:
+        #             p.automaticXScale = [1, 6200]
         
         if nPlots>0:
             p.add_plot(plot_name = plot_name,xlabel='K',ylabel='PER',logy=True)
@@ -172,7 +223,16 @@ if __name__ == "__main__":
             p.add_plot(plot_name=plot_name[3],xlabel='Overhead',ylabel='drop_rate',logy=False)
 
         for params in param_set:
-            p.automaticYScale = [math.pow(10,-7), 1]
+            if (condN < 2):
+                p.automaticXScale = [1,3100]
+                p.automaticYScale = [math.pow(10,-8), 1]
+            if (condN == 2):
+                p.automaticXScale = [1,10100]
+                p.automaticYScale = [math.pow(10,-6), 1]
+            if (condN == 3):
+                p.automaticXScale = [1,15100]
+                p.automaticYScale = [math.pow(10,-6), 1]
+            # p.automaticYScale = [math.pow(10,-8), 1]
             data_same_pars = [d for d in data if (tuple(d['RFs']),
                                                 d['EF'],
                                                 d['c'],
@@ -287,13 +347,16 @@ if __name__ == "__main__":
                                                         eng,
                                                         avg_bad_run, 
                                                         np.mean(nblocks))
-            mibline = p.add_data(plot_name=plot_name,label=legend_str,type='mib',
-                            x=k_blocks, y=avg_pers[:,0])
-            if len(Ks_frac) > 1:
-                p.add_data(plot_name=plot_name,label=legend_str,type='lib',
-                        x=k_blocks, y=avg_pers[:,1],
-                        color=mibline.get_color())
-            
+            if (RFs[0]>1):
+                mibline = p.add_data(plot_name=plot_name,label=legend_str,type='mib',
+                                x=k_blocks, y=avg_pers[:,0])
+                if len(Ks_frac) > 1:
+                    p.add_data(plot_name=plot_name,label=legend_str,type='lib',
+                            x=k_blocks, y=avg_pers[:,1],
+                            color=mibline.get_color())
+            else:
+                p.add_data(plot_name=plot_name,label=legend_str,type='eep',
+                                x=k_blocks, y=np.mean(avg_pers,1))
             p.automaticYScale = True
 
             if nPlots > 1:

@@ -125,7 +125,7 @@ def mean(numbers):
 def save_plot_png(my_plot, name):
     import os
     print_fig = my_plot
-    print_fig.set_size_inches(10,8)
+    print_fig.set_size_inches(12,8)
     print_fig.set_dpi(200)
     os.makedirs('average', 777, True)
     print_fig.savefig('average/'+name+'.png', format='png')

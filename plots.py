@@ -11,7 +11,7 @@ class plots:
         self.__plots = []
         self.__plot_ind = 0
         self.__nplots = 0
-        self.minExp = -16
+        self.minExp = -30
         self.__minY = math.pow(10,self.minExp)
         self.__automaticXScale = True
         self.__automaticYScale = True
