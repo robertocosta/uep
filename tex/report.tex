@@ -442,14 +442,22 @@ stato fissato per avere un overhead del 30\%.
 Nella figura~\ref{fig:markov_zero} possiamo vedere il caso del canale
 senza errori al variare di $K$.
 %
-\begin{figure}[htb]
+%\begin{figure}[htb]
+%  \centering
+%  \includegraphics[width=0.8\textwidth]{plot_markov_zero}
+%  \caption{Packet error rate a livello applicazione ottenuta al
+%    variare della dimensione del blocco sul canale error-free.}
+%  \label{fig:markov_zero}
+%\end{figure}
+%
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{plot_markov_zero}
+  \includegraphics[width=\textwidth]{per_ks_100-1900_rfs_5-1_1-1_ef_1_pib_0_enb_1_vs_K.png}
   \caption{Packet error rate a livello applicazione ottenuta al
     variare della dimensione del blocco sul canale error-free.}
   \label{fig:markov_zero}
 \end{figure}
-%
+
 Vediamo che anche nel caso del canale perfetto la probabiltà di errore
 è molto alta in corrisponenza di blocchi piccoli e come, nel caso sia
 applicata la UEP, sia possibile ottenere PER basse per il MIB molto
@@ -460,55 +468,99 @@ Se, invece, consideriamo sei diversi canali Markoviano fissando $\EnB
 media di errore $\pi_B \in \{0.01, 0.1\}$, possiamo vedere come gli
 errori correlati influiscano sulla PER.
 %
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=0.8\textwidth]{plot_markov_br5}
-  \caption{Packet error rate a livello applicazione ottenuta al
-    variare della dimensione del blocco su due canali Markoviani con
-    $\EnB = 5$ e $\pi_B \in \{0.01, 0.1\}$.}
-  \label{fig:markov_br5}
-\end{figure}
+%\begin{figure}[htb]
+%  \centering
+%  \includegraphics[width=0.8\textwidth]{plot_markov_br5}
+%  \caption{Packet error rate a livello applicazione ottenuta al
+%    variare della dimensione del blocco su due canali Markoviani con
+%    $\EnB = 5$ e $\pi_B \in \{0.01, 0.1\}$.}
+%  \label{fig:markov_br5}
+%\end{figure}
 %
-Se il canale offre una packet error rate media di $0.01$, possiamo
-notare come il peggioramento delle prestazioni rispetto ai casi
-error-free e iid (figura~\ref{fig:iid_oh}) non sia drastico: la PER
-EEP scende a $10^{-8}$ in corrispondenza di $K \approx 2500, 4000,
-5000$, rispettivamnte, per le tre lunghezze medie del burst; inoltre
-in tutti e tre i casi il MIB ottiene un tasso di errore più basso del
-caso EEP e peggiora altrettanto lentamente. Il LIB risente della
-correlazione tra errori nello stesso modo: le curve scendono più tardi
-a valori comparabili al caso error-free, ma la dimensione di blocco
-necessaria non è molto più alta.
 
-Per il caso con $\pi_B = 0.1$, invece, vediamo come la discesa della
-PER sia molto più lenta. Per $K = 2000$ possiamo confrontare il
-grafico con il caso iid e vedere come il peggioramento sia visibile ma
-non di grande entità. Rispetto al caso con $\pi_B = 0.01$, tuttavia,
-le PER del case UEP scendono molto lentamente: il LIB non riesce a
-scendere sotto $10^{-3}$ nell'intervallo di $K$ considerato anche per
-il burst più corto, e il MIB richiede blocchi molto più grandi per
-scendere sotto $10^{-8}$. In questo caso le prestazioni della codifica
-EEP, anche se inizialmente sono peggiori del LIB, scendono più
-velocemente del MIB e permettono di ottenere una PER sotto $10^{-8}$
-con blocchi più corti di quelli richiesti per il MIB.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{per_ks_100-1900_rfs_5-1_1-1_ef_1_pib_0.01_enb_5_10_50_vs_K.png}
+  \caption{Canale $\pi_B = 10^{-2}$, $\EnB \in \{5, 10, 50\}$}
+  \label{fig:markov2}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{per_ks_100-1900_rfs_5-1_1-1_ef_1_pib_0.1_enb_5_10_50_vs_K.png}
+  \caption{Canale $\pi_B = 10^{-1}$, $\EnB \in \{5, 10, 50\}$}
+  \label{fig:markov1}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{per_ks_100-1900_rfs_5-1_1-1_ef_1_pib_0.1_enb_50_500_vs_K.png}
+  \caption{Canale $\pi_B = 10^{-1}$, $\EnB \in \{50, 500\}$}
+  \label{fig:markov1bis}
+\end{figure}
+Dai grafici sopra riportati si può notare come l'aumento della probabilità d'errore 
+media del canale comporti un aumento della Packet Error Rate, anche se confrontando le
+figure \ref{fig:markov_zero} e \ref{fig:markov1} si nota che la differenza tra un canale
+error free e un canale con probablità d'errore media $\pi_B = 10^{-1}$ è esigua.\\
+Inoltre, per i canali testati ($\pi_B \in\{0, 10^{-1},10^{-2}\}$), si nota come,
+fino a blocchi di dimensione $K \approx 2100$ pacchetti, la protezione non uniforme abbia
+prestazioni migliori della protezione uniforme sia per quanto riguarda la
+parte più importante (MIB) che per quanto riguarda la parte meno importante (LIB).\\
+Per valori di $K$ superiori, il MIB (UEP) ha una PER inferiore alla protezione uniforme (EEP)
+mentre il LIB ha una PER superiore.\\
+Se ci sono vincoli sulla dimensione massima del blocco, che possono derivare 
+da vincoli sul delay massimo nella ricezione dei pacchetti, è utile mantenere 
+piccola la dimensione del blocco e sfruttare l'algoritmo di protezione non uniforme.
 
-Da tutto ciò possiamo vedere come, nel caso di errori correlati,
-l'effetto della protezione non uniforme sia tanto più forte quanto
-mggiore è la dimensione $K$ del blocco.
+%
+%Per canali sufficientemente buoni, in media, ma con errori più correlati,
+%($\pi_B = 10^{-2}$ e $\EnB = 50$) le prestazioni in termini di PER del LIB sono
+%peggiori rispetto al caso di protezione uniforme.
+%
+%D'altra parte, se la perdita di informazioni contenute nel LIB è meno 
+%rilevante rispetto alla perdita di informazioni contenute nella MIB, 
+%anche per canali con errori più correlati è possibile sfruttare l'algoritmo
+%di protezione non uniforme al fine di mantenere la dimensione del blocco
+%contenuta
+
+%Se il canale offre una packet error rate media di $0.01$, possiamo
+%notare come il peggioramento delle prestazioni rispetto ai casi
+%error-free e iid (figura~\ref{fig:iid_oh}) non sia drastico per burst contenuti: la PER
+%EEP scende a $10^{-8}$ in corrispondenza di $K \approx 2500,
+%5000$, rispettivamente, per le tre lunghezze medie del burst; inoltre
+%in tutti e tre i casi il MIB ottiene un tasso di errore più basso del
+%caso EEP e peggiora altrettanto lentamente. Il LIB risente della
+%correlazione tra errori nello stesso modo: le curve scendono più tardi
+%a valori comparabili al caso error-free, ma la dimensione di blocco
+%necessaria non è molto più alta.
+
+%Per il caso con $\pi_B = 0.1$, invece, vediamo come la discesa della
+%PER sia molto più lenta. Per $K = 2000$ possiamo confrontare il
+%grafico con il caso iid e vedere come il peggioramento sia visibile ma
+%non di grande entità. Rispetto al caso con $\pi_B = 0.01$, tuttavia,
+%le PER del caso UEP scendono molto lentamente: il LIB non riesce a
+%scendere sotto $10^{-3}$ nell'intervallo di $K$ considerato anche per
+%il burst più corto, e il MIB richiede blocchi molto più grandi per
+%scendere sotto $10^{-8}$. In questo caso le prestazioni della codifica
+%EEP, anche se inizialmente sono peggiori del LIB, scendono più
+%velocemente del MIB e permettono di ottenere una PER sotto $10^{-8}$
+%con blocchi più corti di quelli richiesti per il MIB.
+
+%Da tutto ciò possiamo vedere come, nel caso di errori correlati,
+%l'effetto della protezione non uniforme sia tanto più forte quanto
+%maggiore è la dimensione $K$ del blocco.
 %% Il contrario, invece, accade nel caso error-free dove, al crescere
 %% della dimensione del blocco, le probabilità di errore su MIB e LIB
 %% tendono ad avvicinarsi \cite{uep}.
 
-Si vede anche come la codifica riesca a correggere bene i burst di
-errori quando la probabilità media di errore del canale non è molto
-alta, infatti la PER raggiunge velocemente valori simili al caso IID e
-offre una protezione dagli errori per il MIB migliore del caso EEP.
+%Si vede anche come la codifica riesca a correggere bene i burst di
+%errori quando la probabilità media di errore del canale non è molto
+%alta, infatti la PER raggiunge velocemente valori simili al caso IID e
+%offre una protezione dagli errori per il MIB migliore del caso EEP.
 %
-Se la PER del canale è alta rispetto all'overhead introdotto dalla
-codifica, invece, le prestazioni sono drasticamente peggiori ed è
-necessaria una dimensione di blocco molto alta per ottenere PER basse
-sul MIB. In questo caso la codifica EEP diventa preferibile dopo una
-certa dimensione del blocco.
+%Se la PER del canale è alta rispetto all'overhead introdotto dalla
+%codifica, invece, le prestazioni sono drasticamente peggiori ed è
+%necessaria una dimensione di blocco molto alta per ottenere PER basse
+%sul MIB. In questo caso la codifica EEP diventa preferibile dopo una
+%certa dimensione del blocco.
 
 \subsection{Tempi di codifica e decodifica}
 Per verificare quanto tempo è necessario alla codifica e alla
