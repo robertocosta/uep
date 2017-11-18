@@ -132,7 +132,7 @@ Verrà analizzata la correttezza della trasmissione (in termini di Bit Error Rat
 Il progetto è stato realizzato usando C++ e Python.
 \newpage
 \section{Introduzione} % Max 1 page
-Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC \cite{svc}. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire un video a qualità inferiore.\\
+Spesso, al giorno d'oggi, la qualità delle connessioni tra i dispositivi di una rete è variabile, anche, ad esempio, a causa di meccanismi di condivisione di risorse adattativi, finalizzati al rispetto di vincoli variabili di throughput per un numero variabile di utenti. Variabile è anche l'insieme di dispositivi connessi alla rete e il link budget di ogni dispositivo. Quando è necessario trasmettere un flusso video a un insieme di utenti, la qualità del video, in questo tipo di rete, dev'essere necessariamente variabile in base alla banda disponibile ad ogni utente, infatti la quantità di informazione da trasmettere (entropia del messaggio) è proporzionale alla qualità del video e l'entropia massima di un messaggio trasmesso in un canale non privo di errori è limitata dal secondo teorema di Shannon \cite{shannon}. Un protocollo che si presta al multicast video attraverso connessioni eterogenee è l'estensione Scalable Video Coding (SVC) del protocollo H.264/MPEG-4 AVC \cite{svc}. Tale protocollo, infatti, permette di codificare il video una sola volta per tutti gli utenti, separando il file originale in un numero arbitrario di stream, la cui composizione garantisce alta fedeltà di ricostruzione del flusso video originale, ma non è indispensabile avere tutti le componenti per ricostruire un video a qualità inferiore.\\
 Per trasmettere un flusso di dati attraverso un canale variabile e non completamente affidabile, garantendo la qualità del servizio, è utile aggiungere ridondanza all'informazione inviata. Il rapporto tra il messaggio con ridondanza aggiunta e il messaggio originale è chiamato rate del codice di correzione degli errori.
 I codici a fontana \cite{fcsurvey, rossifc} presentano due caratteristiche notevoli, rispetto ad altri codici di correzione degli errori:
 \begin{itemize}
@@ -179,8 +179,7 @@ pacchetti UDP al client.
 Il canale è rappresentato da una catena di Markov a 2 stati: buono (G) e cattivo (B).\\
 Lo stato del sistema all'indice temporale $n$ (slot $n$) è indicato con $X(n)$, o $X_n$.\\
 Sono stati effettuati test con due tipi di canale:
-\begin{itemize}
-\item Canale Markoviano, caratterizzato dalla seguente matrice di probabilità di transizione:\\
+\paragraph{Canale Markoviano con memoria} caratterizzato dalla seguente matrice di probabilità di transizione:\\
 $$P=\begin{pmatrix}
 P[X_n=G, X_{n+1}=G] & P[X_n=G, X_{n+1}=B]\\
 P[X_n=B, X_{n+1}=G] & P[X_n=B, X_{n+1}=B]\\
@@ -192,6 +191,7 @@ P_{BG} & P_{BB}
 1-p & p \\
 q & 1-q
 \end{pmatrix}$$
+
 Le probabilità stazionarie sono definite come
 $$\bm{\pi} = \begin{pmatrix}
 \pi_G\\\pi_B
@@ -210,7 +210,7 @@ $$P^T\cdot \bm{\pi} = \bm{\pi} \Leftrightarrow \begin{pmatrix}
 \end{pmatrix}$$
 La probabilità stazionaria che il canale sia nello stato B è la probabilità d'errore media:
 $$E[P_e] = \pi_B$$
-Può essere definita la variabile aleatoria $\#_B$ che indica il numero di slot in cui il sistema resta nello stato B, la cui distribuzione di probabilità può essere scritta come:
+Può essere definita la variabile aleatoria $\#_B$ che indica il numero di slot in cui il sistema resta nello stato B, la cui densità di probabilità può essere scritta come:
 $$P[\#_B=k]= \left(P_{BB}\right)^{k-1}P_{BG} = (1-q)^{k-1} q$$
 Il valore atteso di $\#_B$ è l'inverso della probabilità di transizione da B a G:
 $$E[\#_B] = \sum_{k=0}^{+\infty} k \cdot (1-q)^{k-1} q = q \cdot \frac{1}{(1-(1-q))^2} = \frac{1}{q}$$
@@ -221,12 +221,19 @@ I parametri impostati per il canale simulato sono stati il numero medio di slot 
 p = q\frac{\pi_B}{\pi_G}\end{cases}
   \label{eq:mcparams}
 \end{equation}
-Il numero medio di iterazioni necessarie a sbagliare N pacchetti è, in media,
-$$E[\theta_{0N}] = \frac{\pi_G}{p} + \frac{N-1}{\pi_B}$$
-Un altro tipo di canale markoviano testato è stato mantenendo fissa la quanità $\EnB$ e facendo variare la probabilità d'errore $\pi_B$.
-\item Canale senza memoria, con packet error rate fisso $P_e$
-\end{itemize}
-Di seguito la rappresentazione Markoviana.
+Il numero medio di iterazioni necessarie a sbagliare N pacchetti è
+\begin{equation}
+\label{avg_errors}
+E[\theta_{0N}] = \frac{\pi_G}{p} + \frac{N-1}{\pi_B}
+\end{equation}
+
+\paragraph{Canale senza memoria} caratterizzato dalla seguente matrice di probabilità di transizione
+$$P=\begin{pmatrix}
+1-P_e & P_e \\
+1-P_e & P_e
+\end{pmatrix}$$
+con packet error rate fisso $P_e$
+Di seguito la rappresentazione Markoviana di entrambi i canali.
 \begin{figure}[H]
     \centering
         \includegraphics[clip, trim=0cm 1cm 0cm 1cm, width=0.5\textwidth]{Channel.pdf}
@@ -251,7 +258,7 @@ g_{N1}	&g_{N2}	&\cdots	&g_{NK}
 x_1 \\x_2 \\\vdots \\x_K
 \end{pmatrix} = G \cdot \bm{x}
 \end{equation}
-dove $G$ è la matrice di codifica, $g_{ij}\in\{0,1\}$, $x_i\in\mathcal{X}$, $y_i\in\mathcal{Y}$.\\
+dove $G$ è la matrice di codifica, $g_{ij}\in\{0,1\}$, $x_i, y_i\in\mathcal{A}$.\\
 La $i-$esima riga della matrice $G$ è casuale e il suo grado (la distanza di hamming dall'origine) segue una distribuzione di probabilità nota: la Robust Soliton Distribution.\\
 La codifica dell'$i-$esimo pacchetto avviene attraverso l'operazione di \textit{OR esclusivo} tra i pacchetti di informazione indicati dalla $i-$esima riga di $G$.\\
 Se $G$ è invertibile, è possibile recuperare il vettore $\bm{x}$ da $\bm{y}$ attraverso la risoluzione di un sistema lineare.\\
@@ -277,6 +284,7 @@ I codici a fontana non prevedono la risoluzione di un sistema lineare per la dec
     \caption{Schema: \textit{message passing}}
     \label{fig:FC}
 \end{figure}
+Dalla tale descrizione si evince come sia possibile non riuscire a decodificare un blocco, anche se il canale è completamente affidabile. Da questa osservazione nasce l'interesse verso le prestazioni dell'algoritmo in condizioni di trasmissione senza errori.
 \newpage
 \subsubsection{H.264}
 Più nel dettaglio, il flusso video codificato è organizzato in unità NAL (Network Abstraction Layer) che possono essere di 2 tipi: VCL NAL Packets (Video Coding Layer) e non-VCL NAL packets. I pacchetti non-VCL possono contenere il set di parametri da usare per decodificare (informazioni necessarie per la decodifica, quindi ad alta priorità), oppure delle informazioni supplementari per migliorare la decodifica (SEI, Supplemental Enhancement Information). Il bitstream NAL è composto da una serie di sequenze video più corte (GOP, Group Of Pictures) decodificabili indipendentemente dal resto del flusso: ogni GOP comincia con tutte le informazioni necessarie alla decodifica, in modo che essa possa avvenire anche senza aver decodificato nessun segmento precedente.\\
@@ -295,16 +303,6 @@ Il messaggio che si ottiene da tali giustapposizioni è mappato nelle parti orig
 \end{figure}
 \newpage
 \subsection{Complicazioni trovate} % Max 5 lines
-
-\section{Risultati} % Min 7 pages
-L'algoritmo per la protezione non uniforme esposto nel
-paragrafo~\ref{UEPsection} è stato testato nei due casi di canale
-senza memoria e di canale Markoviano per determinare la packet error
-rate ottenibile in queste due condizioni.
-
-Sono stati inoltre misurati i tempi necessari alla codifica e
-decodifica dei pacchetti in funzione dell'overhead desiderato.
-
 Purtroppo l'esecuzione dell'intera implementazione dello schema di
 figura~\ref{fig:UDP} richiede un tempo tale da rendere difficoltosa la
 costruzione di grafici che siano precisi per PER basse.
@@ -312,6 +310,15 @@ costruzione di grafici che siano precisi per PER basse.
 I risultati dei paragrafi seguenti sono, quindi, stati ottenuti
 utilizzando solamente l'implementazione del message passing, senza
 trasmettere realmente dei pacchetti.
+
+\section{Risultati} % Min 7 pages
+L'algoritmo per la protezione non uniforme esposto nel
+paragrafo~\ref{UEPsection} è stato testato nei due casi di canale
+senza memoria e con memoria, per determinare la packet error
+rate ottenibile in queste due condizioni.
+
+Sono stati inoltre misurati i tempi necessari alla codifica e
+decodifica dei pacchetti in funzione dell'overhead desiderato.
 
 \subsection{Packet error rate su un canale senza memoria}
 In questo caso è stata misurata la packet error rate a livello di
@@ -403,9 +410,9 @@ diventare sempre più piccolo.
 
 Dal grafico delle PER per il caso in cui il canale perde pacchetti in
 modo iid (figura~\ref{fig:iid_oh}) è possible vedere che le curve
-seguono lo stesso andamento del caso precedente. Sono semplicemente
-traslate al variare della PER del canale di una lunghezza di circa
-$1.6$ volte il valore della PER.
+seguono un andamento simile al caso precedente, ma traslato.
+Si nota come, al variare della PER del canale, l'entità della traslazione
+sia di circa $1.6$ volte il valore della PER.
 %
 Infatti, nel caso $e = 10^{-2}$ l'algoritmo testato ha delle
 prestazioni molto vicine a quelle ottenibili sul canale senza errori,
@@ -423,8 +430,8 @@ e variando la dimensione del blocco $K$.
 In modo analogo al paragrafo precedente, il canale è stato simulato
 facendo una transizione di stato prima di ogni nuovo pacchetto e
 scartando quest'ultimo in caso lo stato sia ``cattivo''. Lo stato
-iniziale è stato in modo iid per ogni blocco di pacchetti, secondo le
-probabilità stazionarie $\pi_G$ e $\pi_B$.
+iniziale del canale è stato scelto, per ogni blocco di pacchetti, 
+secondo le probabilità stazionarie $\pi_G$ e $\pi_B$.
 
 La frazione di pacchetti importanti presente in ogni blocco è stata
 mantenuta al 5\%, come per il caso iid, e anche per gli altri
